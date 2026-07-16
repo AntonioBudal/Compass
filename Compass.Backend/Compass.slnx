@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Compass.Api/Compass.Api.csproj" />
+    <Project Path="src/Compass.Application/Compass.Application.csproj" />
+    <Project Path="src/Compass.Domain/Compass.Domain.csproj" />
+    <Project Path="src/Compass.Infrastructure/Compass.Infrastructure.csproj" />
+  </Folder>
+</Solution>
