@@ -17,6 +17,7 @@ public class CompassDbContext : DbContext
     public DbSet<Tag> Tags { get; set; } = null!;
     public DbSet<Reminder> Reminders { get; set; } = null!;
     public DbSet<FocusSession> FocusSessions { get; set; } = null!;
+    public DbSet<DecisionSnapshot> DecisionSnapshots { get; set; } = null!; 
 
     public CompassDbContext(DbContextOptions<CompassDbContext> options) : base(options)
     {
