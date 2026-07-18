@@ -8,4 +8,6 @@ public interface IDecisionSnapshotRepository
     Task<IEnumerable<DecisionSnapshot>> GetByUserIdAsync(Guid userId, int limit = 50, CancellationToken cancellationToken = default);
     Task AddAsync(DecisionSnapshot snapshot, CancellationToken cancellationToken = default);
     void Update(DecisionSnapshot snapshot);
+
+    Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -51,4 +51,24 @@ public abstract class Commitment
 
     public void ClearDomainEvents() => _domainEvents.Clear();
     protected void AddDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
+
+    public void Start()
+    {
+        Status = CommitmentStatus.InProgress;
+    }
+
+    public void Complete()
+    {
+        Status = CommitmentStatus.Completed;
+        CompletedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateStatus(CommitmentStatus newStatus)
+    {
+        Status = newStatus;
+        if (newStatus == CommitmentStatus.Completed)
+        {
+            CompletedAt = DateTime.UtcNow;
+        }
+    }
 }

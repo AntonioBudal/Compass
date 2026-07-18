@@ -41,4 +41,6 @@ public class DecisionSnapshotRepository : IDecisionSnapshotRepository
     {
         _context.DecisionSnapshots.Update(snapshot);
     }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default) => await _context.SaveChangesAsync(cancellationToken);
 }

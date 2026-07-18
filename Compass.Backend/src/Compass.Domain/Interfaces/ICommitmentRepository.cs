@@ -10,4 +10,6 @@ public interface ICommitmentRepository
     Task AddAsync(Commitment commitment, CancellationToken cancellationToken = default);
     void Update(Commitment commitment);
     void Remove(Commitment commitment);
+
+    Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -62,4 +62,6 @@ public class CommitmentRepository : ICommitmentRepository
     {
         _context.Commitments.Remove(commitment);
     }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default) => await _context.SaveChangesAsync(cancellationToken);
 }
