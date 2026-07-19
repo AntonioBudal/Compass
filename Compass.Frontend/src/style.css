@@ -1,0 +1,37 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Travamento estrutural do Viewport no padrão IDE / App Shell (Cap. 4.1) */
+  html, body, #app {
+    @apply h-screen w-screen overflow-hidden bg-compass-bg text-compass-text font-sans antialiased select-none;
+  }
+
+  /* Foco visível padronizado para navegação 100% via teclado (Cap. 1.3) */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-indigo-500 ring-offset-2 ring-offset-zinc-950;
+  }
+}
+
+/* Proteção vestibular contra animações em sistemas operacionais restritivos (Cap. 7.5) */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Customização de scrollbar ultra-discreta estilo macOS / Linear */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors;
+}
