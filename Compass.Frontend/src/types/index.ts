@@ -7,7 +7,7 @@ export interface CommitmentDto {
   type: CommitmentType;
   status: CommitmentStatus;
   estimatedDurationMinutes: number;
-  energyRequired: number;
+  energyRequired: number; // 1 | 2 | 3
   deadline: string | null;
   startTime: string | null;
   endTime: string | null;
@@ -62,6 +62,15 @@ export interface CreateCommitmentDto {
   locationOrLink?: string | null;
   cronExpression?: string | null;
   content?: string | null;
+}
+
+export interface UpdateCommitmentDto {
+  title?: string;
+  estimatedDurationMinutes?: number;
+  energyRequired?: number;
+  deadline?: string | null;
+  content?: string | null;
+  projectId?: string | null;
 }
 
 export interface UpdateStatusDto {

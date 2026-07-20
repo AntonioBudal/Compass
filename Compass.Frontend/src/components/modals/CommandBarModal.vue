@@ -3,21 +3,25 @@ import { ref, computed, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useCommitmentsStore } from '@/stores/commitmentsStore';
 import { useDecisionStore } from '@/stores/decisionStore';
+import { useJournalStore } from '@/stores/journalStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { isCommandBarOpen, isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
 import { 
-  Search, Zap, Calendar, Folder, Target, PlusCircle, 
-  RefreshCw, CheckCircle2, ArrowRight, CornerDownLeft 
+  Search, Zap, Calendar, Folder, Target, RefreshCw, 
+  PlusCircle, FileText, Sliders, Power, Download, 
+  CheckCircle2, CornerDownLeft 
 } from 'lucide-vue-next';
 
 const router = useRouter();
 const commitmentsStore = useCommitmentsStore();
 const decisionStore = useDecisionStore();
+const journalStore = useJournalStore();
+const settingsStore = useSettingsStore();
 
 const searchQuery = ref('');
 const selectedIndex = ref(0);
 const inputRef = ref<HTMLInputElement | null>(null);
 
-// Foco automático no input quando a Command Bar é aberta
 watch(isCommandBarOpen, async (isOpen) => {
   if (isOpen) {
     searchQuery.value = '';
@@ -27,13 +31,12 @@ watch(isCommandBarOpen, async (isOpen) => {
   }
 });
 
-// Estrutura de itens de ação e busca no K-Menu
 interface CommandItem {
   id: string;
   title: string;
   subtitle?: string;
   icon: any;
-  category: 'ação' | 'navegação' | 'compromisso';
+  category: 'ação' | 'navegação' | 'sistema' | 'compromisso';
   action: () => void;
 }
 
@@ -41,11 +44,23 @@ const allItems = computed<CommandItem[]>(() => {
   const query = searchQuery.value.toLowerCase().trim();
   const list: CommandItem[] = [];
 
-  // 1. Ações Rápidas
+  // 1. Ações de Sistema e Fechamento
+  list.push({
+    id: 'act-shutdown',
+    title: 'Iniciar Fechamento de Turno (Daily Shutdown)',
+    subtitle: 'Auditar pendências e encerrar o dia de trabalho',
+    icon: Power,
+    category: 'sistema',
+    action: () => {
+      isCommandBarOpen.value = false;
+      journalStore.startShutdown();
+    }
+  });
+
   list.push({
     id: 'act-new',
     title: 'Criar Novo Compromisso',
-    subtitle: 'Captura rápida de tarefa, hábito ou evento',
+    subtitle: 'Captura rápida de tarefa, hábito ou evento (Tecla C)',
     icon: PlusCircle,
     category: 'ação',
     action: () => {
@@ -57,7 +72,7 @@ const allItems = computed<CommandItem[]>(() => {
   list.push({
     id: 'act-recalc',
     title: 'Recalcular Motor de Decisão (Now Engine)',
-    subtitle: 'Atualizar sugestão de Top Focus baseada na energia atual',
+    subtitle: 'Atualizar sugestão de Top Focus baseada no tempo líquido',
     icon: RefreshCw,
     category: 'ação',
     action: () => {
@@ -67,12 +82,27 @@ const allItems = computed<CommandItem[]>(() => {
     }
   });
 
-  // 2. Navegação do Sistema
+  list.push({
+    id: 'act-export',
+    title: 'Exportar Backup Local-First (.json)',
+    subtitle: 'Gerar arquivo de portabilidade com todos os dados',
+    icon: Download,
+    category: 'sistema',
+    action: () => {
+      isCommandBarOpen.value = false;
+      settingsStore.exportData();
+    }
+  });
+
+  // 2. Navegação
   const navs = [
     { name: 'Agora (Motor de Decisão)', path: '/now', icon: Zap },
     { name: 'Agenda & Hard Blockers', path: '/agenda', icon: Calendar },
     { name: 'Projetos Ativos', path: '/projects', icon: Folder },
     { name: 'Metas Estratégicas', path: '/goals', icon: Target },
+    { name: 'Hábitos Diários', path: '/habits', icon: RefreshCw },
+    { name: 'Auditoria & Fechamento', path: '/journal', icon: FileText },
+    { name: 'Configurações & Portabilidade', path: '/settings', icon: Sliders },
   ];
 
   navs.forEach(n => {
@@ -88,18 +118,17 @@ const allItems = computed<CommandItem[]>(() => {
     });
   });
 
-  // 3. Compromissos Locais em Memória RAM (Pesquisa Local-First)
+  // 3. Compromissos Locais
   commitmentsStore.items.forEach(item => {
     if (item.status !== 'COMPLETED' && item.status !== 'ARCHIVED') {
       list.push({
         id: `com-${item.id}`,
         title: item.title,
-        subtitle: `[${item.type}] • ${item.estimatedDurationMinutes}m • ${item.status}`,
+        subtitle: `[${item.type}] | ${item.estimatedDurationMinutes}m | Status: ${item.status}`,
         icon: CheckCircle2,
         category: 'compromisso',
         action: () => {
           isCommandBarOpen.value = false;
-          // Se for tarefa, navega para o Agora ou conclui diretamente via mutação otimista
           if (item.type === 'TASK') {
             commitmentsStore.updateStatus(item.id, 'COMPLETED');
           }
@@ -108,7 +137,6 @@ const allItems = computed<CommandItem[]>(() => {
     }
   });
 
-  // Filtragem local instantânea sem latência (Zero Debounce HTTP)
   if (!query) return list;
   return list.filter(i => 
     i.title.toLowerCase().includes(query) || 
@@ -116,12 +144,10 @@ const allItems = computed<CommandItem[]>(() => {
   );
 });
 
-// Atualiza o índice selecionado se a busca mudar
 watch(searchQuery, () => {
   selectedIndex.value = 0;
 });
 
-// Navegação via Teclado na lista
 const handleKeyDown = (e: KeyboardEvent) => {
   const max = allItems.value.length;
   if (max === 0) return;
@@ -144,31 +170,30 @@ const handleKeyDown = (e: KeyboardEvent) => {
   <transition name="modal-snap">
     <div 
       v-if="isCommandBarOpen" 
-      class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4 bg-black/60 backdrop-blur-sm select-none"
+      class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4 bg-black/70 backdrop-blur-sm select-none"
       @click.self="isCommandBarOpen = false"
     >
-      <!-- Superfície do Modal (Cap. 3.6) -->
       <div 
-        class="w-full max-w-2xl bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[60vh] transition-all duration-tactic"
+        class="w-full max-w-2xl bg-zinc-900 border border-zinc-700/80 shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[60vh]"
         @keydown="handleKeyDown"
       >
-        <!-- Input Superior de Latência Zero -->
-        <div class="relative flex items-center px-4 border-b border-zinc-800/80">
-          <Search class="w-5 h-5 text-zinc-400 flex-shrink-0" />
+        <!-- Input de Busca -->
+        <div class="relative flex items-center px-4 border-b border-zinc-800">
+          <Search class="w-5 h-5 text-zinc-500 flex-shrink-0" />
           <input 
             ref="inputRef"
             v-model="searchQuery"
             type="text" 
             placeholder="Digitar comando ou buscar tarefa..." 
-            class="w-full py-4 px-3 bg-transparent text-base text-zinc-100 placeholder:text-zinc-500 focus:outline-none font-sans"
+            class="w-full py-4 px-3 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none font-sans"
           />
           <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 text-zinc-400 rounded border border-zinc-700">ESC</kbd>
         </div>
 
-        <!-- Lista de Resultados Filtrados -->
+        <!-- Lista -->
         <div class="flex-1 overflow-y-auto p-2 space-y-1">
-          <div v-if="allItems.length === 0" class="py-12 text-center text-sm text-zinc-500">
-            Nenhum comando ou compromisso encontrado para "<strong class="text-zinc-300">{{ searchQuery }}</strong>".
+          <div v-if="allItems.length === 0" class="py-12 text-center text-xs font-mono text-zinc-500">
+            Nenhum comando encontrado para "[{{ searchQuery }}]".
           </div>
 
           <button 
@@ -177,10 +202,10 @@ const handleKeyDown = (e: KeyboardEvent) => {
             @click="item.action"
             @mouseenter="selectedIndex = idx"
             class="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-colors cursor-pointer group"
-            :class="selectedIndex === idx ? 'bg-zinc-800/90 text-white border-l-2 border-indigo-500 shadow-sm' : 'text-zinc-300 hover:bg-zinc-800/40'"
+            :class="selectedIndex === idx ? 'bg-zinc-800 text-white border-l-2 border-zinc-300' : 'text-zinc-400 hover:bg-zinc-800/40'"
           >
             <div class="flex items-center gap-3 min-w-0 flex-1">
-              <component :is="item.icon" class="w-4 h-4 flex-shrink-0" :class="selectedIndex === idx ? 'text-indigo-400' : 'text-zinc-500'" />
+              <component :is="item.icon" class="w-4 h-4 flex-shrink-0" :class="selectedIndex === idx ? 'text-zinc-100' : 'text-zinc-500'" />
               <div class="truncate">
                 <span class="text-sm font-medium block truncate">{{ item.title }}</span>
                 <span v-if="item.subtitle" class="text-xs text-zinc-500 block truncate font-mono mt-0.5">{{ item.subtitle }}</span>
@@ -188,16 +213,16 @@ const handleKeyDown = (e: KeyboardEvent) => {
             </div>
 
             <div class="flex items-center gap-2 flex-shrink-0">
-              <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-950/60 border border-zinc-800 text-zinc-500">
+              <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-400">
                 {{ item.category }}
               </span>
-              <CornerDownLeft v-if="selectedIndex === idx" class="w-3.5 h-3.5 text-zinc-400 animate-pulse ml-1" />
+              <CornerDownLeft v-if="selectedIndex === idx" class="w-3.5 h-3.5 text-zinc-400 ml-1" />
             </div>
           </button>
         </div>
 
-        <!-- Rodapé de Dicas de Teclado -->
-        <div class="px-4 py-2 bg-zinc-950 border-t border-zinc-800/80 flex items-center justify-between text-[11px] font-mono text-zinc-500">
+        <!-- Rodapé Monocromático -->
+        <div class="px-4 py-2 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between text-[11px] font-mono text-zinc-500">
           <div class="flex items-center gap-3">
             <span><kbd class="bg-zinc-900 border border-zinc-800 px-1 rounded text-zinc-400">↑↓</kbd> Navegar</span>
             <span><kbd class="bg-zinc-900 border border-zinc-800 px-1 rounded text-zinc-400">Enter</kbd> Executar</span>
@@ -210,7 +235,6 @@ const handleKeyDown = (e: KeyboardEvent) => {
 </template>
 
 <style scoped>
-/* Snap Out Animation (Cap. 7.1) */
 .modal-snap-enter-active,
 .modal-snap-leave-active {
   transition: opacity 150ms cubic-bezier(0.16, 1, 0.3, 1), transform 150ms cubic-bezier(0.16, 1, 0.3, 1);

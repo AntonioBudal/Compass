@@ -1,26 +1,25 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { CompassApi } from '@/services/api';
+import { useToastStore } from '@/stores/toastStore';
 import type { 
   CommitmentDto, 
   CreateCommitmentDto, 
-  CommitmentStatus, 
-  CommitmentType 
+  UpdateCommitmentDto,
+  CommitmentStatus 
 } from '@/types/index';
 
-// Estendendo o DTO localmente para suportar flags visuais transitórias do Optimistic UI
 export type CommitmentItem = CommitmentDto & {
   _isSyncing?: boolean;
   _syncError?: string | null;
 };
 
 export const useCommitmentsStore = defineStore('commitments', () => {
-  // --- Estado Reativo (State) ---
+  const toastStore = useToastStore();
   const items = ref<CommitmentItem[]>([]);
   const isLoading = ref<boolean>(false);
   const globalError = ref<string | null>(null);
 
-  // --- Getters Computados (High SNR & Local-First Filtering) ---
   const activeCandidates = computed(() => 
     items.value.filter(i => 
       (i.status === 'PENDING' || i.status === 'IN_PROGRESS') && 
@@ -48,7 +47,6 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     return Array.from(map.values());
   });
 
-  // --- Ações de Rede & Mutações (Actions) ---
   const fetchAllActive = async () => {
     isLoading.value = true;
     globalError.value = null;
@@ -64,7 +62,6 @@ export const useCommitmentsStore = defineStore('commitments', () => {
   };
 
   const createCommitment = async (payload: CreateCommitmentDto) => {
-    // 1. Optimistic UI: Criação local temporária para latência zero
     const tempId = `temp-${Date.now()}`;
     const optimisticItem: CommitmentItem = {
       id: tempId,
@@ -89,18 +86,34 @@ export const useCommitmentsStore = defineStore('commitments', () => {
 
     items.value.unshift(optimisticItem);
 
-    // 2. Disparo assíncrono em background
     try {
       const created = await CompassApi.createCommitment(payload);
-      // Substitui o item temporário pelo item real consolidado no PostgreSQL
       const index = items.value.findIndex(i => i.id === tempId);
       if (index !== -1) {
         items.value[index] = created;
       }
       return created;
     } catch (err: any) {
-      // Rollback: Remove o item otimista em caso de falha (ex: validação)
       items.value = items.value.filter(i => i.id !== tempId);
+      toastStore.showToast('Erro ao criar compromisso. Tente novamente.', 'error');
+      throw err;
+    }
+  };
+
+  const updateCommitment = async (id: string, payload: UpdateCommitmentDto) => {
+    const index = items.value.findIndex(i => i.id === id);
+    if (index === -1) return;
+
+    const originalItem = { ...items.value[index] };
+    Object.assign(items.value[index], payload, { _isSyncing: true });
+
+    try {
+      const updated = await CompassApi.updateCommitment(id, payload);
+      items.value[index] = updated;
+      toastStore.showToast('Compromisso atualizado.', 'neutral');
+    } catch (err: any) {
+      items.value[index] = originalItem;
+      toastStore.showToast('Falha na edição. Alterações revertidas.', 'error');
       throw err;
     }
   };
@@ -111,21 +124,16 @@ export const useCommitmentsStore = defineStore('commitments', () => {
 
     const targetItem = items.value[index];
     const previousStatus = targetItem.status;
-
-    // Se não houve mudança real, ignora o processamento
     if (previousStatus === newStatus) return;
 
-    // 1. Mutação Instantânea em Memória RAM (< 16ms - UI_SPECIFICATION.md Cap. 6.1)
     targetItem.status = newStatus;
     targetItem._isSyncing = true;
     targetItem._syncError = null;
 
-    // 2. Disparo HTTP em background
     try {
       const response = await CompassApi.updateStatus(id, { newStatus });
       targetItem._isSyncing = false;
 
-      // 3. Processamento de Eventos em Cascata (ex: HabitStreakIncremented)
       if (response.cascadedDomainEvents && response.cascadedDomainEvents.length > 0) {
         response.cascadedDomainEvents.forEach(evt => {
           if (evt.eventType === 'HabitStreakIncremented') {
@@ -136,17 +144,57 @@ export const useCommitmentsStore = defineStore('commitments', () => {
           }
         });
       }
+
+      toastStore.showToast(
+        `Status alterado para ${newStatus}.`, 
+        newStatus === 'COMPLETED' ? 'success' : 'neutral',
+        async () => {
+          await updateStatus(id, previousStatus);
+        }
+      );
     } catch (err: any) {
-      // 4. Rollback de Otimismo (Resiliência Local-First - Cap. 6.5)
       targetItem.status = previousStatus;
       targetItem._isSyncing = false;
       
-      const errorMessage = err.response?.data?.Detail || 'Falha na mutação de estado. Operação revertida.';
+      const errorMessage = err.response?.data?.Detail || 'Falha na mutação de estado.';
       targetItem._syncError = errorMessage;
-      
-      console.error(` [Rollback de Otimismo]: Revertendo tarefa ${id} para ${previousStatus}. Razão:`, errorMessage);
+      toastStore.showToast(errorMessage, 'error');
       throw err;
     }
+  };
+
+  const deleteCommitment = async (id: string) => {
+    const index = items.value.findIndex(i => i.id === id);
+    if (index === -1) return;
+
+    const removedItem = items.value[index];
+    items.value.splice(index, 1);
+
+    toastStore.showToast(
+      `Compromisso removido.`,
+      'neutral',
+      async () => {
+        items.value.splice(index, 0, removedItem);
+        try {
+          // CORREÇÃO DO ERRO TS2345: Passando o objeto DTO correto.
+          await CompassApi.updateStatus(removedItem.id, { newStatus: 'PENDING' });
+        } catch (e) {
+          console.error('Falha ao reverter exclusão no servidor', e);
+        }
+      },
+      8000
+    );
+
+    setTimeout(async () => {
+      const stillDeleted = !items.value.some(i => i.id === id);
+      if (stillDeleted) {
+        try {
+          await CompassApi.deleteCommitment(id);
+        } catch (err) {
+          console.error(`Erro ao efetivar exclusão no PostgreSQL para o item ${id}`, err);
+        }
+      }
+    }, 8000);
   };
 
   return {
@@ -159,6 +207,8 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     projectsSummary,
     fetchAllActive,
     createCommitment,
-    updateStatus
+    updateCommitment,
+    updateStatus,
+    deleteCommitment
   };
 });

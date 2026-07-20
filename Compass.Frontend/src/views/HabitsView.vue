@@ -31,9 +31,15 @@ const handleCompleteHabit = (item: CommitmentItem) => {
 
 // Rastreio de calor de consistência (Cap. 5.5)
 const getStreakVariant = (streak: number) => {
-  if (streak > 21) return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold';
-  if (streak >= 8) return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-  return 'bg-zinc-800 text-zinc-300 border-zinc-700/50';
+  if (streak > 21) {
+    return 'bg-zinc-100 text-zinc-950 border-zinc-300 font-semibold';
+  }
+
+  if (streak >= 8) {
+    return 'bg-amber-500/10 text-amber-300 border-amber-500/30';
+  }
+
+  return 'bg-zinc-900 text-zinc-400 border-zinc-800';
 };
 </script>
 
@@ -57,7 +63,7 @@ const getStreakVariant = (streak: number) => {
         @click="openNewHabitModal"
         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-tactic bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-sm"
       >
-        <PlusCircle class="w-3.5 h-3.5 text-emerald-400" />
+        <PlusCircle class="w-3.5 h-3.5 text-zinc-300" />
         <span>Novo Hábito</span>
         <kbd class="px-1 text-[10px] font-mono bg-zinc-950 rounded border border-zinc-800 text-zinc-500">C</kbd>
       </button>
@@ -65,7 +71,7 @@ const getStreakVariant = (streak: number) => {
 
     <!-- ESTADO VAZIO -->
     <div v-if="habits.length === 0" class="p-12 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 text-center space-y-4">
-      <div class="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
+      <div class="w-12 h-12 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center mx-auto text-zinc-200">
         <RefreshCw class="w-6 h-6" />
       </div>
       <div class="max-w-sm mx-auto space-y-1">
@@ -76,7 +82,7 @@ const getStreakVariant = (streak: number) => {
       </div>
       <button 
         @click="openNewHabitModal"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-all"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium transition-all"
       >
         <PlusCircle class="w-4 h-4" />
         <span>Criar Hábito Agora</span>
@@ -96,8 +102,10 @@ const getStreakVariant = (streak: number) => {
           <button 
             type="button"
             @click="handleCompleteHabit(item)"
-            class="mt-0.5 w-5 h-5 rounded border border-zinc-700 bg-zinc-950 flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-emerald-500"
-            :class="item.status === 'COMPLETED' ? 'bg-emerald-600 border-emerald-500 text-white' : 'hover:border-zinc-500'"
+            class="mt-0.5 w-5 h-5 rounded border border-zinc-700 bg-zinc-950 flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-zinc-300"
+            :class="item.status === 'COMPLETED'
+            ? 'bg-zinc-100 border-zinc-200 text-zinc-950'
+            : 'hover:border-zinc-500'"
             :disabled="item.status === 'COMPLETED'"
             title="Concluir Hábito Hoje"
           >
@@ -115,7 +123,7 @@ const getStreakVariant = (streak: number) => {
 
             <div class="flex flex-wrap items-center gap-3 text-xs font-mono text-zinc-500">
               <span class="text-zinc-400">
-                {{ item.energyRequired === 3 ? '⚡⚡⚡ Alta' : item.energyRequired === 1 ? '⚡ Baixa' : '⚡⚡ Média' }}
+                {{ item.energyRequired === 3 ? 'Alta' : item.energyRequired === 1 ? 'Baixa' : 'Média' }}
               </span>
               <span>•</span>
               <span>CRON: {{ item.cronExpression || 'Todos os dias' }}</span>
@@ -133,7 +141,7 @@ const getStreakVariant = (streak: number) => {
             class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border transition-transform duration-tactic"
             :class="[
               getStreakVariant(item.currentStreak),
-              { 'scale-125 shadow-[0_0_15px_rgba(16,185,129,0.3)]': pulsingHabitId === item.id }
+              { 'scale-125 shadow-[0_0_14px_rgba(255,255,255,0.18)]': pulsingHabitId === item.id }
             ]"
           >
             <Flame class="w-3.5 h-3.5 inline text-amber-500" :class="{ 'animate-bounce': pulsingHabitId === item.id }" />

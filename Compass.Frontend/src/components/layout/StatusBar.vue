@@ -30,7 +30,7 @@ const isSyncing = computed(() => commitmentsStore.isLoading || decisionStore.isL
 
     <!-- Centro: Energia Atual do Operador -->
     <div class="hidden sm:block text-zinc-400">
-      ⚡ Energia Atual: <strong class="text-zinc-200">{{ energyLevel }}</strong>
+      Energia Atual: <strong class="text-zinc-200">{{ energyLevel }}</strong>
     </div>
 
     <!-- Lado Direito: Atalhos Táticos -->

@@ -16,8 +16,7 @@ onMounted(async () => {
     commitmentsStore.fetchAllActive(),
     decisionStore.fetchNow()
   ]);
-});
-
+})
 const handleRefresh = () => {
   decisionStore.fetchNow();
 };
@@ -33,7 +32,7 @@ const openCreateModal = () => {
     <div class="flex items-center justify-between gap-4 pb-4 border-b border-zinc-800">
       <div>
         <h1 class="text-2xl font-semibold text-zinc-100 tracking-tight">
-          Motor de Decisão <span class="text-indigo-400 font-mono text-sm ml-2">v1.0</span>
+          Motor de Decisão <span class="text-zinc-500 font-mono text-sm ml-2">v1.0</span>
         </h1>
         <p class="text-sm text-zinc-400 mt-1">
           O algoritmo filtrou suas opções e selecionou a ação com maior retorno tático para o seu momento.
@@ -76,7 +75,7 @@ const openCreateModal = () => {
 
     <!-- 2. ESTADO VAZIO TÁTICO (Action-Oriented Empty State - Cap. 5.6) -->
     <div v-else-if="!decisionStore.topFocus" class="p-8 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 text-center space-y-6 my-12">
-      <div class="w-12 h-12 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
+      <div class="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center mx-auto text-zinc-300">
         <Sparkles class="w-6 h-6" />
       </div>
 
@@ -84,18 +83,43 @@ const openCreateModal = () => {
         <h3 class="text-lg font-semibold text-zinc-100">Nenhuma ação acionável no momento</h3>
         <p class="text-sm text-zinc-400 leading-relaxed">
           Sua lista está limpa ou as tarefas pendentes excedem o tempo disponível na sua janela de 
-          <strong class="text-emerald-400 font-mono">{{ decisionStore.availableMinutes }}m livres</strong>.
+          <strong class="text-white font-mono">{{ decisionStore.availableMinutes }}m livres</strong>.
         </p>
       </div>
 
       <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
         <button 
           @click="openCreateModal"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium shadow-sm transition-all"
+          class="inline-flex items-center gap-2
+          px-4 py-2
+          rounded-tactic
+          bg-white
+          text-black
+          hover:bg-zinc-200
+          text-sm
+          font-medium
+          transition-colors"
         >
           <PlusCircle class="w-4 h-4" />
           <span>Criar Nova Tarefa</span>
-          <kbd class="px-1 py-0.5 text-[10px] font-mono bg-emerald-700 rounded text-emerald-100 ml-1">C</kbd>
+          <kbd
+  class="
+    ml-1
+    rounded
+    border
+    border-zinc-300
+    bg-zinc-50
+    px-1.5
+    py-0.5
+    text-[10px]
+    font-mono
+    font-semibold
+    text-zinc-700
+    shadow-[inset_0_-1px_0_rgba(0,0,0,.08)]
+  "
+>
+  C
+</kbd>
         </button>
 
         <router-link 
@@ -115,10 +139,10 @@ const openCreateModal = () => {
         <TopFocusCard :item="decisionStore.topFocus" />
       </section>
 
-      <!-- Seção Secundária: Alternativas Viáveis (Máximo 2) -->
-      <section v-if="decisionStore.alternatives.length > 0" aria-label="Alternativas Viáveis" class="space-y-3 pt-4">
+      <!-- Seção Secundária: Alternativas (Máximo 2) -->
+      <section v-if="decisionStore.alternatives.length > 0" aria-label="Alternativas " class="space-y-3 pt-4">
         <div class="flex items-center justify-between text-xs font-semibold text-zinc-500 uppercase tracking-wider px-1">
-          <span>Alternativas Viáveis (Caso não seja o momento ideal)</span>
+          <span>Alternativas (Caso não seja o momento ideal)</span>
           <span class="font-mono">{{ decisionStore.alternatives.length }} disponíveis</span>
         </div>
 

@@ -89,7 +89,7 @@ const openNewProjectModal = () => {
         @click="openNewProjectModal"
         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-tactic bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-sm"
       >
-        <PlusCircle class="w-3.5 h-3.5 text-indigo-400" />
+        <PlusCircle class="w-3.5 h-3.5 text-zinc-300" />
         <span>Novo Projeto</span>
         <kbd class="px-1 text-[10px] font-mono bg-zinc-950 rounded border border-zinc-800 text-zinc-500">C</kbd>
       </button>
@@ -97,7 +97,7 @@ const openNewProjectModal = () => {
 
     <!-- ESTADO VAZIO -->
     <div v-if="projects.length === 0" class="p-12 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 text-center space-y-4">
-      <div class="w-12 h-12 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
+      <div class="w-12 h-12 rounded-full bg-zinc-900 border bborder-zinc-700 flex items-center justify-center mx-auto text-zinc-400">
         <Folder class="w-6 h-6" />
       </div>
       <div class="max-w-sm mx-auto space-y-1">
@@ -108,7 +108,7 @@ const openNewProjectModal = () => {
       </div>
       <button 
         @click="openNewProjectModal"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-all"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium transition-all"
       >
         <PlusCircle class="w-4 h-4" />
         <span>Criar Tarefa com Projeto</span>
@@ -130,11 +130,11 @@ const openNewProjectModal = () => {
         <div 
           v-for="proj in projects" 
           :key="proj.id"
-          class="grid grid-cols-12 gap-4 py-3 px-4 items-center hover:bg-zinc-900/50 transition-colors cursor-pointer group"
+          class="grid grid-cols-12 gap-4 py-3 px-4 items-center hover:bg-white/[0.03] transition-colors cursor-pointer group"
         >
           <!-- Coluna 1: Nome e Status -->
           <div class="col-span-8 sm:col-span-4 flex items-center gap-2.5 min-w-0">
-            <Folder class="w-4 h-4 text-indigo-400 flex-shrink-0 group-hover:text-indigo-300 transition-colors" />
+            <Folder class="w-4 h-4 text-zinc-400 flex-shrink-0 group-hover:text-white transition-colors" />
             <span class="text-sm font-medium text-zinc-100 group-hover:text-white truncate">{{ proj.name }}</span>
           </div>
 
@@ -157,7 +157,7 @@ const openNewProjectModal = () => {
               <!-- Barra de Progresso Horizontal ultrafina (2px de altura) -->
               <div class="h-0.5 w-20 bg-zinc-800 rounded overflow-hidden">
                 <div 
-                  class="h-full bg-emerald-500 transition-all duration-300"
+                  class="h-full bg-zinc-100 transition-all duration-300"
                   :style="{ width: `${proj.progressPercentage}%` }"
                 />
               </div>
@@ -165,11 +165,15 @@ const openNewProjectModal = () => {
 
             <span 
               class="hidden lg:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono uppercase border"
-              :class="proj.status === 'COMPLETED' 
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                : proj.status === 'IN_PROGRESS' 
-                ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
-                : 'bg-zinc-800 text-zinc-400 border-zinc-700'"
+              :class="
+              proj.status === 'COMPLETED'
+              ? 'bg-zinc-100 text-zinc-950 border-zinc-300 font-semibold'
+
+              : proj.status === 'IN_PROGRESS'
+              ? 'bg-zinc-900 text-zinc-200 border-zinc-700'
+
+              : 'bg-zinc-950 text-zinc-500 border-zinc-800'
+              "
             >
               {{ proj.status }}
             </span>

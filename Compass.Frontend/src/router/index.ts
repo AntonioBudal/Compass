@@ -1,13 +1,11 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
-
-// Estendendo a tipagem dos metadados da rota (UI_SPECIFICATION.md - Cap. 4.3)
-declare module 'vue-router' {
-  interface RouteMeta {
-    title: string;
-    shortcut?: string;
-    layout?: string;
-  }
-}
+import NowEngineView from '@/views/NowEngineView.vue';
+import AgendaView from '@/views/AgendaView.vue';
+import ProjectsView from '@/views/ProjectsView.vue';
+import GoalsView from '@/views/GoalsView.vue';
+import HabitsView from '@/views/HabitsView.vue';
+import SettingsView from '@/views/SettingsView.vue';
+import JournalView from '@/views/JournalView.vue';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -16,70 +14,51 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/now',
-    name: 'Engine.Now',
-    component: () => import('@/views/NowEngineView.vue'),
-    meta: { 
-      title: 'Motor de Decisão (Agora)', 
-      shortcut: 'G N',
-      layout: 'AppLayout' 
-    }
+    name: 'now',
+    component: NowEngineView,
+    meta: { title: 'Motor de Decisão (Now Engine)' }
   },
   {
     path: '/agenda',
-    name: 'Execution.Agenda',
-    component: () => import('@/views/AgendaView.vue'),
-    meta: { 
-      title: 'Agenda & Hard Blockers', 
-      shortcut: 'G A', 
-      layout: 'AppLayout' 
-    }
+    name: 'agenda',
+    component: AgendaView,
+    meta: { title: 'Agenda & Hard Blockers' }
   },
   {
     path: '/projects',
-    name: 'Strategy.Projects',
-    component: () => import('@/views/ProjectsView.vue'),
-    meta: { 
-      title: 'Projetos Ativos', 
-      shortcut: 'G P', 
-      layout: 'AppLayout' 
-    }
+    name: 'projects',
+    component: ProjectsView,
+    meta: { title: 'Projetos Ativos' }
   },
   {
     path: '/goals',
-    name: 'Strategy.Goals',
-    component: () => import('@/views/GoalsView.vue'),
-    meta: { 
-      title: 'Metas Estratégicas', 
-      shortcut: 'G G', 
-      layout: 'AppLayout' 
-    }
+    name: 'goals',
+    component: GoalsView,
+    meta: { title: 'Metas Estratégicas' }
   },
   {
     path: '/habits',
-    name: 'Execution.Habits',
-    component: () => import('@/views/HabitsView.vue'),
-    meta: { 
-      title: 'Hábitos Diários', 
-      shortcut: 'G H', 
-      layout: 'AppLayout' 
-    }
+    name: 'habits',
+    component: HabitsView,
+    meta: { title: 'Hábitos Diários' }
+  },
+  {
+    path: '/journal',
+    name: 'journal',
+    component: JournalView,
+    meta: { title: 'Auditoria & Fechamento' }
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: SettingsView,
+    meta: { title: 'Configurações & Portabilidade' }
   }
 ];
 
-export const router = createRouter({
+const router = createRouter({
   history: createWebHistory(),
-  routes,
-  scrollBehavior() {
-    // Como o App Shell é travado em 100vh (Cap. 4.1), o scroll é resetado no topo da view interna
-    return { top: 0 };
-  }
-});
-
-// Guard de navegação para atualizar o título do navegador (UX Industrial)
-router.beforeEach((to, _from, next) => {
-  const title = to.meta.title ? `Compass — ${to.meta.title}` : 'Compass';
-  document.title = title;
-  next();
+  routes
 });
 
 export default router;

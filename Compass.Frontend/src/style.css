@@ -14,6 +14,14 @@
   }
 }
 
+@layer utilities {
+  /* Força aceleração por hardware da GPU na placa de vídeo sem disparar Reflow/Repaint (Cap. 7.4) */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform, opacity;
+  }
+}
+
 /* Proteção vestibular contra animações em sistemas operacionais restritivos (Cap. 7.5) */
 @media (prefers-reduced-motion: reduce) {
   * {

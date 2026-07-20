@@ -155,19 +155,18 @@ const handleKeyDown = (e: KeyboardEvent) => {
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1.5">
-              Energia Requerida
-            </label>
-            <select 
-              v-model.number="energy"
-              class="w-full px-3 py-1.5 bg-zinc-950/80 border border-zinc-800 focus:border-zinc-600 rounded-tactic text-sm font-mono text-zinc-100"
-            >
-              <option :value="1">⚡ Baixa (1)</option>
-              <option :value="2">⚡⚡ Média (2)</option>
-              <option :value="3">⚡⚡⚡ Alta (3)</option>
-            </select>
-          </div>
+          <!-- Procure a seção de energia e substitua por isto: -->
+<div>
+  <label class="block text-xs font-mono uppercase text-zinc-400 mb-1.5">Energia</label>
+  <select 
+    v-model.number="energy"
+    class="w-full px-3 py-1.5 bg-zinc-950/80 border border-zinc-800 focus:border-zinc-600 rounded-tactic text-sm font-mono text-zinc-100 outline-none"
+  >
+    <option :value="1">■□□ MAINT (1)</option>
+    <option :value="2">■■□ OPER (2)</option>
+    <option :value="3">■■■ DEEP (3)</option>
+  </select>
+</div>
         </div>
 
         <!-- Rodapé de Confirmação -->

@@ -30,6 +30,34 @@ export default {
       },
       transitionDuration: {
         'tactic': '150ms',       // Orçamento de movimento padrão (Cap. 7.1)
+        'fast': '100ms',
+        'subtle': '200ms',
+      },
+      transitionTimingFunction: {
+        // Curvas da Física Computacional do Compass (Cap. 7.1)
+        'snap-out': 'cubic-bezier(0.16, 1, 0.3, 1)',   // Entrada rápida de modais e gavetas
+        'fade-smooth': 'cubic-bezier(0.4, 0, 0.2, 1)', // Opacidade de botões e hover
+        'collapse-in': 'cubic-bezier(0.4, 0, 1, 1)',   // Saída de tarefas concluídas
+      },
+      keyframes: {
+        'draw-check': {
+          '0%': { strokeDashoffset: '24', opacity: '0', transform: 'scale(0.8)' },
+          '100%': { strokeDashoffset: '0', opacity: '1', transform: 'scale(1)' },
+        },
+        'streak-pop': {
+          '0%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.28)', filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.4))' },
+          '100%': { transform: 'scale(1)' },
+        },
+        'slide-up-fade': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        }
+      },
+      animation: {
+        'check': 'draw-check 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'streak': 'streak-pop 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'promote': 'slide-up-fade 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
       }
     },
   },

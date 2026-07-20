@@ -1,25 +1,28 @@
-import { onMounted, onUnmounted } from 'vue';
+
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDecisionStore } from '@/stores/decisionStore';
+import { useToastStore } from '@/stores/toastStore';
+import type { CommitmentItem } from '@/stores/commitmentsStore';
 
-// Estado global para comunicação entre os atalhos e os Modais (que faremos na Parte 2)
-import { ref } from 'vue';
 export const isCommandBarOpen = ref(false);
 export const isQuickCaptureOpen = ref(false);
+export const editingCommitment = ref<CommitmentItem | null>(null);
 
 export function useKeyboardShortcuts() {
   const router = useRouter();
   const decisionStore = useDecisionStore();
+  const toastStore = useToastStore();
   let gKeyPressed = false;
   let gKeyTimeout: ReturnType<typeof setTimeout> | null = null;
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    // 1. Ignora atalhos se o usuário estiver digitando em um formulário (Cap. 4.6)
     const target = e.target as HTMLElement;
     const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
-    // Permitir Escape em qualquer lugar para fechar modais
+    // Teclas globais de controle de Modal
     if (e.key === 'Escape') {
+      if (editingCommitment.value) { editingCommitment.value = null; return; }
       if (isCommandBarOpen.value) { isCommandBarOpen.value = false; return; }
       if (isQuickCaptureOpen.value) { isQuickCaptureOpen.value = false; return; }
       return;
@@ -27,27 +30,37 @@ export function useKeyboardShortcuts() {
 
     if (isInput) return;
 
-    // 2. Atalho de Busca Global: Cmd+K (Mac) ou Ctrl+K (Win) / Tecla '/'
+    // Atalho de Desfazer: Cmd+Z ou Ctrl+Z
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      const lastToast = toastStore.toasts.find(t => t.undoAction);
+      if (lastToast) {
+        toastStore.executeUndo(lastToast.id);
+      }
+      return;
+    }
+
+    // Busca Global
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       isCommandBarOpen.value = !isCommandBarOpen.value;
       return;
     }
-    if (e.key === '/' && !isCommandBarOpen.value && !isQuickCaptureOpen.value) {
+    if (e.key === '/' && !isCommandBarOpen.value && !isQuickCaptureOpen.value && !editingCommitment.value) {
       e.preventDefault();
       isCommandBarOpen.value = true;
       return;
     }
 
-    // 3. Captura Rápida: Tecla 'C' ou 'c'
-    if (e.key.toLowerCase() === 'c' && !e.metaKey && !e.ctrlKey) {
+    // Captura Rápida
+    if (e.key.toLowerCase() === 'c' && !e.metaKey && !e.ctrlKey && !editingCommitment.value) {
       e.preventDefault();
       isQuickCaptureOpen.value = true;
       return;
     }
 
-    // 4. Ações da Tela "Agora" (Concluir 'E' | Adiar 'S')
-    if (router.currentRoute.value.path === '/now') {
+    // Ações do Motor na Tela Agora
+    if (router.currentRoute.value.path === '/now' && !editingCommitment.value) {
       if (e.key.toLowerCase() === 'e') {
         e.preventDefault();
         decisionStore.completeTopFocus();
@@ -60,11 +73,11 @@ export function useKeyboardShortcuts() {
       }
     }
 
-    // 5. Navegação em 2 Teclas (G -> N, G -> A, etc.)
-    if (e.key.toLowerCase() === 'g' && !gKeyPressed) {
+    // Navegação em 2 Teclas (G -> X)
+    if (e.key.toLowerCase() === 'g' && !gKeyPressed && !editingCommitment.value) {
       gKeyPressed = true;
       if (gKeyTimeout) clearTimeout(gKeyTimeout);
-      gKeyTimeout = setTimeout(() => { gKeyPressed = false; }, 1500); // 1.5s de janela
+      gKeyTimeout = setTimeout(() => { gKeyPressed = false; }, 1500);
       return;
     }
 
@@ -78,8 +91,7 @@ export function useKeyboardShortcuts() {
         case 'p': router.push('/projects'); break;
         case 'g': router.push('/goals'); break;
         case 'h': router.push('/habits'); break;
-        case 'd': router.push('/audit'); break;
-        case 's': router.push('/settings'); break;
+        case 'j': router.push('/journal'); break;
       }
     }
   };
