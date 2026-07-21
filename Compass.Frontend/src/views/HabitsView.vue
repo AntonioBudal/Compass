@@ -47,6 +47,7 @@ const getStreakVariant = (streak: number) => {
   <div class="max-w-4xl mx-auto space-y-8 select-none">
     <!-- Cabeçalho de Hábitos -->
     <div class="flex items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+    
       <div>
         <h1 class="text-2xl font-semibold text-zinc-100 tracking-tight flex items-center gap-2.5">
           <span>Hábitos Diários</span>

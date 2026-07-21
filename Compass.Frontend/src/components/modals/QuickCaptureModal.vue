@@ -1,75 +1,103 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { useCommitmentsStore } from '@/stores/commitmentsStore';
-import { useDecisionStore } from '@/stores/decisionStore';
-import { isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
-import type { CommitmentType } from '@/types/index';
-import { PlusCircle, Clock, Zap, Check, X, Calendar, Folder, RefreshCw, FileText } from 'lucide-vue-next';
+import { useToastStore } from '@/stores/toastStore';
+import { useQuickCaptureParser } from '@/composables/useQuickCaptureParser';
+import { isQuickCaptureOpen, editingCommitment } from '@/composables/useKeyboardShortcuts';
+import type { CommitmentType, CreateCommitmentDto } from '@/types/index';
+import { Terminal, CornerDownLeft, Clock, Folder } from 'lucide-vue-next';
 
+const route = useRoute();
 const commitmentsStore = useCommitmentsStore();
-const decisionStore = useDecisionStore();
+const toastStore = useToastStore();
+const { parseInput } = useQuickCaptureParser();
 
-const title = ref('');
-const selectedType = ref<CommitmentType>('TASK');
-const duration = ref(30);
-const energy = ref(2);
-const titleInputRef = ref<HTMLInputElement | null>(null);
+const rawInput = ref('');
+const inputRef = ref<HTMLInputElement | null>(null);
 const isSubmitting = ref(false);
 
-const archetypes = [
-  { id: 'TASK' as CommitmentType, label: 'Tarefa', icon: Check, shortcut: '1' },
-  { id: 'HABIT' as CommitmentType, label: 'Hábito', icon: RefreshCw, shortcut: '2' },
-  { id: 'EVENT' as CommitmentType, label: 'Evento', icon: Calendar, shortcut: '3' },
-  { id: 'NOTE' as CommitmentType, label: 'Nota', icon: FileText, shortcut: '4' },
-];
+// Herança de Contexto (Context-Aware Defaults com base na Rota do Vue Router)
+const defaultContextType = computed<CommitmentType>(() => {
+  const path = route.path;
+  if (path.includes('/habits')) return 'HABIT';
+  if (path.includes('/agenda')) return 'EVENT';
+  if (path.includes('/journal')) return 'NOTE';
+  return 'TASK';
+});
+
+// Inferência NLP em tempo real para feedback visual (Zero-Mouse)
+const parsedPreview = computed(() => {
+  return parseInput(rawInput.value, defaultContextType.value, 30, 2);
+});
+
+const visualEnergyLabel = computed(() => {
+  switch (parsedPreview.value.energyRequired) {
+    case 3: return '■■■ DEEP';
+    case 1: return '■□□ MAINT';
+    case 2:
+    default: return '■■□ OPER';
+  }
+});
 
 watch(isQuickCaptureOpen, async (isOpen) => {
   if (isOpen) {
-    title.value = '';
-    selectedType.value = 'TASK';
-    duration.value = 30;
-    energy.value = 2;
+    rawInput.value = '';
     isSubmitting.value = false;
     await nextTick();
-    titleInputRef.value?.focus();
+    inputRef.value?.focus();
   }
 });
 
 const handleSubmit = async () => {
-  if (!title.value.trim() || isSubmitting.value) return;
+  if (!rawInput.value.trim() || isSubmitting.value) return;
 
   isSubmitting.value = true;
-  try {
-    await commitmentsStore.createCommitment({
-      title: title.value.trim(),
-      type: selectedType.value,
-      estimatedDurationMinutes: Number(duration.value) || 30,
-      energyRequired: Number(energy.value) || 2,
-    });
+  const parsed = parsedPreview.value;
 
+  // Montagem defensiva do DTO: preenchendo datas padrão para evitar falha no FluentValidation do .NET 10
+  const now = new Date();
+  const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+
+  const payload: CreateCommitmentDto = {
+    title: parsed.cleanTitle,
+    type: parsed.type,
+    estimatedDurationMinutes: parsed.estimatedDurationMinutes,
+    energyRequired: parsed.energyRequired,
+    // Se for EVENT e o usuário não passou data, assumimos o próximo intervalo inteiro para satisfazer a API
+    startTime: parsed.type === 'EVENT' ? now.toISOString() : null,
+    endTime: parsed.type === 'EVENT' ? oneHourLater.toISOString() : null,
+    // Se for HABIT, assumimos execução diária padrão à meia-noite
+    cronExpression: parsed.type === 'HABIT' ? '0 0 * * *' : null,
+    content: parsed.projectToken ? `Projeto vinculado via token: #${parsed.projectToken}` : null
+  };
+
+  try {
+    const created = await commitmentsStore.createCommitment(payload);
     isQuickCaptureOpen.value = false;
-    // Força atualização da tela do motor se uma nova tarefa foi injetada no sistema
-    decisionStore.fetchNow();
-  } catch (err) {
-    console.error('Erro na captura rápida:', err);
+    
+    // Feedback ergonômico no Toast com atalho direto para o Estágio 2 de Refinamento
+    toastStore.showToast(
+      `[${parsed.type}] "${parsed.cleanTitle}" capturado.`,
+      'success',
+      async () => {
+        // Ação de Desfazer em RAM
+        await commitmentsStore.deleteCommitment(created.id);
+      },
+      5000
+    );
+  } catch (err: any) {
+    // O detalhe do erro já foi propagado e interceptado pela store/axios
+    console.error('[QuickCapture:Error] Submissão abortada:', err);
   } finally {
     isSubmitting.value = false;
   }
 };
 
-// Alternância rápida de arquétipo via teclado (Cmd+1 a Cmd+4)
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     handleSubmit();
-    return;
-  }
-  if ((e.metaKey || e.ctrlKey) && ['1', '2', '3', '4'].includes(e.key)) {
-    e.preventDefault();
-    const idx = parseInt(e.key) - 1;
-    if (archetypes[idx]) {
-      selectedType.value = archetypes[idx].id;
-    }
   }
 };
 </script>
@@ -78,117 +106,76 @@ const handleKeyDown = (e: KeyboardEvent) => {
   <transition name="modal-snap">
     <div 
       v-if="isQuickCaptureOpen" 
-      class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 bg-black/60 backdrop-blur-sm select-none"
+      class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 bg-black/75 backdrop-blur-sm select-none"
       @click.self="isQuickCaptureOpen = false"
     >
       <div 
-        class="w-full max-w-lg bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 shadow-2xl rounded-xl overflow-hidden p-6 space-y-5"
+        class="w-full max-w-xl bg-zinc-950 border border-zinc-800 shadow-2xl rounded-xl overflow-hidden flex flex-col transition-all duration-tactic gpu-accelerated"
         @keydown="handleKeyDown"
       >
-        <!-- Cabeçalho de Captura -->
-        <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
-          <div class="flex items-center gap-2 text-sm font-semibold text-zinc-100">
-            <PlusCircle class="w-4 h-4 text-emerald-400" />
-            <span>Captura Rápida de Ação</span>
-          </div>
-          <button 
-            @click="isQuickCaptureOpen = false" 
-            class="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-          >
-            <X class="w-4 h-4" />
-          </button>
-        </div>
-
-        <!-- Campo Principal do Título -->
-        <div>
-          <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1.5">
-            O que precisa ser feito ou registrado?
-          </label>
+        <!-- Barra de Digitação de Comando CLI -->
+        <div class="relative flex items-center px-4 py-3 border-b border-zinc-800/80 bg-zinc-900/60">
+          <Terminal class="w-5 h-5 text-zinc-500 flex-shrink-0 mr-3" />
           <input 
-            ref="titleInputRef"
-            v-model="title"
+            ref="inputRef"
+            v-model="rawInput"
             type="text" 
-            placeholder="Ex: Revisar PR de autenticação no GitHub..." 
-            class="w-full px-3 py-2.5 bg-zinc-950/80 border border-zinc-800 focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 rounded-tactic text-sm text-zinc-100 placeholder:text-zinc-500 transition-all font-sans"
+            placeholder="Digitar ação... (Use @30m, !3, #proj, /h para formatar)" 
+            class="w-full py-2 bg-transparent text-base text-zinc-100 placeholder:text-zinc-600 focus:outline-none font-sans font-medium"
+            :disabled="isSubmitting"
           />
+          <div class="flex items-center gap-1.5 ml-2">
+            <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-900 text-zinc-400 rounded border border-zinc-800">ESC</kbd>
+            <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-200 text-zinc-950 font-bold rounded">↵</kbd>
+          </div>
         </div>
 
-        <!-- Seletor de Arquétipos (Buttons Toggle) -->
-        <div class="space-y-1.5">
-          <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
-            Arquétipo (Tipo de Compromisso)
-          </label>
-          <div class="grid grid-cols-4 gap-2">
-            <button
-              v-for="arc in archetypes"
-              :key="arc.id"
-              type="button"
-              @click="selectedType = arc.id"
-              class="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-tactic border text-xs font-medium transition-all"
-              :class="selectedType === arc.id 
-                ? 'bg-zinc-800 border-indigo-500 text-white shadow-sm' 
-                : 'bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'"
+        <!-- Área de Inferência Realtime (Badges de Metadados NLP) -->
+        <div class="px-4 py-2.5 bg-zinc-950 flex flex-wrap items-center justify-between gap-2 border-b border-zinc-900 text-xs font-mono text-zinc-400">
+          <div class="flex items-center gap-2 overflow-x-auto py-0.5">
+            <!-- Badge de Tipo/Arquétipo -->
+            <span 
+              class="px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold tracking-wider"
+              :class="parsedPreview.explicitType ? 'bg-indigo-950/60 text-indigo-300 border-indigo-800/80' : 'bg-zinc-900 text-zinc-400 border-zinc-800'"
             >
-              <component :is="arc.icon" class="w-3.5 h-3.5" :class="selectedType === arc.id ? 'text-indigo-400' : 'text-zinc-500'" />
-              <span>{{ arc.label }}</span>
-            </button>
-          </div>
-        </div>
+              {{ parsedPreview.type }}
+            </span>
 
-        <!-- Metadados Táticos (Duração & Energia) -->
-        <div class="grid grid-cols-2 gap-4 pt-1">
-          <div>
-            <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1.5">
-              Duração Estimada
-            </label>
-            <div class="relative flex items-center">
-              <Clock class="w-4 h-4 text-zinc-500 absolute left-3" />
-              <input 
-                v-model.number="duration"
-                type="number" 
-                step="15"
-                min="5"
-                max="480"
-                class="w-full pl-9 pr-8 py-1.5 bg-zinc-950/80 border border-zinc-800 focus:border-zinc-600 rounded-tactic text-sm font-mono text-zinc-100"
-              />
-              <span class="absolute right-3 text-xs font-mono text-zinc-500">min</span>
-            </div>
+            <!-- Badge de Duração -->
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+              <Clock class="w-3 h-3 text-zinc-500" />
+              <span>{{ parsedPreview.estimatedDurationMinutes }}m</span>
+            </span>
+
+            <!-- Badge de Energia Geométrico -->
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+              <span>{{ visualEnergyLabel }}</span>
+            </span>
+
+            <!-- Badge de Projeto Tokenizado -->
+            <span 
+              v-if="parsedPreview.projectToken" 
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-200 font-sans font-medium"
+            >
+              <Folder class="w-3 h-3 text-zinc-400" />
+              <span>#{{ parsedPreview.projectToken }}</span>
+            </span>
           </div>
 
-          <!-- Procure a seção de energia e substitua por isto: -->
-<div>
-  <label class="block text-xs font-mono uppercase text-zinc-400 mb-1.5">Energia</label>
-  <select 
-    v-model.number="energy"
-    class="w-full px-3 py-1.5 bg-zinc-950/80 border border-zinc-800 focus:border-zinc-600 rounded-tactic text-sm font-mono text-zinc-100 outline-none"
-  >
-    <option :value="1">■□□ MAINT (1)</option>
-    <option :value="2">■■□ OPER (2)</option>
-    <option :value="3">■■■ DEEP (3)</option>
-  </select>
-</div>
+          <!-- Dica Ergonômica -->
+          <span class="text-[10px] text-zinc-600 hidden sm:inline-block">
+            Estágio 1 (Brain Dump)
+          </span>
         </div>
 
-        <!-- Rodapé de Confirmação -->
-        <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
-          <button 
-            type="button"
-            @click="isQuickCaptureOpen = false"
-            class="px-3 py-1.5 rounded-tactic bg-transparent hover:bg-zinc-800/60 text-xs font-medium text-zinc-400 hover:text-white transition-colors"
-          >
-            Cancelar <kbd class="ml-1 text-[10px] font-mono bg-zinc-900 px-1 rounded border border-zinc-800">ESC</kbd>
-          </button>
-
-          <button 
-            type="button"
-            @click="handleSubmit"
-            :disabled="!title.trim() || isSubmitting"
-            class="inline-flex items-center gap-2 px-4 py-1.5 rounded-tactic bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-xs font-medium text-white shadow-sm transition-all disabled:opacity-50"
-          >
-            <Check class="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Salvar Compromisso</span>
-            <kbd class="ml-1 text-[10px] font-mono bg-emerald-700/60 px-1 rounded border border-emerald-500/30">Enter</kbd>
-          </button>
+        <!-- Rodapé Guia Monocromático -->
+        <div class="px-4 py-2 bg-zinc-900/30 flex items-center justify-between text-[10px] font-mono text-zinc-500">
+          <div class="flex items-center gap-3">
+            <span><strong class="text-zinc-400">@15m</strong> Tempo</span>
+            <span><strong class="text-zinc-400">!1 a !3</strong> Energia</span>
+            <span><strong class="text-zinc-400">/h /e /t</strong> Tipo</span>
+          </div>
+          <span>Compass Zero-Mouse v2.0</span>
         </div>
       </div>
     </div>
@@ -198,11 +185,11 @@ const handleKeyDown = (e: KeyboardEvent) => {
 <style scoped>
 .modal-snap-enter-active,
 .modal-snap-leave-active {
-  transition: opacity 150ms cubic-bezier(0.16, 1, 0.3, 1), transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .modal-snap-enter-from,
 .modal-snap-leave-to {
   opacity: 0;
-  transform: scale(0.96);
+  transform: scale(0.97) translateY(-4px);
 }
 </style>

@@ -28,6 +28,21 @@ export function useKeyboardShortcuts() {
       return;
     }
 
+    // Adicionar dentro do método handleKeyDown em useKeyboardShortcuts.ts:
+
+// Atalho Secreto de Acionamento da Suíte de Depuração (apenas em desenvolvimento ou com flag ativa)
+if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
+  console.log('CTRL SHIFT D');
+  e.preventDefault();
+  if (import.meta.env.DEV) {
+    import('@/stores/devStore').then(({ useDevStore }) => {
+      const devStore = useDevStore();
+      devStore.toggleConsole();
+    });
+  }
+  return;
+}
+
     if (isInput) return;
 
     // Atalho de Desfazer: Cmd+Z ou Ctrl+Z

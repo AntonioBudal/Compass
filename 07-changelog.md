@@ -116,3 +116,39 @@
 
 * `EditCommitmentModal`.
 * `DailyShutdownModal`.
+
+# Developer Changelog
+
+## 2026-07-21
+
+### Backend & API
+- Adicionado endpoint `/api/v1/health` para monitoramento da API.
+- Implementado seeder de usuário padrão para ambiente de desenvolvimento.
+- Padronizada a propagação de erros utilizando RFC 7807 (Problem Details).
+- Adicionado suporte a Correlation ID (`X-Correlation-Id`) nas requisições.
+
+### Banco de Dados
+- Corrigido o mapeamento TPH para propriedades específicas de subtipos (`CronExpression`, `StartTime` e `EndTime`).
+- Criada a migration `FixTphNullability`.
+
+### Frontend
+- Implementado parser do Quick Capture baseado em tokens (`@`, `!`, `#`, `/`).
+- Adicionado monitoramento de Long Tasks utilizando `PerformanceObserver`.
+- Implementado tratamento global de erros da aplicação Vue.
+- Adicionado suporte a fila de sincronização offline.
+- Implementado rastreamento de requisições via Correlation ID.
+
+### Stores
+- Criada `useDevStore`.
+- Criada `useOfflineStore`.
+
+### Componentes
+- Criado `ErrorBoundary`.
+- Criado `DeveloperConsole`.
+- Atualizada `StatusBar` com informações de sincronização, telemetria e requisições pendentes.
+
+### Modais
+- Refatorado `QuickCaptureModal` para entrada única baseada em comandos.
+- Adicionada herança de contexto conforme a tela atual.
+
+

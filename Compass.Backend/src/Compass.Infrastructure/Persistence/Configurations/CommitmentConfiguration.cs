@@ -56,12 +56,12 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
         builder.Property<int>("PostponedCount").HasColumnName("postponed_count").HasDefaultValue(0);
 
         // EventCommitment
-        builder.Property<DateTime?>("StartTime").HasColumnName("start_time");
-        builder.Property<DateTime?>("EndTime").HasColumnName("end_time");
-        builder.Property<string?>("LocationOrLink").HasColumnName("location_or_link").HasMaxLength(500);
+        builder.Property<DateTime?>("StartTime").HasColumnName("start_time").IsRequired(false); 
+        builder.Property<DateTime?>("EndTime").HasColumnName("end_time").IsRequired(false); 
+        builder.Property<string?>("LocationOrLink").HasColumnName("location_or_link").HasMaxLength(500).IsRequired(false);
 
         // HabitCommitment
-        builder.Property<string?>("CronExpression").HasColumnName("cron_expression").HasMaxLength(100);
+        builder.Property<string?>("CronExpression").HasColumnName("cron_expression").HasMaxLength(100).IsRequired(false); 
         builder.Property<int>("CurrentStreak").HasColumnName("current_streak").HasDefaultValue(0);
         builder.Property<int>("BestStreak").HasColumnName("best_streak").HasDefaultValue(0);
 
@@ -76,7 +76,6 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
         // --- Índices Parciais de Alta Performance (< 15ms) ---
         
         // 1. Motor de Decisão: Busca instantânea por itens ativos
-        // CORRIGIDO: Valores do Enum em minúsculo
         builder.HasIndex(c => new { c.UserId, c.Status, c.Type })
             .HasDatabaseName("idx_commitments_now_engine")
             .HasFilter("status IN ('pending', 'in_progress') AND type IN ('task', 'habit')");

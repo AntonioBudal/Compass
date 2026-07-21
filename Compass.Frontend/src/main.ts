@@ -1,13 +1,18 @@
-﻿import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import router from './router'
-import './style.css'
-import App from './App.vue'
+﻿import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import App from './App.vue';
+import router from './router';
+import './style.css'; // estilos Tailwind
 
-const app = createApp(App)
+import { setupGlobalErrorHandler } from './plugins/globalErrorHandler';
 
-// Registro arquitetural do Estado e do Roteamento
-app.use(createPinia())
-app.use(router)
+const app = createApp(App);
 
-app.mount('#app')
+const pinia = createPinia();
+app.use(pinia);
+app.use(router);
+
+// Instala a rede de arrastão de erros global
+setupGlobalErrorHandler(app);
+
+app.mount('#app');

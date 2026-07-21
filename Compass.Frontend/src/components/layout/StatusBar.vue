@@ -1,43 +1,54 @@
 ﻿<script setup lang="ts">
-import { computed } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
+import { useOfflineStore } from '@/stores/offlineStore';
 import { useDecisionStore } from '@/stores/decisionStore';
-import { useCommitmentsStore } from '@/stores/commitmentsStore';
+import { Wifi, WifiOff, RefreshCw, Clock } from 'lucide-vue-next';
 
+const offlineStore = useOfflineStore();
 const decisionStore = useDecisionStore();
-const commitmentsStore = useCommitmentsStore();
 
-const energyLevel = computed(() => {
-  switch (decisionStore.effectiveEnergy) {
-    case 3: return 'Alta (3)';
-    case 1: return 'Baixa (1)';
-    case 2:
-    default: return 'Média (2)';
-  }
+onMounted(() => {
+  offlineStore.initNetworkListeners();
 });
 
-const isSyncing = computed(() => commitmentsStore.isLoading || decisionStore.isLoading);
+onUnmounted(() => {
+  offlineStore.removeListeners();
+});
 </script>
 
 <template>
-  <footer class="h-8 px-4 border-t border-zinc-800/80 bg-zinc-950 flex items-center justify-between gap-4 text-[11px] font-mono text-zinc-500 flex-shrink-0 select-none overflow-hidden">
-    <!-- Lado Esquerdo: Status do Banco Local-First -->
-    <div class="flex items-center gap-2">
-      <span class="w-2 h-2 rounded-full" :class="isSyncing ? 'bg-amber-400 animate-ping' : 'bg-emerald-500'" />
-      <span class="truncate">
-        {{ isSyncing ? 'Sincronizando .NET 10...' : 'Local-First DB: Sync OK' }}
+  <footer class="h-8 bg-zinc-950 border-t border-zinc-800/80 px-4 flex items-center justify-between font-mono text-[11px] text-zinc-500 select-none flex-shrink-0">
+    
+    <!-- Lado Esquerdo: Status da Conexão e Fila Offline -->
+    <div class="flex items-center gap-3">
+      <!-- Indicador Online / Offline -->
+      <div class="flex items-center gap-1.5 font-semibold">
+        <span v-if="offlineStore.isOnline" class="flex items-center gap-1 text-emerald-400">
+          <Wifi class="w-3 h-3 stroke-[2.5]" />
+          <span>[SYNCED]</span>
+        </span>
+        <span v-else class="flex items-center gap-1 text-amber-400 animate-pulse">
+          <WifiOff class="w-3 h-3 stroke-[2.5]" />
+          <span>[OFFLINE MODE]</span>
+        </span>
+      </div>
+
+      <!-- Indicador de Itens Pendentes na Fila -->
+      <div v-if="offlineStore.queue.length > 0" class="flex items-center gap-1.5 text-zinc-300">
+        <RefreshCw class="w-3 h-3 text-indigo-400" :class="{ 'animate-spin': offlineStore.isSyncingQueue }" />
+        <span>Fila: {{ offlineStore.queue.length }} pendente(s)</span>
+      </div>
+    </div>
+
+    <!-- Lado Direito: Telemetria do Turno (M tempo) -->
+    <div class="flex items-center gap-4">
+      <span class="flex items-center gap-1">
+        <Clock class="w-3 h-3 text-zinc-600" />
+        <span>Janela Livre: <strong class="text-zinc-300">{{ decisionStore.availableMinutes }}m</strong></span>
       </span>
+      <span class="hidden sm:inline text-zinc-600">|</span>
+      <span class="hidden sm:inline">Compass v1.0 MVP</span>
     </div>
 
-    <!-- Centro: Energia Atual do Operador -->
-    <div class="hidden sm:block text-zinc-400">
-      Energia Atual: <strong class="text-zinc-200">{{ energyLevel }}</strong>
-    </div>
-
-    <!-- Lado Direito: Atalhos Táticos -->
-    <div class="flex items-center gap-3 text-zinc-500">
-      <span><kbd class="text-zinc-400">Cmd+K</kbd> Busca</span>
-      <span><kbd class="text-zinc-400">C</kbd> Criar</span>
-      <span><kbd class="text-zinc-400">E</kbd> Concluir</span>
-    </div>
   </footer>
 </template>

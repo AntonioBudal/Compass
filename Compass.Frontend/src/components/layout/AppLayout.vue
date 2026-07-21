@@ -7,6 +7,10 @@ import QuickCaptureModal from '@/components/modals/QuickCaptureModal.vue';
 import EditCommitmentModal from '@/components/modals/EditCommitmentModal.vue';
 import DailyShutdownModal from '@/components/modals/DailyShutdownModal.vue';
 import ToastContainer from '@/components/core/ToastContainer.vue';
+import DeveloperConsole from '@/components/dev/DeveloperConsole.vue';
+import ErrorBoundary from '@/components/core/ErrorBoundary.vue';
+import { usePerformanceMonitor } from '@/composables/usePerformanceMonitor';
+usePerformanceMonitor();
 </script>
 
 <template>
@@ -18,7 +22,9 @@ import ToastContainer from '@/components/core/ToastContainer.vue';
 
       <main class="flex-1 overflow-y-auto min-h-0 relative">
         <div class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
-          <slot />
+          <ErrorBoundary>
+            <slot />
+          </ErrorBoundary>
         </div>
       </main>
 
@@ -33,5 +39,6 @@ import ToastContainer from '@/components/core/ToastContainer.vue';
 
     <!-- Resiliência -->
     <ToastContainer />
+    <DeveloperConsole />
   </div>
 </template>
