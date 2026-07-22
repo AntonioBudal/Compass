@@ -106,74 +106,74 @@ const handleKeyDown = (e: KeyboardEvent) => {
   <transition name="modal-snap">
     <div 
       v-if="isQuickCaptureOpen" 
-      class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 bg-black/75 backdrop-blur-sm select-none"
+      class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 bg-app/75 backdrop-blur-sm select-none"
       @click.self="isQuickCaptureOpen = false"
     >
       <div 
-        class="w-full max-w-xl bg-zinc-950 border border-zinc-800 shadow-2xl rounded-xl overflow-hidden flex flex-col transition-all duration-tactic gpu-accelerated"
+        class="w-full max-w-xl bg-surface border border-borderbase shadow-2xl rounded-xl overflow-hidden flex flex-col transition-all duration-tactic gpu-accelerated"
         @keydown="handleKeyDown"
       >
         <!-- Barra de Digitação de Comando CLI -->
-        <div class="relative flex items-center px-4 py-3 border-b border-zinc-800/80 bg-zinc-900/60">
-          <Terminal class="w-5 h-5 text-zinc-500 flex-shrink-0 mr-3" />
+        <div class="relative flex items-center px-4 py-3 border-b border-borderbase bg-app/60">
+          <Terminal class="w-5 h-5 text-content-muted flex-shrink-0 mr-3" />
           <input 
             ref="inputRef"
             v-model="rawInput"
             type="text" 
             placeholder="Digitar ação... (Use @30m, !3, #proj, /h para formatar)" 
-            class="w-full py-2 bg-transparent text-base text-zinc-100 placeholder:text-zinc-600 focus:outline-none font-sans font-medium"
+            class="w-full py-2 bg-transparent text-base text-content placeholder:text-content-muted focus:outline-none font-sans font-medium"
             :disabled="isSubmitting"
           />
           <div class="flex items-center gap-1.5 ml-2">
-            <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-900 text-zinc-400 rounded border border-zinc-800">ESC</kbd>
-            <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-200 text-zinc-950 font-bold rounded">↵</kbd>
+            <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-surface text-content-muted rounded border border-borderbase">ESC</kbd>
+            <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-content text-content-invert font-bold rounded">↵</kbd>
           </div>
         </div>
 
         <!-- Área de Inferência Realtime (Badges de Metadados NLP) -->
-        <div class="px-4 py-2.5 bg-zinc-950 flex flex-wrap items-center justify-between gap-2 border-b border-zinc-900 text-xs font-mono text-zinc-400">
+        <div class="px-4 py-2.5 bg-app flex flex-wrap items-center justify-between gap-2 border-b border-borderbase text-xs font-mono text-content-muted">
           <div class="flex items-center gap-2 overflow-x-auto py-0.5">
             <!-- Badge de Tipo/Arquétipo -->
             <span 
               class="px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold tracking-wider"
-              :class="parsedPreview.explicitType ? 'bg-indigo-950/60 text-indigo-300 border-indigo-800/80' : 'bg-zinc-900 text-zinc-400 border-zinc-800'"
+              :class="parsedPreview.explicitType ? 'bg-surface-active text-content-accent border-borderhighlight' : 'bg-surface text-content-muted border-borderbase'"
             >
               {{ parsedPreview.type }}
             </span>
 
             <!-- Badge de Duração -->
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
-              <Clock class="w-3 h-3 text-zinc-500" />
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface border border-borderbase text-content">
+              <Clock class="w-3 h-3 text-content-muted" />
               <span>{{ parsedPreview.estimatedDurationMinutes }}m</span>
             </span>
 
             <!-- Badge de Energia Geométrico -->
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface border border-borderbase text-content">
               <span>{{ visualEnergyLabel }}</span>
             </span>
 
             <!-- Badge de Projeto Tokenizado -->
             <span 
               v-if="parsedPreview.projectToken" 
-              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-200 font-sans font-medium"
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface border border-borderfocus text-content font-sans font-medium"
             >
-              <Folder class="w-3 h-3 text-zinc-400" />
+              <Folder class="w-3 h-3 text-content-muted" />
               <span>#{{ parsedPreview.projectToken }}</span>
             </span>
           </div>
 
           <!-- Dica Ergonômica -->
-          <span class="text-[10px] text-zinc-600 hidden sm:inline-block">
+          <span class="text-[10px] text-content-muted hidden sm:inline-block">
             Estágio 1 (Brain Dump)
           </span>
         </div>
 
         <!-- Rodapé Guia Monocromático -->
-        <div class="px-4 py-2 bg-zinc-900/30 flex items-center justify-between text-[10px] font-mono text-zinc-500">
+        <div class="px-4 py-2 bg-app/30 flex items-center justify-between text-[10px] font-mono text-content-muted">
           <div class="flex items-center gap-3">
-            <span><strong class="text-zinc-400">@15m</strong> Tempo</span>
-            <span><strong class="text-zinc-400">!1 a !3</strong> Energia</span>
-            <span><strong class="text-zinc-400">/h /e /t</strong> Tipo</span>
+            <span><strong class="text-content">@15m</strong> Tempo</span>
+            <span><strong class="text-content">!1 a !3</strong> Energia</span>
+            <span><strong class="text-content">/h /e /t</strong> Tipo</span>
           </div>
           <span>Compass Zero-Mouse v2.0</span>
         </div>

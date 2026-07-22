@@ -29,12 +29,12 @@ const openCreateModal = () => {
 <template>
   <div class="max-w-4xl mx-auto space-y-8 select-none">
     <!-- Cabeçalho de Ação da Tela -->
-    <div class="flex items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+    <div class="flex items-center justify-between gap-4 pb-4 border-b border-borderbase">
       <div>
-        <h1 class="text-2xl font-semibold text-zinc-100 tracking-tight">
-          Motor de Decisão <span class="text-zinc-500 font-mono text-sm ml-2">v1.0</span>
+        <h1 class="text-2xl font-semibold text-content tracking-tight">
+          Motor de Decisão <span class="text-content-muted font-mono text-sm ml-2">v1.0</span>
         </h1>
-        <p class="text-sm text-zinc-400 mt-1">
+        <p class="text-sm text-content-muted mt-1">
           O algoritmo filtrou suas opções e selecionou a ação com maior retorno tático para o seu momento.
         </p>
       </div>
@@ -43,7 +43,7 @@ const openCreateModal = () => {
         <button 
           @click="handleRefresh" 
           :disabled="decisionStore.isLoading"
-          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-tactic bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono text-zinc-300 hover:text-white transition-all disabled:opacity-50"
+          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-tactic bg-surface hover:bg-surface-hover border border-borderbase text-xs font-mono text-content-muted hover:text-content transition-all disabled:opacity-50 cursor-pointer"
           title="Recalcular Sugestão (R)"
         >
           <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': decisionStore.isLoading }" />
@@ -54,79 +54,56 @@ const openCreateModal = () => {
 
     <!-- 1. ESTADO DE CARREGAMENTO (Skeleton Zero Layout-Shift - Cap. 7.3) -->
     <div v-if="decisionStore.isLoading && !decisionStore.topFocus" class="space-y-6 animate-pulse">
-      <div class="p-6 rounded-xl border border-zinc-800 bg-zinc-900/40 space-y-4 h-[220px]">
-        <div class="w-32 h-6 bg-zinc-800 rounded" />
-        <div class="w-3/4 h-8 bg-zinc-800 rounded" />
+      <div class="p-6 rounded-xl border border-borderbase bg-surface space-y-4 h-[220px]">
+        <div class="w-32 h-6 bg-surface-active rounded" />
+        <div class="w-3/4 h-8 bg-surface-active rounded" />
         <div class="flex gap-4 pt-4">
-          <div class="w-24 h-5 bg-zinc-800/80 rounded" />
-          <div class="w-24 h-5 bg-zinc-800/80 rounded" />
+          <div class="w-24 h-5 bg-surface-active rounded" />
+          <div class="w-24 h-5 bg-surface-active rounded" />
         </div>
         <div class="flex justify-between pt-4">
-          <div class="w-36 h-9 bg-zinc-800 rounded" />
-          <div class="w-24 h-9 bg-zinc-800/60 rounded" />
+          <div class="w-36 h-9 bg-surface-active rounded" />
+          <div class="w-24 h-9 bg-surface-active rounded" />
         </div>
       </div>
       <div class="space-y-2">
-        <div class="w-1/3 h-4 bg-zinc-800/50 rounded" />
-        <div class="w-full h-14 bg-zinc-900/30 rounded-lg border border-zinc-800/50" />
-        <div class="w-full h-14 bg-zinc-900/30 rounded-lg border border-zinc-800/50" />
+        <div class="w-1/3 h-4 bg-surface-active rounded" />
+        <div class="w-full h-14 bg-surface rounded-lg border border-borderbase" />
+        <div class="w-full h-14 bg-surface rounded-lg border border-borderbase" />
       </div>
     </div>
 
     <!-- 2. ESTADO VAZIO TÁTICO (Action-Oriented Empty State - Cap. 5.6) -->
-    <div v-else-if="!decisionStore.topFocus" class="p-8 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 text-center space-y-6 my-12">
-      <div class="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center mx-auto text-zinc-300">
+    <div v-else-if="!decisionStore.topFocus" class="p-8 rounded-xl border border-dashed border-borderbase bg-app/60 text-center space-y-6 my-12">
+      <div class="w-12 h-12 rounded-full bg-surface-active border border-borderfocus flex items-center justify-center mx-auto text-content">
         <Sparkles class="w-6 h-6" />
       </div>
 
       <div class="max-w-md mx-auto space-y-2">
-        <h3 class="text-lg font-semibold text-zinc-100">Nenhuma ação acionável no momento</h3>
-        <p class="text-sm text-zinc-400 leading-relaxed">
+        <h3 class="text-lg font-semibold text-content">Nenhuma ação acionável no momento</h3>
+        <p class="text-sm text-content-muted leading-relaxed">
           Sua lista está limpa ou as tarefas pendentes excedem o tempo disponível na sua janela de 
-          <strong class="text-white font-mono">{{ decisionStore.availableMinutes }}m livres</strong>.
+          <strong class="text-content font-mono">{{ decisionStore.availableMinutes }}m livres</strong>.
         </p>
       </div>
 
       <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
         <button 
           @click="openCreateModal"
-          class="inline-flex items-center gap-2
-          px-4 py-2
-          rounded-tactic
-          bg-white
-          text-black
-          hover:bg-zinc-200
-          text-sm
-          font-medium
-          transition-colors"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-content text-content-invert hover:bg-content-accent text-sm font-medium transition-colors cursor-pointer"
         >
           <PlusCircle class="w-4 h-4" />
           <span>Criar Nova Tarefa</span>
-          <kbd
-  class="
-    ml-1
-    rounded
-    border
-    border-zinc-300
-    bg-zinc-50
-    px-1.5
-    py-0.5
-    text-[10px]
-    font-mono
-    font-semibold
-    text-zinc-700
-    shadow-[inset_0_-1px_0_rgba(0,0,0,.08)]
-  "
->
-  C
-</kbd>
+          <kbd class="ml-1 rounded border border-borderbase bg-surface px-1.5 py-0.5 text-[10px] font-mono font-semibold text-content shadow-[inset_0_-1px_0_rgba(0,0,0,.08)]">
+            C
+          </kbd>
         </button>
 
         <router-link 
           to="/agenda"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-sm transition-all"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-surface hover:bg-surface-hover border border-borderbase text-content-muted hover:text-content text-sm transition-all"
         >
-          <Clock class="w-4 h-4 text-zinc-400" />
+          <Clock class="w-4 h-4 text-content-muted" />
           <span>Ver Agenda Completa</span>
         </router-link>
       </div>
@@ -141,7 +118,7 @@ const openCreateModal = () => {
 
       <!-- Seção Secundária: Alternativas (Máximo 2) -->
       <section v-if="decisionStore.alternatives.length > 0" aria-label="Alternativas " class="space-y-3 pt-4">
-        <div class="flex items-center justify-between text-xs font-semibold text-zinc-500 uppercase tracking-wider px-1">
+        <div class="flex items-center justify-between text-xs font-semibold text-content-muted uppercase tracking-wider px-1">
           <span>Alternativas (Caso não seja o momento ideal)</span>
           <span class="font-mono">{{ decisionStore.alternatives.length }} disponíveis</span>
         </div>

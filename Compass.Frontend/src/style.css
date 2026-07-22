@@ -3,26 +3,173 @@
 @tailwind utilities;
 
 @layer base {
-  /* Travamento estrutural do Viewport no padrão IDE / App Shell (Cap. 4.1) */
-  html, body, #app {
-    @apply h-screen w-screen overflow-hidden bg-compass-bg text-compass-text font-sans antialiased select-none;
+  :root {
+    /* --- TEMA 1: GRAPHITE DARK (Padrão Zinc Industrial) --- */
+    --bg-app: #09090b;             
+    --bg-surface: #121215;         
+    --bg-surface-hover: #1f1f23;   
+    --bg-surface-active: #27272a;  
+
+    --border-base: rgba(255, 255, 255, 0.08); 
+    --border-focus: #52525b;                  
+    --border-highlight: #e4e4e7;              
+
+    --text-main: #f4f4f5;          
+    --text-muted: #71717a;         
+    --text-accent: #ffffff;        
+    --text-invert: #09090b;        
+
+    --status-success-bg: rgba(228, 228, 231, 0.1); 
+    --status-success-text: #e4e4e7;                
+    --status-success-border: rgba(228, 228, 231, 0.3);
+
+    --status-warning-text: #d6d3d1;                
+    --status-danger-bg: rgba(244, 63, 94, 0.1);    
+    --status-danger-text: #fb7185;                 
+    --status-danger-border: rgba(244, 63, 94, 0.3);
   }
 
-  /* Foco visível padronizado para navegação 100% via teclado (Cap. 1.3) */
-  *:focus-visible {
-    @apply outline-none ring-2 ring-indigo-500 ring-offset-2 ring-offset-zinc-950;
+  /* --- TEMA 2: OLED ABSOLUTE (Preto Puro AMOLED #000000) --- */
+  [data-theme="oled"] {
+    --bg-app: #000000;
+    --bg-surface: #09090b;
+    --bg-surface-hover: #121215;
+    --bg-surface-active: #1f1f23;
+    --border-base: rgba(255, 255, 255, 0.12);
+    --border-focus: #71717a;
+    --border-highlight: #ffffff;
+    --text-main: #ffffff;
+    --text-muted: #a1a1aa;
+    --text-accent: #f4f4f5;
+    --text-invert: #000000;
+  }
+
+  /* --- TEMA 3: LIGHT IDE (Branco Puro & Contraste Técnico) --- */
+  [data-theme="light"] {
+    --bg-app: #f4f4f5;             
+    --bg-surface: #ffffff;         
+    --bg-surface-hover: #e4e4e7;   
+    --bg-surface-active: #d4d4d8;  
+    --border-base: rgba(0, 0, 0, 0.08);
+    --border-focus: #3f3f46;       
+    --border-highlight: #09090b;   
+    --text-main: #09090b;          
+    --text-muted: #52525b;         
+    --text-accent: #18181b;        
+    --text-invert: #ffffff;
+    --status-success-bg: rgba(24, 24, 27, 0.08);
+    --status-success-text: #18181b;
+    --status-success-border: rgba(24, 24, 27, 0.2);
+  }
+
+  /* --- TEMA 4: WARM PAPER (Editorial Light / Sepia Suave / Notion) --- */
+  [data-theme="paper"] {
+    --bg-app: #faf8f5;             /* Creme e-reader ultra suave */
+    --bg-surface: #ffffff;         /* Papel branco limpo */
+    --bg-surface-hover: #f3efe6;   /* Sépia clarinho em hover */
+    --bg-surface-active: #e8e2d5;  
+    --border-base: rgba(28, 25, 23, 0.08);
+    --border-focus: #78716c;       /* stone-500 */
+    --border-highlight: #1c1917;   /* stone-900 */
+    --text-main: #1c1917;          /* stone-900 (Marrom grafite muito escuro) */
+    --text-muted: #78716c;         /* stone-500 */
+    --text-accent: #292524;        
+    --text-invert: #faf8f5;
+    --status-success-bg: rgba(41, 37, 36, 0.08);
+    --status-success-text: #292524;
+    --status-success-border: rgba(41, 37, 36, 0.2);
+    --status-warning-text: #b45309;
+    --status-danger-text: #e11d48;
+  }
+
+  /* --- TEMA 5: GUNMETAL SLATE (Azul-Grafite DevOps / Supabase / Vercel) --- */
+  [data-theme="slate"] {
+    --bg-app: #0f172a;             /* slate-900 */
+    --bg-surface: #1e293b;         /* slate-800 */
+    --bg-surface-hover: #334155;   /* slate-700 */
+    --bg-surface-active: #475569;  /* slate-600 */
+    --border-base: rgba(255, 255, 255, 0.08);
+    --border-focus: #64748b;
+    --border-highlight: #f8fafc;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --text-accent: #38bdf8;        /* sky-400 (Destaque ciano técnico limpo) */
+    --text-invert: #0f172a;
+    --status-success-bg: rgba(56, 189, 248, 0.1);
+    --status-success-text: #7dd3fc;
+    --status-success-border: rgba(56, 189, 248, 0.3);
+  }
+
+  /* --- TEMA 6: NORDIC NIGHT (Estética Ártica Nórdica) --- */
+  [data-theme="nordic"] {
+    --bg-app: #2e3440;             /* Nord0 */
+    --bg-surface: #3b4252;         /* Nord1 */
+    --bg-surface-hover: #434c5e;   /* Nord2 */
+    --bg-surface-active: #4c566a;  /* Nord3 */
+    --border-base: rgba(236, 239, 244, 0.1);
+    --border-focus: #88c0d0;       /* Nord8 Frost */
+    --border-highlight: #eceff4;   /* Nord6 */
+    --text-main: #eceff4;
+    --text-muted: #d8dee9;         /* Nord4 */
+    --text-accent: #88c0d0;
+    --text-invert: #2e3440;
+    --status-success-bg: rgba(136, 192, 208, 0.15);
+    --status-success-text: #8fe2ff;
+    --status-success-border: rgba(136, 192, 208, 0.4);
+  }
+
+  /* --- TEMA 7: SOLARIZED PRECISION (A Lenda das IDEs Clássicas) --- */
+  [data-theme="solarized"] {
+    --bg-app: #002b36;             /* base03 */
+    --bg-surface: #073642;         /* base02 */
+    --bg-surface-hover: #0d4350;   
+    --bg-surface-active: #15505e;  
+    --border-base: rgba(131, 148, 150, 0.15);
+    --border-focus: #2aa198;       /* cyan precisão */
+    --border-highlight: #93a1a1;   
+    --text-main: #839496;          /* base0 */
+    --text-muted: #586e75;         /* base01 */
+    --text-accent: #2aa198;        
+    --text-invert: #002b36;
+    --status-success-bg: rgba(42, 161, 152, 0.15);
+    --status-success-text: #2aa198;
+    --status-success-border: rgba(42, 161, 152, 0.4);
+  }
+
+  /* --- TEMA 8: MATRIX TERMINAL (Fundo Negro com Fósforo Esmeralda) --- */
+  [data-theme="matrix"] {
+    --bg-app: #030704;
+    --bg-surface: #08120a;
+    --bg-surface-hover: #102414;
+    --bg-surface-active: #17361d;
+    --border-base: rgba(34, 197, 94, 0.15);
+    --border-focus: #22c55e;
+    --border-highlight: #4ade80;
+    --text-main: #dcfce7;
+    --text-muted: #4ade80;
+    --text-accent: #22c55e;        
+    --text-invert: #030704;
+    --status-success-bg: rgba(34, 197, 94, 0.15);
+    --status-success-text: #4ade80;
+    --status-success-border: rgba(34, 197, 94, 0.4);
+  }
+
+  /* Aplicação automática das variáveis na raiz do navegador */
+  body {
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    overflow-x: hidden;
   }
 }
 
 @layer utilities {
-  /* Força aceleração por hardware da GPU na placa de vídeo sem disparar Reflow/Repaint (Cap. 7.4) */
   .gpu-accelerated {
     transform: translateZ(0);
     will-change: transform, opacity;
   }
 }
 
-/* Proteção vestibular contra animações em sistemas operacionais restritivos (Cap. 7.5) */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -32,7 +179,6 @@
   }
 }
 
-/* Customização de scrollbar ultra-discreta estilo macOS / Linear */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

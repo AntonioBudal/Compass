@@ -23,32 +23,32 @@ const reloadView = () => {
 
 <template>
   <div v-if="hasError" class="h-full w-full flex items-center justify-center p-6 select-none">
-    <div class="max-w-md w-full p-6 rounded-xl border border-rose-500/30 bg-rose-950/10 shadow-2xl space-y-6">
+    <div class="max-w-md w-full p-6 rounded-xl border border-status-danger-border bg-status-danger-bg shadow-2xl space-y-6">
       
-      <div class="flex items-center gap-3 text-rose-500 pb-4 border-b border-rose-500/20">
+      <div class="flex items-center gap-3 text-status-danger-text pb-4 border-b border-status-danger-border">
         <ShieldAlert class="w-6 h-6 flex-shrink-0" />
         <h2 class="text-base font-semibold tracking-tight">Falha de Renderização de Tela</h2>
       </div>
 
       <div class="space-y-2">
-        <p class="text-sm text-zinc-300">
+        <p class="text-sm text-content-muted">
           A interface de usuário encontrou uma anomalia em tempo de execução e foi suspensa por segurança. Seus dados não salvos em outras telas não foram afetados.
         </p>
         
-        <div class="p-3 mt-4 rounded bg-zinc-950 border border-zinc-800 font-mono text-xs overflow-x-auto">
-          <span class="text-rose-400 font-bold block mb-1">Exception:</span>
-          <span class="text-zinc-400">{{ errorDetails?.message || 'Unknown Error' }}</span>
+        <div class="p-3 mt-4 rounded bg-app border border-borderbase font-mono text-xs overflow-x-auto">
+          <span class="text-status-danger-text font-bold block mb-1">Exception:</span>
+          <span class="text-content-muted">{{ errorDetails?.message || 'Unknown Error' }}</span>
         </div>
       </div>
 
       <div class="pt-4 flex items-center justify-between gap-4">
-        <span class="text-[10px] font-mono text-zinc-500 flex items-center gap-1.5">
+        <span class="text-[10px] font-mono text-content-muted flex items-center gap-1.5">
           <Terminal class="w-3 h-3" /> Verifique o Dev Console
         </span>
         
         <button 
           @click="reloadView"
-          class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold rounded shadow-sm transition-all cursor-pointer"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-content hover:bg-content-accent text-content-invert text-xs font-semibold rounded shadow-sm transition-all cursor-pointer"
         >
           <RefreshCw class="w-3.5 h-3.5" />
           <span>Recarregar Tela</span>

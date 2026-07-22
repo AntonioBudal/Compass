@@ -11,16 +11,16 @@ const props = withDefaults(defineProps<{
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'urgent':
-      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      return 'bg-status-warning-bg text-status-warning border-status-warning-border';
     case 'strategic':
-      return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+      return 'bg-surface text-content-accent border-borderfocus';
     case 'execution':
-      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      return 'bg-status-success-bg text-status-success-text border-status-success-border';
     case 'blocked':
-      return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      return 'bg-status-danger-bg text-status-danger-text border-status-danger-border';
     case 'neutral':
     default:
-      return 'bg-zinc-800/80 text-zinc-300 border-zinc-700/50';
+      return 'bg-surface text-content-muted border-borderbase';
   }
 });
 </script>

@@ -1,13 +1,20 @@
 {
-  "name": "compass-frontend",
-  "private": true,
-  "version": "0.0.0",
+  "name": "compass-workspace",
+  "version": "1.0.0",
   "type": "module",
+  "private": true,
+  "description": "Compass Local-First Productivity Engine",
+
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "dev": "node scripts/dev-orchestrator.mjs",
+    "build": "cd Compass.Frontend && npm run build && cd ../Compass.Backend/src/Compass.Api && dotnet build -c Release",
+    "test": "cd Compass.Frontend && npm run test && cd ../Compass.Backend && dotnet test"
   },
+
+  "engines": {
+    "node": ">=20.0.0"
+  },
+
   "dependencies": {
     "axios": "^1.18.1",
     "lucide-vue-next": "^1.0.0",
@@ -15,6 +22,7 @@
     "vue": "^3.5.39",
     "vue-router": "^4.6.4"
   },
+
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^6.0.7",

@@ -170,29 +170,29 @@ const handleKeyDown = (e: KeyboardEvent) => {
   <transition name="modal-snap">
     <div 
       v-if="isCommandBarOpen" 
-      class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4 bg-black/70 backdrop-blur-sm select-none"
+      class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4 bg-app/70 backdrop-blur-sm select-none"
       @click.self="isCommandBarOpen = false"
     >
       <div 
-        class="w-full max-w-2xl bg-zinc-900 border border-zinc-700/80 shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[60vh]"
+        class="w-full max-w-2xl bg-surface border border-borderbase shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[60vh]"
         @keydown="handleKeyDown"
       >
         <!-- Input de Busca -->
-        <div class="relative flex items-center px-4 border-b border-zinc-800">
-          <Search class="w-5 h-5 text-zinc-500 flex-shrink-0" />
+        <div class="relative flex items-center px-4 border-b border-borderbase">
+          <Search class="w-5 h-5 text-content-muted flex-shrink-0" />
           <input 
             ref="inputRef"
             v-model="searchQuery"
             type="text" 
             placeholder="Digitar comando ou buscar tarefa..." 
-            class="w-full py-4 px-3 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none font-sans"
+            class="w-full py-4 px-3 bg-transparent text-sm text-content placeholder:text-content-muted focus:outline-none font-sans"
           />
-          <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 text-zinc-400 rounded border border-zinc-700">ESC</kbd>
+          <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-surface text-content-muted rounded border border-borderbase">ESC</kbd>
         </div>
 
         <!-- Lista -->
         <div class="flex-1 overflow-y-auto p-2 space-y-1">
-          <div v-if="allItems.length === 0" class="py-12 text-center text-xs font-mono text-zinc-500">
+          <div v-if="allItems.length === 0" class="py-12 text-center text-xs font-mono text-content-muted">
             Nenhum comando encontrado para "[{{ searchQuery }}]".
           </div>
 
@@ -202,30 +202,30 @@ const handleKeyDown = (e: KeyboardEvent) => {
             @click="item.action"
             @mouseenter="selectedIndex = idx"
             class="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-colors cursor-pointer group"
-            :class="selectedIndex === idx ? 'bg-zinc-800 text-white border-l-2 border-zinc-300' : 'text-zinc-400 hover:bg-zinc-800/40'"
+            :class="selectedIndex === idx ? 'bg-surface-active text-content border-l-2 border-borderhighlight' : 'text-content-muted hover:bg-surface-hover'"
           >
             <div class="flex items-center gap-3 min-w-0 flex-1">
-              <component :is="item.icon" class="w-4 h-4 flex-shrink-0" :class="selectedIndex === idx ? 'text-zinc-100' : 'text-zinc-500'" />
+              <component :is="item.icon" class="w-4 h-4 flex-shrink-0" :class="selectedIndex === idx ? 'text-content' : 'text-content-muted'" />
               <div class="truncate">
                 <span class="text-sm font-medium block truncate">{{ item.title }}</span>
-                <span v-if="item.subtitle" class="text-xs text-zinc-500 block truncate font-mono mt-0.5">{{ item.subtitle }}</span>
+                <span v-if="item.subtitle" class="text-xs text-content-muted block truncate font-mono mt-0.5">{{ item.subtitle }}</span>
               </div>
             </div>
 
             <div class="flex items-center gap-2 flex-shrink-0">
-              <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-400">
+              <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-app border border-borderbase text-content-muted">
                 {{ item.category }}
               </span>
-              <CornerDownLeft v-if="selectedIndex === idx" class="w-3.5 h-3.5 text-zinc-400 ml-1" />
+              <CornerDownLeft v-if="selectedIndex === idx" class="w-3.5 h-3.5 text-content-muted ml-1" />
             </div>
           </button>
         </div>
 
         <!-- Rodapé Monocromático -->
-        <div class="px-4 py-2 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between text-[11px] font-mono text-zinc-500">
+        <div class="px-4 py-2 bg-app border-t border-borderbase flex items-center justify-between text-[11px] font-mono text-content-muted">
           <div class="flex items-center gap-3">
-            <span><kbd class="bg-zinc-900 border border-zinc-800 px-1 rounded text-zinc-400">↑↓</kbd> Navegar</span>
-            <span><kbd class="bg-zinc-900 border border-zinc-800 px-1 rounded text-zinc-400">Enter</kbd> Executar</span>
+            <span><kbd class="bg-surface border border-borderbase px-1 rounded text-content-muted">↑↓</kbd> Navegar</span>
+            <span><kbd class="bg-surface border border-borderbase px-1 rounded text-content-muted">Enter</kbd> Executar</span>
           </div>
           <span>Compass K-Menu</span>
         </div>

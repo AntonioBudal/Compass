@@ -17,10 +17,10 @@ const visualBlocks = computed(() => {
 
 <template>
   <span 
-    class="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[11px] font-mono border border-zinc-700/80 bg-zinc-900 text-zinc-300 leading-none select-none tracking-tight whitespace-nowrap"
+    class="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[11px] font-mono border border-borderbase bg-surface text-content-muted leading-none select-none tracking-tight whitespace-nowrap"
     :title="`Nível de Energia Requerido: ${level}`"
   >
-    <span class="font-bold tracking-widest text-zinc-100">{{ visualBlocks.split(' ')[0] }}</span>
-    <span class="text-[9px] uppercase tracking-normal text-zinc-500">{{ visualBlocks.split(' ')[1] }}</span>
+    <span class="font-bold tracking-widest text-content">{{ visualBlocks.split(' ')[0] }}</span>
+    <span class="text-[9px] uppercase tracking-normal text-content-muted">{{ visualBlocks.split(' ')[1] }}</span>
   </span>
 </template>
