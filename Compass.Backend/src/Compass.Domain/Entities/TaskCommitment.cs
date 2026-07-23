@@ -41,7 +41,7 @@ public class TaskCommitment : Commitment
         Status = CommitmentStatus.InProgress;
     }
 
-    public void Complete()
+    public override void Complete()
     {
         if (Status == CommitmentStatus.Archived)
             throw new DomainException("Não é possível concluir uma tarefa arquivada.");

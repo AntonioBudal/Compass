@@ -11,6 +11,7 @@ import {
   PlusCircle, FileText, Sliders, Power, Download, 
   CheckCircle2, CornerDownLeft 
 } from 'lucide-vue-next';
+import { useFocusTrap } from '@/composables/useFocusTrap';
 
 const router = useRouter();
 const commitmentsStore = useCommitmentsStore();
@@ -21,6 +22,12 @@ const settingsStore = useSettingsStore();
 const searchQuery = ref('');
 const selectedIndex = ref(0);
 const inputRef = ref<HTMLInputElement | null>(null);
+
+const props = defineProps<{ isOpen: boolean }>();
+const modalRef = ref<HTMLElement | null>(null);
+
+// Trava de foco tática engaiolando o teclado dentro do modal
+useFocusTrap(modalRef, computed(() => props.isOpen));
 
 watch(isCommandBarOpen, async (isOpen) => {
   if (isOpen) {
@@ -162,19 +169,27 @@ const handleKeyDown = (e: KeyboardEvent) => {
     e.preventDefault();
     const selected = allItems.value[selectedIndex.value];
     if (selected) selected.action();
+  } else if (e.key === 'Escape') {
+    isCommandBarOpen.value = false;
   }
 };
 </script>
 
 <template>
   <transition name="modal-snap">
-    <div 
-      v-if="isCommandBarOpen" 
-      class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4 bg-app/70 backdrop-blur-sm select-none"
-      @click.self="isCommandBarOpen = false"
+    <!-- Fundo Flutuante Tático (Corrige o bug da barra fixa no DOM!) -->
+    <div
+      v-if="isOpen"
+      class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] p-4 bg-app/80 backdrop-blur-sm select-none"
+      @click="isCommandBarOpen = false"
     >
-      <div 
-        class="w-full max-w-2xl bg-surface border border-borderbase shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[60vh]"
+      <div
+        ref="modalRef"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Barra de Comandos Táticos"
+        class="max-w-2xl w-full rounded-xl bg-surface border border-borderhighlight shadow-2xl overflow-hidden gpu-accelerated relative"
+        @click.stop
         @keydown="handleKeyDown"
       >
         <!-- Input de Busca -->
@@ -187,11 +202,16 @@ const handleKeyDown = (e: KeyboardEvent) => {
             placeholder="Digitar comando ou buscar tarefa..." 
             class="w-full py-4 px-3 bg-transparent text-sm text-content placeholder:text-content-muted focus:outline-none font-sans"
           />
-          <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-surface text-content-muted rounded border border-borderbase">ESC</kbd>
+          <button 
+            @click="isCommandBarOpen = false"
+            class="px-1.5 py-0.5 text-[10px] font-mono bg-surface text-content-muted rounded border border-borderbase hover:text-content cursor-pointer"
+          >
+            ESC
+          </button>
         </div>
 
         <!-- Lista -->
-        <div class="flex-1 overflow-y-auto p-2 space-y-1">
+        <div class="flex-1 overflow-y-auto p-2 space-y-1 max-h-[50vh]">
           <div v-if="allItems.length === 0" class="py-12 text-center text-xs font-mono text-content-muted">
             Nenhum comando encontrado para "[{{ searchQuery }}]".
           </div>

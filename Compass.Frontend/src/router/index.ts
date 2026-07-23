@@ -1,12 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
-import NowEngineView from '@/views/NowEngineView.vue';
-import AgendaView from '@/views/AgendaView.vue';
-import ProjectsView from '@/views/ProjectsView.vue';
-import GoalsView from '@/views/GoalsView.vue';
-import HabitsView from '@/views/HabitsView.vue';
-import SettingsView from '@/views/SettingsView.vue';
-import JournalView from '@/views/JournalView.vue';
 
+// 1. ASYNC VIEW ROUTING (Lazy Loading)
+// O Vite criará um chunk .js isolado para cada tela, baixado apenas no clique do menu!
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
@@ -15,50 +10,66 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/now',
     name: 'now',
-    component: NowEngineView,
+    component: () => import('@/views/NowEngineView.vue'),
     meta: { title: 'Motor de Decisão (Now Engine)' }
   },
   {
     path: '/agenda',
     name: 'agenda',
-    component: AgendaView,
+    component: () => import('@/views/AgendaView.vue'),
     meta: { title: 'Agenda & Hard Blockers' }
   },
   {
     path: '/projects',
     name: 'projects',
-    component: ProjectsView,
+    component: () => import('@/views/ProjectsView.vue'),
     meta: { title: 'Projetos Ativos' }
   },
   {
     path: '/goals',
     name: 'goals',
-    component: GoalsView,
+    component: () => import('@/views/GoalsView.vue'),
     meta: { title: 'Metas Estratégicas' }
   },
   {
     path: '/habits',
     name: 'habits',
-    component: HabitsView,
+    component: () => import('@/views/HabitsView.vue'),
     meta: { title: 'Hábitos Diários' }
   },
   {
     path: '/journal',
     name: 'journal',
-    component: JournalView,
+    component: () => import('@/views/JournalView.vue'),
     meta: { title: 'Auditoria & Fechamento' }
   },
   {
     path: '/settings',
     name: 'settings',
-    component: SettingsView,
+    component: () => import('@/views/SettingsView.vue'),
     meta: { title: 'Configurações & Portabilidade' }
+  },
+  {
+    path: '/sandbox',
+    name: 'sandbox',
+    component: () => import('@/views/OnboardingView.vue'),
+    meta: { title: 'RAM Sandbox (Modo Treinamento)', requiresAuth: false, isSandbox: true }
   }
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes
+});
+
+router.beforeEach((to, from, next) => {
+  // Atualiza dinamicamente o título da aba do navegador para imersão tática
+  if (to.meta.title) {
+    document.title = `${to.meta.title} | Compass`;
+  } else {
+    document.title = 'Compass Local-First';
+  }
+  next();
 });
 
 export default router;

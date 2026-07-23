@@ -26,6 +26,8 @@ public class GlobalExceptionHandler : IExceptionHandler
             Instance = httpContext.Request.Path
         };
 
+        problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
+
         if (exception is ValidationException validationException)
         {
             problemDetails.Title = "Erro de Validação";

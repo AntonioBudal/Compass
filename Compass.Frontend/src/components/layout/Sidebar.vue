@@ -6,7 +6,7 @@ import { isCommandBarOpen } from '@/composables/useKeyboardShortcuts';
 import { 
   Zap, Calendar, Folder, Target, RefreshCw, 
   FileText, Sliders, PanelLeftClose, PanelLeftOpen, 
-  Search, Power 
+  Search, Power, Terminal 
 } from 'lucide-vue-next';
 
 const isCollapsed = ref(false);
@@ -60,7 +60,7 @@ const openSearch = () => {
           <router-link 
             to="/now" 
             class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"
-            :class="route.path === '/now' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+            :class="route.path === '/now' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
           >
             <Zap class="w-4 h-4 flex-shrink-0" :class="route.path === '/now' ? 'text-content' : 'text-content-muted'" />
             <span v-if="!isCollapsed" class="truncate flex-1">Agora</span>
@@ -70,9 +70,9 @@ const openSearch = () => {
           <router-link 
             to="/agenda" 
             class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"
-            :class="route.path === '/agenda' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+            :class="route.path === '/agenda' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
           >
-            <Calendar class="w-4 h-4 flex-shrink-0 text-content-muted" />
+            <Calendar class="w-4 h-4 flex-shrink-0" :class="route.path === '/agenda' ? 'text-content' : 'text-content-muted'" />
             <span v-if="!isCollapsed" class="truncate flex-1">Agenda</span>
             <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G A</span>
           </router-link>
@@ -80,9 +80,9 @@ const openSearch = () => {
           <router-link 
             to="/habits" 
             class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"
-            :class="route.path === '/habits' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+            :class="route.path === '/habits' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
           >
-            <RefreshCw class="w-4 h-4 flex-shrink-0 text-content-muted" />
+            <RefreshCw class="w-4 h-4 flex-shrink-0" :class="route.path === '/habits' ? 'text-content' : 'text-content-muted'" />
             <span v-if="!isCollapsed" class="truncate flex-1">Hábitos</span>
             <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G H</span>
           </router-link>
@@ -98,9 +98,9 @@ const openSearch = () => {
           <router-link 
             to="/projects" 
             class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"
-            :class="route.path === '/projects' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+            :class="route.path === '/projects' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
           >
-            <Folder class="w-4 h-4 flex-shrink-0 text-content-muted" />
+            <Folder class="w-4 h-4 flex-shrink-0" :class="route.path === '/projects' ? 'text-content' : 'text-content-muted'" />
             <span v-if="!isCollapsed" class="truncate flex-1">Projetos</span>
             <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G P</span>
           </router-link>
@@ -108,11 +108,25 @@ const openSearch = () => {
           <router-link 
             to="/goals" 
             class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"
-            :class="route.path === '/goals' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+            :class="route.path === '/goals' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
           >
-            <Target class="w-4 h-4 flex-shrink-0 text-content-muted" />
+            <Target class="w-4 h-4 flex-shrink-0" :class="route.path === '/goals' ? 'text-content' : 'text-content-muted'" />
             <span v-if="!isCollapsed" class="truncate flex-1">Metas</span>
             <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G G</span>
+          </router-link>
+
+          <router-link 
+            to="/sandbox" 
+            class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all group cursor-pointer"
+            :class="route.path === '/sandbox' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+          >
+            <span class="p-0.5 rounded bg-app border border-borderbase group-hover:border-borderfocus text-content-accent flex-shrink-0">
+              <Terminal class="w-3 h-3" />
+            </span>
+            <div v-if="!isCollapsed" class="flex flex-col truncate flex-1">
+              <span class="truncate leading-tight">[RAM SANDBOX]</span>
+              <span class="text-[9px] font-mono text-content-muted">Modo Treinamento</span>
+            </div>
           </router-link>
         </div>
       </div>
@@ -126,9 +140,9 @@ const openSearch = () => {
           <router-link 
             to="/journal" 
             class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"
-            :class="route.path === '/journal' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+            :class="route.path === '/journal' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
           >
-            <FileText class="w-4 h-4 flex-shrink-0 text-content-muted" />
+            <FileText class="w-4 h-4 flex-shrink-0" :class="route.path === '/journal' ? 'text-content' : 'text-content-muted'" />
             <span v-if="!isCollapsed" class="truncate flex-1">Auditoria</span>
             <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G J</span>
           </router-link>
@@ -136,9 +150,9 @@ const openSearch = () => {
           <router-link 
             to="/settings" 
             class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"
-            :class="route.path === '/settings' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+            :class="route.path === '/settings' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
           >
-            <Sliders class="w-4 h-4 flex-shrink-0 text-content-muted" />
+            <Sliders class="w-4 h-4 flex-shrink-0" :class="route.path === '/settings' ? 'text-content' : 'text-content-muted'" />
             <span v-if="!isCollapsed" class="truncate flex-1">Configurações</span>
             <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G S</span>
           </router-link>

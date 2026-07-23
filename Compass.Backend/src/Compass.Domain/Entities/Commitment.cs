@@ -57,7 +57,7 @@ public abstract class Commitment
         Status = CommitmentStatus.InProgress;
     }
 
-    public void Complete()
+    public virtual void Complete()
     {
         Status = CommitmentStatus.Completed;
         CompletedAt = DateTime.UtcNow;

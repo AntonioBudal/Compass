@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Compass.Api.Middlewares;
 using Compass.Application.Interfaces;
 using Compass.Application.Services;
@@ -17,10 +18,27 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<CompassDbContext>(options =>
 {
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
-        npgsqlOptions.MigrationsAssembly("Compass.Infrastructure");
+        // 1. BLINDAGEM DE CONEXÃO: Tenta reconectar até 3 vezes em caso de falha transitória (Ex: rede piscou)
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorCodesToAdd: null
+        );
+
+        // 2. TIMEOUT DE COMANDO: Evita que queries travadas segurem threads do Kestrel por muito tempo
+        npgsqlOptions.CommandTimeout(30);
     });
+
+    // Em modo de desenvolvimento, exibe os valores das variáveis nos logs de SQL para facilitar o debug
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
 });
 
 // 2. Registro do Tratamento Global de Erros (RFC 7807)
@@ -83,25 +101,27 @@ using (var scope = app.Services.CreateScope())
     ");
 }
 
-app.MapHealthChecks("/api/v1/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+app.MapHealthChecks("/api/v1/healthz", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
-        var result = System.Text.Json.JsonSerializer.Serialize(new
+        
+        var response = new
         {
-            status = report.Status.ToString(),
+            status = report.Status.ToString(), // "Healthy", "Degraded" ou "Unhealthy"
+            totalDurationMs = report.TotalDuration.TotalMilliseconds,
             timestamp = DateTime.UtcNow,
-            durationMs = report.TotalDuration.TotalMilliseconds,
-            entries = report.Entries.Select(e => new
+            dependencies = report.Entries.Select(e => new
             {
-                component = e.Key,
+                name = e.Key,
                 status = e.Value.Status.ToString(),
-                description = e.Value.Description ?? "OK",
-                latencyMs = e.Value.Duration.TotalMilliseconds
+                description = e.Value.Description,
+                durationMs = e.Value.Duration.TotalMilliseconds
             })
-        });
-        await context.Response.WriteAsync(result);
+        };
+
+        await JsonSerializer.SerializeAsync(context.Response.Body, response);
     }
 });
 

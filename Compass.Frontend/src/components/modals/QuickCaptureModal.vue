@@ -7,6 +7,7 @@ import { useQuickCaptureParser } from '@/composables/useQuickCaptureParser';
 import { isQuickCaptureOpen, editingCommitment } from '@/composables/useKeyboardShortcuts';
 import type { CommitmentType, CreateCommitmentDto } from '@/types/index';
 import { Terminal, CornerDownLeft, Clock, Folder } from 'lucide-vue-next';
+import { useFocusTrap } from '@/composables/useFocusTrap';
 
 const route = useRoute();
 const commitmentsStore = useCommitmentsStore();
@@ -100,6 +101,13 @@ const handleKeyDown = (e: KeyboardEvent) => {
     handleSubmit();
   }
 };
+
+const props = defineProps<{ isOpen: boolean }>();
+const modalRef = ref<HTMLElement | null>(null);
+
+// Ativa a gaiola de foco ligada diretamente à prop de abertura do modal!
+useFocusTrap(modalRef, computed(() => props.isOpen));
+
 </script>
 
 <template>
@@ -109,10 +117,16 @@ const handleKeyDown = (e: KeyboardEvent) => {
       class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 bg-app/75 backdrop-blur-sm select-none"
       @click.self="isQuickCaptureOpen = false"
     >
-      <div 
-        class="w-full max-w-xl bg-surface border border-borderbase shadow-2xl rounded-xl overflow-hidden flex flex-col transition-all duration-tactic gpu-accelerated"
-        @keydown="handleKeyDown"
-      >
+        <!-- Contêiner da caixa do modal -->
+        <div
+          ref="modalRef"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="quick-capture-title"
+          class="w-full max-w-xl bg-surface border border-borderbase shadow-2xl rounded-xl overflow-hidden flex flex-col transition-all duration-tactic gpu-accelerated relative"
+          @keydown="handleKeyDown"
+          @click.stop
+        >
         <!-- Barra de Digitação de Comando CLI -->
         <div class="relative flex items-center px-4 py-3 border-b border-borderbase bg-app/60">
           <Terminal class="w-5 h-5 text-content-muted flex-shrink-0 mr-3" />
