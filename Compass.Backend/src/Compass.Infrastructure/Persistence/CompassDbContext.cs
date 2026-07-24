@@ -18,6 +18,7 @@ public class CompassDbContext : DbContext
     public DbSet<Reminder> Reminders { get; set; } = null!;
     public DbSet<FocusSession> FocusSessions { get; set; } = null!;
     public DbSet<DecisionSnapshot> DecisionSnapshots { get; set; } = null!; 
+    public DbSet<UserScoringProfile> UserScoringProfiles { get; set; } = null!;
 
     public CompassDbContext(DbContextOptions<CompassDbContext> options) : base(options)
     {
@@ -42,5 +43,14 @@ public class CompassDbContext : DbContext
 
         // Aplica automaticamente todas as classes de configuração (IEntityTypeConfiguration)
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CompassDbContext).Assembly);
+
+        modelBuilder.Entity<DecisionSnapshot>(builder =>
+{
+        // Índice Parcial Otimizado: Permite que o job de calibração varra 
+        // apenas decisões que geraram aprendizado real (escolhas ou ignorados explicitamente)
+        builder.HasIndex(d => new { d.UserId, d.CreatedAt })
+            .HasDatabaseName("idx_snapshots_reinforcement")
+            .HasFilter("was_ignored = false OR chosen_commitment_id IS NOT NULL");
+        });
     }
 }

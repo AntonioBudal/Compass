@@ -208,7 +208,7 @@
 
 * **Code Splitting e Lazy Loading:** Migração de rotas e componentes mais pesados para carregamento sob demanda utilizando importações assíncronas (`() => import(...)` e `defineAsyncComponent`), reduzindo o carregamento inicial da aplicação.
 
-* **Otimização do Build com Vite/Rollup:** Configuração do `vite.config.ts` para melhorar a organização dos arquivos gerados, separando dependências em diferentes chunks (`vendor-core`, `vendor-icons` e módulos individuais). O tempo de build foi reduzido para aproximadamente **1,86 segundos**, com melhor distribuição dos arquivos gerados.
+* **Otimização do Build com Vite/Rollup:** Configuração do `vite.config.ts` para melhorar a organização dos arquivos gerados, separando dependências em diferentes chunks (`vendor-core`, `vendor-icons` e módulos individuais). O tempo de build foi reduzido para aproximadamente, com melhor distribuição dos arquivos gerados.
 
 ---
 

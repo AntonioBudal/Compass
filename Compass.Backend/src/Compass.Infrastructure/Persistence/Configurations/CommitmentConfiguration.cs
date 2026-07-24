@@ -92,6 +92,21 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
             .HasFilter("project_id IS NOT NULL");
 
         builder.Ignore(c => c.DomainEvents);
+
+
+        // --- Índices Analíticos Parciais (Semana 1 / Dia 1) ---
+
+      // --- Índices Analíticos Parciais (Semana 1 / Dia 1) ---
+
+        // 1. Cobertura ultrarrápida para KPIs de eficácia e séries temporais concluídas
+        builder.HasIndex(c => new { c.UserId, c.Status, c.CompletedAt })
+            .HasDatabaseName("idx_commitments_user_status_completed")
+            .HasFilter("status = 'completed' AND completed_at IS NOT NULL");
+
+        // 2. CORRIGIDO: Uso de strings para referenciar propriedades de subclasses no TPH
+        builder.HasIndex("UserId", "PostponedCount", "Type", "EnergyRequired")
+            .HasDatabaseName("idx_commitments_user_postponed")
+            .HasFilter("postponed_count > 0 AND status != 'archived'");
     }
 }
     

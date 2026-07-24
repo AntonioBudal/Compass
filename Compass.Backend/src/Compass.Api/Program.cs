@@ -9,8 +9,11 @@ using Compass.Infrastructure.Repositories;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Compass.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+
 
 // 1. Conexão com o PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -51,8 +54,10 @@ builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IDecisionSnapshotRepository, DecisionSnapshotRepository>();
 
 // 4. Registro dos Serviços (Aplicação)
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IDecisionService, DecisionService>();
 builder.Services.AddScoped<ICommitmentService, CommitmentService>();
+builder.Services.AddScoped<IProgressService, ProgressService>();
 
 // 5. Registro dos Validadores do FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<CreateCommitmentDtoValidator>();

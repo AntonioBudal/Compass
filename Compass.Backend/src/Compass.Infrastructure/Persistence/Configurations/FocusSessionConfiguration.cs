@@ -21,17 +21,13 @@ public class FocusSessionConfiguration : IEntityTypeConfiguration<FocusSession>
 
         builder.Property(f => f.StartTime).HasColumnName("start_time").IsRequired();
         builder.Property(f => f.EndTime).HasColumnName("end_time").IsRequired();
-        builder.ToTable(t => t.HasCheckConstraint("chk_focus_time_validity", "end_time > start_time"));
-
         builder.Property(f => f.ActualDurationMinutes).HasColumnName("actual_duration_minutes").IsRequired();
-        builder.ToTable(t => t.HasCheckConstraint("chk_focus_duration", "actual_duration_minutes > 0"));
-
-        builder.Property(f => f.Notes).HasColumnName("notes");
+        builder.Property(f => f.Notes).HasColumnName("notes").HasMaxLength(1000);
         builder.Property(f => f.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-        // Índice para buscas no histórico de telemetria ordenado por data
+        // Índice Analítico de Alta Performance: Cobertura de histórico temporal por usuário
         builder.HasIndex(f => new { f.UserId, f.StartTime })
-            .IsDescending(false, true)
-            .HasDatabaseName("idx_focus_sessions_user_history");
+            .HasDatabaseName("idx_focus_sessions_user_time")
+            .HasFilter("actual_duration_minutes > 0");
     }
 }

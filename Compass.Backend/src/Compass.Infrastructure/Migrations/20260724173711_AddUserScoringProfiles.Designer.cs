@@ -4,6 +4,7 @@ using Compass.Domain.Enums;
 using Compass.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Compass.Infrastructure.Migrations
 {
     [DbContext(typeof(CompassDbContext))]
-    partial class CompassDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724173711_AddUserScoringProfiles")]
+    partial class AddUserScoringProfiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -138,17 +141,9 @@ namespace Compass.Infrastructure.Migrations
                         .HasDatabaseName("idx_commitments_events_lookup")
                         .HasFilter("type = 'event' AND status != 'archived'");
 
-                    b.HasIndex("UserId", "Status", "CompletedAt")
-                        .HasDatabaseName("idx_commitments_user_status_completed")
-                        .HasFilter("status = 'completed' AND completed_at IS NOT NULL");
-
                     b.HasIndex("UserId", "Status", "Type")
                         .HasDatabaseName("idx_commitments_now_engine")
                         .HasFilter("status IN ('pending', 'in_progress') AND type IN ('task', 'habit')");
-
-                    b.HasIndex("UserId", "PostponedCount", "Type", "EnergyRequired")
-                        .HasDatabaseName("idx_commitments_user_postponed")
-                        .HasFilter("postponed_count > 0 AND status != 'archived'");
 
                     b.ToTable("commitments", null, t =>
                         {
@@ -282,8 +277,7 @@ namespace Compass.Infrastructure.Migrations
                         .HasColumnName("end_time");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasColumnType("text")
                         .HasColumnName("notes");
 
                     b.Property<DateTime>("StartTime")
@@ -299,10 +293,15 @@ namespace Compass.Infrastructure.Migrations
                     b.HasIndex("CommitmentId");
 
                     b.HasIndex("UserId", "StartTime")
-                        .HasDatabaseName("idx_focus_sessions_user_time")
-                        .HasFilter("actual_duration_minutes > 0");
+                        .IsDescending(false, true)
+                        .HasDatabaseName("idx_focus_sessions_user_history");
 
-                    b.ToTable("focus_sessions", (string)null);
+                    b.ToTable("focus_sessions", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_focus_duration", "actual_duration_minutes > 0");
+
+                            t.HasCheckConstraint("chk_focus_time_validity", "end_time > start_time");
+                        });
                 });
 
             modelBuilder.Entity("Compass.Domain.Entities.Goal", b =>
