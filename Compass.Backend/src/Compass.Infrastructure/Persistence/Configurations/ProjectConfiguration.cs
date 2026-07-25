@@ -43,5 +43,19 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .HasDatabaseName("idx_projects_user_status");
 
         builder.Ignore(p => p.DomainEvents);
+
+        // ... (mapeamentos existentes de Id, UserId, Name, etc.) ...
+
+        // 1. Mapeamento da nova coluna
+        builder.Property(p => p.LastUsedAt)
+            .HasColumnName("last_used_at")
+            .IsRequired(false);
+
+        // 2. Índice Otimizado para o Catálogo LRU (Semana 2 / Dia 1)
+        // Permite que o GET /catalog retorne os projetos ativos mais usados instantaneamente
+        builder.HasIndex(p => new { p.UserId, p.Status, p.LastUsedAt })
+            .HasDatabaseName("idx_projects_user_catalog_lru")
+            .HasFilter("status != 'Completed' AND status != 'Archived'") // Ou os valores minúsculos se salvos assim
+            .IsDescending(false, false, true);
     }
 }

@@ -1,209 +1,255 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, watch } from 'vue';
 import { useCommitmentsStore } from '@/stores/commitmentsStore';
+import { useProjectsStore } from '@/stores/projectsStore';
 import { useToastStore } from '@/stores/toastStore';
-import { useQuickCaptureParser } from '@/composables/useQuickCaptureParser';
-import { isQuickCaptureOpen, editingCommitment } from '@/composables/useKeyboardShortcuts';
-import type { CommitmentType, CreateCommitmentDto } from '@/types/index';
-import { Terminal, CornerDownLeft, Clock, Folder } from 'lucide-vue-next';
-import { useFocusTrap } from '@/composables/useFocusTrap';
+import { parseQuickCapture } from '@/utils/nlpParser';
+import { TrieIndex } from '@/utils/trieIndex';
+import { useKeyboardNavigation } from '@/composables/useKeyboardNavigation';
+import AutoCompleteDropdown, { type DropdownItem } from '@/components/core/AutoCompleteDropdown.vue';
+import { Terminal, CornerDownLeft, Clock, Zap, Calendar, Folder } from 'lucide-vue-next';
 
-const route = useRoute();
+const props = defineProps<{ isOpen: boolean }>();
+const emit = defineEmits<{ (e: 'close'): void }>();
+
 const commitmentsStore = useCommitmentsStore();
+const projectsStore = useProjectsStore();
 const toastStore = useToastStore();
-const { parseInput } = useQuickCaptureParser();
 
-const rawInput = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
+const rawInput = ref('');
 const isSubmitting = ref(false);
 
-// Herança de Contexto (Context-Aware Defaults com base na Rota do Vue Router)
-const defaultContextType = computed<CommitmentType>(() => {
-  const path = route.path;
-  if (path.includes('/habits')) return 'HABIT';
-  if (path.includes('/agenda')) return 'EVENT';
-  if (path.includes('/journal')) return 'NOTE';
-  return 'TASK';
-});
+// --- MOTOR DE AUTO-COMPLETE EM RAM ---
+const projectsTrie = new TrieIndex();
+const activeDropdown = ref<'PROJECT' | 'TYPE' | 'TIME' | 'DATE' | null>(null);
+const dropdownQuery = ref('');
 
-// Inferência NLP em tempo real para feedback visual (Zero-Mouse)
-const parsedPreview = computed(() => {
-  return parseInput(rawInput.value, defaultContextType.value, 30, 2);
-});
+const typeSuggestions: DropdownItem[] = [
+  { label: '/t — Tarefa Operacional', value: '/t' },
+  { label: '/h — Hábito ou Rotina', value: '/h' },
+  { label: '/e — Evento ou Reunião', value: '/e' },
+  { label: '/n — Nota / Captura Rápida', value: '/n' }
+];
 
-const visualEnergyLabel = computed(() => {
-  switch (parsedPreview.value.energyRequired) {
-    case 3: return '■■■ DEEP';
-    case 1: return '■□□ MAINT';
-    case 2:
-    default: return '■■□ OPER';
+const timeSuggestions: DropdownItem[] = [
+  { label: '@15m — Sprint Curta (15 min)', value: '@15m' },
+  { label: '@30m — Turno Padrão (30 min)', value: '@30m' },
+  { label: '@45m — Foco Intenso (45 min)', value: '@45m' },
+  { label: '@1h — Bloco Profundo (60 min)', value: '@1h' },
+  { label: '@2h — Imersão Total (120 min)', value: '@2h' }
+];
+
+const dateSuggestions: DropdownItem[] = [
+  { label: '^hoje — Limite às 23:59 de hoje', value: '^hoje' },
+  { label: '^amanha — Limite às 23:59 de amanhã', value: '^amanha' },
+  { label: '^seg — Próxima Segunda-feira', value: '^seg' },
+  { label: '^sex — Próxima Sexta-feira', value: '^sex' }
+];
+
+watch(() => projectsStore.catalog, (newCatalog) => {
+  projectsTrie.clear();
+  newCatalog.forEach(p => {
+    projectsTrie.insertMultiWord(p.name, { id: p.id, title: p.name, lastUsedAtUtc: p.lastUsedAtUtc });
+  });
+}, { immediate: true });
+
+watch(rawInput, (val) => {
+  if (!inputRef.value) return;
+  const cursor = inputRef.value.selectionStart || val.length;
+  const textBeforeCursor = val.slice(0, cursor);
+  const match = textBeforeCursor.match(/([#\/^@])([a-zA-Z0-9_-]*)$/);
+
+  if (match) {
+    const trigger = match[1];
+    dropdownQuery.value = match[2];
+
+    if (trigger === '#') activeDropdown.value = 'PROJECT';
+    else if (trigger === '/') activeDropdown.value = 'TYPE';
+    else if (trigger === '@') activeDropdown.value = 'TIME';
+    else if (trigger === '^') activeDropdown.value = 'DATE';
+  } else {
+    activeDropdown.value = null;
   }
 });
 
-watch(isQuickCaptureOpen, async (isOpen) => {
-  if (isOpen) {
-    rawInput.value = '';
-    isSubmitting.value = false;
-    await nextTick();
-    inputRef.value?.focus();
+const currentSuggestions = computed<DropdownItem[]>(() => {
+  if (!activeDropdown.value) return [];
+
+  if (activeDropdown.value === 'PROJECT') {
+    if (!dropdownQuery.value) {
+      return projectsStore.lruProjects.slice(0, 6).map(p => ({
+        label: `#${p.name}`, value: `#${p.name}`, id: p.id
+      }));
+    }
+    const results = projectsTrie.searchPrefix(dropdownQuery.value, 6);
+    return results.map(r => ({ label: `#${r.title}`, value: `#${r.title}`, id: r.id }));
+  }
+  if (activeDropdown.value === 'TYPE') return typeSuggestions.filter(s => s.value.includes(dropdownQuery.value.toLowerCase()));
+  if (activeDropdown.value === 'TIME') return timeSuggestions.filter(s => s.value.includes(dropdownQuery.value.toLowerCase()));
+  if (activeDropdown.value === 'DATE') return dateSuggestions.filter(s => s.value.includes(dropdownQuery.value.toLowerCase()));
+
+  return [];
+});
+
+const suggestionsCount = computed(() => currentSuggestions.value.length);
+
+// Seleção de um item na interface
+const selectSuggestion = (item: DropdownItem) => {
+  if (!inputRef.value) return;
+  const cursor = inputRef.value.selectionStart || rawInput.value.length;
+  const textBefore = rawInput.value.slice(0, cursor);
+  const textAfter = rawInput.value.slice(cursor);
+
+  const newTextBefore = textBefore.replace(/([#\/^@])([a-zA-Z0-9_-]*)$/, item.value + ' ');
+  rawInput.value = newTextBefore + textAfter;
+  activeDropdown.value = null;
+
+  if (item.id) projectsStore.promoteUsage(item.id);
+  setTimeout(() => inputRef.value?.focus(), 10);
+};
+
+// --- MÁQUINA DE ESTADOS DO TECLADO ---
+const { selectedIndex, handleKeyDown } = useKeyboardNavigation(suggestionsCount, {
+  onSelect: (index) => {
+    const selected = currentSuggestions.value[index];
+    if (selected) selectSuggestion(selected);
+  },
+  onDismiss: () => {
+    activeDropdown.value = null;
+  },
+  onSubmitFallback: () => {
+    handleSubmit();
   }
 });
+
+const onInputKeyDown = (e: KeyboardEvent) => {
+  handleKeyDown(e, Boolean(activeDropdown.value && suggestionsCount.value > 0));
+};
+
+const livePreview = computed(() => parseQuickCapture(rawInput.value));
 
 const handleSubmit = async () => {
   if (!rawInput.value.trim() || isSubmitting.value) return;
-
+  const parsed = livePreview.value;
   isSubmitting.value = true;
-  const parsed = parsedPreview.value;
-
-  // Montagem defensiva do DTO: preenchendo datas padrão para evitar falha no FluentValidation do .NET 10
-  const now = new Date();
-  const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-
-  const payload: CreateCommitmentDto = {
-    title: parsed.cleanTitle,
-    type: parsed.type,
-    estimatedDurationMinutes: parsed.estimatedDurationMinutes,
-    energyRequired: parsed.energyRequired,
-    // Se for EVENT e o usuário não passou data, assumimos o próximo intervalo inteiro para satisfazer a API
-    startTime: parsed.type === 'EVENT' ? now.toISOString() : null,
-    endTime: parsed.type === 'EVENT' ? oneHourLater.toISOString() : null,
-    // Se for HABIT, assumimos execução diária padrão à meia-noite
-    cronExpression: parsed.type === 'HABIT' ? '0 0 * * *' : null,
-    content: parsed.projectToken ? `Projeto vinculado via token: #${parsed.projectToken}` : null
-  };
 
   try {
-    const created = await commitmentsStore.createCommitment(payload);
-    isQuickCaptureOpen.value = false;
-    
-    // Feedback ergonômico no Toast com atalho direto para o Estágio 2 de Refinamento
-    toastStore.showToast(
-      `[${parsed.type}] "${parsed.cleanTitle}" capturado.`,
-      'success',
-      async () => {
-        // Ação de Desfazer em RAM
-        await commitmentsStore.deleteCommitment(created.id);
-      },
-      5000
-    );
-  } catch (err: any) {
-    // O detalhe do erro já foi propagado e interceptado pela store/axios
-    console.error('[QuickCapture:Error] Submissão abortada:', err);
+    let matchedProjectId: string | null = null;
+    if (parsed.projectQuery) {
+      const match = projectsStore.catalog.find(p => p.name.toLowerCase() === parsed.projectQuery?.toLowerCase());
+      if (match) {
+        matchedProjectId = match.id;
+        projectsStore.promoteUsage(match.id);
+      }
+    }
+
+    await commitmentsStore.createCommitment({
+      title: parsed.title,
+      type: parsed.type,
+      estimatedDurationMinutes: parsed.estimatedDurationMinutes,
+      energyRequired: parsed.energyRequired,
+      deadline: parsed.deadlineIso,
+      projectId: matchedProjectId
+    });
+
+    toastStore.showToast(`[${parsed.type}] capturado com sucesso!`, 'success');
+    rawInput.value = '';
+    emit('close');
+  } catch (err) {
+    toastStore.showToast('Erro ao processar captura rápida.', 'error');
   } finally {
     isSubmitting.value = false;
   }
 };
 
-const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    handleSubmit();
-  }
-};
-
-const props = defineProps<{ isOpen: boolean }>();
-const modalRef = ref<HTMLElement | null>(null);
-
-// Ativa a gaiola de foco ligada diretamente à prop de abertura do modal!
-useFocusTrap(modalRef, computed(() => props.isOpen));
-
+watch(() => props.isOpen, (open) => {
+  if (open) setTimeout(() => inputRef.value?.focus(), 50);
+  else { rawInput.value = ''; activeDropdown.value = null; }
+});
 </script>
 
 <template>
-  <transition name="modal-snap">
-    <div 
-      v-if="isQuickCaptureOpen" 
-      class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 bg-app/75 backdrop-blur-sm select-none"
-      @click.self="isQuickCaptureOpen = false"
-    >
-        <!-- Contêiner da caixa do modal -->
-        <div
-          ref="modalRef"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="quick-capture-title"
-          class="w-full max-w-xl bg-surface border border-borderbase shadow-2xl rounded-xl overflow-hidden flex flex-col transition-all duration-tactic gpu-accelerated relative"
-          @keydown="handleKeyDown"
-          @click.stop
-        >
-        <!-- Barra de Digitação de Comando CLI -->
-        <div class="relative flex items-center px-4 py-3 border-b border-borderbase bg-app/60">
-          <Terminal class="w-5 h-5 text-content-muted flex-shrink-0 mr-3" />
-          <input 
-            ref="inputRef"
-            v-model="rawInput"
-            type="text" 
-            placeholder="Digitar ação... (Use @30m, !3, #proj, /h para formatar)" 
-            class="w-full py-2 bg-transparent text-base text-content placeholder:text-content-muted focus:outline-none font-sans font-medium"
-            :disabled="isSubmitting"
-          />
-          <div class="flex items-center gap-1.5 ml-2">
-            <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-surface text-content-muted rounded border border-borderbase">ESC</kbd>
-            <kbd class="px-1.5 py-0.5 text-[10px] font-mono bg-content text-content-invert font-bold rounded">↵</kbd>
+  <Teleport to="body">
+    <Transition name="modal-fade">
+      <div v-if="isOpen" class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4 bg-app/80 backdrop-blur-sm select-none" @click.self="emit('close')" role="dialog" aria-modal="true">
+        <div class="w-full max-w-2xl bg-surface border border-borderfocus rounded-xl shadow-2xl font-mono flex flex-col relative animate-scale-in">
+          
+          <div class="flex items-center justify-between px-4 py-2.5 bg-app border-b border-borderbase text-xs text-content-muted rounded-t-xl">
+            <span class="flex items-center gap-2 font-bold uppercase tracking-wider text-content">
+              <Terminal class="w-4 h-4 text-content-muted" />
+              <span>Quick Capture CLI v2.0</span>
+            </span>
+            <span class="text-[11px] flex items-center gap-3">
+              <span>Gatilhos: <strong class="text-content">#</strong>proj <strong class="text-content">@</strong>tempo <strong class="text-content">!</strong>ene <strong class="text-content">^</strong>data <strong class="text-content">/</strong>tipo</span>
+              <kbd class="px-1.5 py-0.5 rounded bg-surface border border-borderbase font-sans text-[10px]">ESC para fechar</kbd>
+            </span>
           </div>
-        </div>
 
-        <!-- Área de Inferência Realtime (Badges de Metadados NLP) -->
-        <div class="px-4 py-2.5 bg-app flex flex-wrap items-center justify-between gap-2 border-b border-borderbase text-xs font-mono text-content-muted">
-          <div class="flex items-center gap-2 overflow-x-auto py-0.5">
-            <!-- Badge de Tipo/Arquétipo -->
-            <span 
-              class="px-1.5 py-0.5 rounded border text-[10px] uppercase font-bold tracking-wider"
-              :class="parsedPreview.explicitType ? 'bg-surface-active text-content-accent border-borderhighlight' : 'bg-surface text-content-muted border-borderbase'"
+          <div class="p-4 relative">
+            <input
+              ref="inputRef"
+              v-model="rawInput"
+              type="text"
+              placeholder="Digite sua tarefa... (ex: Revisar PR #core @45m !3 ^amanha /t)"
+              class="w-full bg-transparent text-lg font-sans text-content placeholder-content-muted/50 focus:outline-none"
+              @keydown="onInputKeyDown"
+            />
+
+            <!-- O Dropdown agora flutua sem recortes sobre o rodapé e o backdrop -->
+            <AutoCompleteDropdown
+              :items="currentSuggestions"
+              :selected-index="selectedIndex"
+              :trigger-type="activeDropdown"
+              @select="selectSuggestion"
+            />
+          </div>
+
+          <div class="px-4 py-3 bg-app/50 border-t border-borderbase flex flex-wrap items-center justify-between gap-3 text-xs rounded-b-xl">
+            <div class="flex items-center gap-3">
+              <span class="px-2 py-0.5 rounded bg-surface border border-borderbase font-bold text-content uppercase tracking-wider text-[11px]">
+                [{{ livePreview.type }}]
+              </span>
+              <span class="flex items-center gap-1 text-content-muted" title="Duração estimada">
+                <Clock class="w-3.5 h-3.5 text-content" />
+                <strong class="text-content font-sans">{{ livePreview.estimatedDurationMinutes }}m</strong>
+              </span>
+              <span class="flex items-center gap-1 text-content-muted" title="Nível de energia requerida">
+                <Zap class="w-3.5 h-3.5 text-content" />
+                <strong class="text-content font-sans">!{{ livePreview.energyRequired }}</strong>
+              </span>
+              <span v-if="livePreview.projectQuery" class="flex items-center gap-1 text-content-accent font-semibold" title="Projeto vinculado">
+                <Folder class="w-3.5 h-3.5" />
+                <span>#{{ livePreview.projectQuery }}</span>
+              </span>
+              <span v-if="livePreview.deadlineIso" class="flex items-center gap-1 text-content-muted" title="Limite temporal (23:59 local)">
+                <Calendar class="w-3.5 h-3.5 text-content" />
+                <span>{{ new Date(livePreview.deadlineIso).toLocaleDateString() }}</span>
+              </span>
+            </div>
+
+            <button
+              @click="handleSubmit"
+              :disabled="!rawInput.trim() || isSubmitting"
+              class="px-3.5 py-1.5 rounded-tactic bg-content hover:opacity-90 disabled:opacity-40 text-content-invert font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
-              {{ parsedPreview.type }}
-            </span>
-
-            <!-- Badge de Duração -->
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface border border-borderbase text-content">
-              <Clock class="w-3 h-3 text-content-muted" />
-              <span>{{ parsedPreview.estimatedDurationMinutes }}m</span>
-            </span>
-
-            <!-- Badge de Energia Geométrico -->
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface border border-borderbase text-content">
-              <span>{{ visualEnergyLabel }}</span>
-            </span>
-
-            <!-- Badge de Projeto Tokenizado -->
-            <span 
-              v-if="parsedPreview.projectToken" 
-              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface border border-borderfocus text-content font-sans font-medium"
-            >
-              <Folder class="w-3 h-3 text-content-muted" />
-              <span>#{{ parsedPreview.projectToken }}</span>
-            </span>
+              <span>Capturar</span>
+              <CornerDownLeft class="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          <!-- Dica Ergonômica -->
-          <span class="text-[10px] text-content-muted hidden sm:inline-block">
-            Estágio 1 (Brain Dump)
-          </span>
-        </div>
-
-        <!-- Rodapé Guia Monocromático -->
-        <div class="px-4 py-2 bg-app/30 flex items-center justify-between text-[10px] font-mono text-content-muted">
-          <div class="flex items-center gap-3">
-            <span><strong class="text-content">@15m</strong> Tempo</span>
-            <span><strong class="text-content">!1 a !3</strong> Energia</span>
-            <span><strong class="text-content">/h /e /t</strong> Tipo</span>
-          </div>
-          <span>Compass Zero-Mouse v2.0</span>
         </div>
       </div>
-    </div>
-  </transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
-.modal-snap-enter-active,
-.modal-snap-leave-active {
-  transition: opacity 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.modal-snap-enter-from,
-.modal-snap-leave-to {
-  opacity: 0;
-  transform: scale(0.97) translateY(-4px);
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 120ms ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.animate-scale-in { animation: scaleIn 140ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
 }
 </style>

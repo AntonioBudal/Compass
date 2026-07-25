@@ -3,7 +3,7 @@ import { onMounted, defineAsyncComponent } from 'vue';
 import { useRouter } from 'vue-router';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import { useKeyboardShortcuts, isCommandBarOpen, isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
-
+import { useProjectsStore } from '@/stores/projectsStore';
 // 2. MODAIS SOB DEMANDA (Zero impacto na carga inicial da página)
 const AsyncCommandBarModal = defineAsyncComponent(() => 
   import('@/components/modals/CommandBarModal.vue')
@@ -12,6 +12,8 @@ const AsyncCommandBarModal = defineAsyncComponent(() =>
 const AsyncQuickCaptureModal = defineAsyncComponent(() => 
   import('@/components/modals/QuickCaptureModal.vue')
 );
+
+const projectsStore = useProjectsStore();
 
 useKeyboardShortcuts();
 const router = useRouter();
@@ -22,6 +24,7 @@ onMounted(() => {
     if (!isOnboarded) {
       localStorage.setItem('compass_onboarded', 'true');
       router.push('/sandbox');
+      projectsStore.fetchCatalog();
     }
   } catch (e) {}
 });

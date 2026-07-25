@@ -19,6 +19,9 @@ public class Project
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
+    // NOVA PROPRIEDADE: Carimbo de último uso para ordenação LRU no Quick Capture
+    public DateTime? LastUsedAt { get; private set; }
+
     protected Project() { }
 
     public Project(Guid userId, string title, Guid? goalId = null, DateTime? deadline = null)
@@ -35,6 +38,15 @@ public class Project
         TotalEstimatedDurationMinutes = 0;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
+        LastUsedAt = DateTime.UtcNow; // Nasce como o mais recente para o catálogo
+    }
+
+    /// <summary>
+    /// Registra que o projeto foi referenciado no Quick Capture ou focado na UI.
+    /// </summary>
+    public void RecordUsage()
+    {
+        LastUsedAt = DateTime.UtcNow;
     }
 
     public void AddEstimatedDuration(int minutes)

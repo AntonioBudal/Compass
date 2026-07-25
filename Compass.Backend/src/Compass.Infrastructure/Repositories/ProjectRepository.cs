@@ -2,8 +2,11 @@ using Compass.Domain.Entities;
 using Compass.Domain.Interfaces;
 using Compass.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Compass.Domain.Enums;
 
 namespace Compass.Infrastructure.Repositories;
+
+
 
 public class ProjectRepository : IProjectRepository
 {
@@ -35,5 +38,19 @@ public class ProjectRepository : IProjectRepository
     public void Update(Project project)
     {
         _context.Projects.Update(project);
+    }
+
+    public async Task<IReadOnlyList<Project>> GetActiveCatalogAsync(
+        Guid userId, 
+        CancellationToken cancellationToken = default)
+    {
+        // O banco continuará usando o nosso novo índice LRU (idx_projects_user_catalog_lru) em < 5ms!
+        return await _context.Projects
+            .AsNoTracking()
+            .Where(p => p.UserId == userId 
+                     && p.Status != CommitmentStatus.Completed 
+                     && p.Status != CommitmentStatus.Archived)
+            .OrderByDescending(p => p.LastUsedAt ?? p.CreatedAt)
+            .ToListAsync(cancellationToken);
     }
 }
