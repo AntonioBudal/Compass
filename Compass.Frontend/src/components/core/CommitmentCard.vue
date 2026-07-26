@@ -1,91 +1,73 @@
 ﻿<script setup lang="ts">
 import { computed } from 'vue';
-import { useCommitmentsStore, type CommitmentItem } from '@/stores/commitmentsStore';
-import { editingCommitment } from '@/composables/useKeyboardShortcuts';
-import TacticBadge from './TacticBadge.vue';
-import EnergyIndicator from './EnergyIndicator.vue';
-import { Check, Clock, Flame, MoreHorizontal } from 'lucide-vue-next';
+import { type ScoredActionDto } from '@/stores/decisionStore';
+import { Clock, Zap, Folder, ArrowRight, ShieldAlert } from 'lucide-vue-next';
 
 const props = defineProps<{
-  item: CommitmentItem;
+  action: ScoredActionDto;
 }>();
 
-const store = useCommitmentsStore();
+const emit = defineEmits<{
+  (e: 'select', id: string): void;
+}>();
 
-const isCompleted = computed(() => props.item.status === 'COMPLETED');
-const isHabit = computed(() => props.item.type === 'HABIT');
-
-const handleComplete = () => {
-  if (isCompleted.value) return;
-  store.updateStatus(props.item.id, 'COMPLETED');
-};
-
-const handleOpenEdit = () => {
-  editingCommitment.value = props.item;
-};
+const hasEaiAdjustment = computed(() => props.action.wasTimeAdjustedByEai);
 </script>
 
 <template>
   <div 
-    class="group relative flex items-start justify-between gap-3 p-3 rounded-tactic border border-borderbase bg-surface hover:bg-surface-hover hover:border-borderfocus transition-all duration-tactic select-none gpu-accelerated cursor-pointer"
-    :class="{ 'opacity-50 bg-app translate-y-0.5': isCompleted }"
-    @click="handleOpenEdit"
+    @click="emit('select', action.commitmentId)"
+    class="w-full bg-surface border border-borderbase hover:border-borderfocus rounded-lg p-3.5 transition-all duration-150 flex flex-col justify-between gap-2.5 font-mono cursor-pointer group select-none"
   >
-    <span v-if="item._isSyncing" class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-content-accent animate-pulse" title="Sincronizando..." />
-
-    <!-- Lado Esquerdo: Checkbox Tático -->
-    <div class="flex items-start gap-3 min-w-0 flex-1">
-      <button 
-        type="button"
-        @click.stop="handleComplete"
-        class="mt-0.5 w-4.5 h-4.5 rounded border border-borderbase bg-app flex items-center justify-center transition-colors duration-fast focus-visible:ring-2 focus-visible:ring-borderfocus cursor-pointer"
-        :class="isCompleted ? 'bg-status-success-bg border-status-success-border text-status-success-text shadow-sm' : 'hover:border-borderfocus group-hover:border-borderfocus'"
-        :disabled="isCompleted"
-      >
-        <Check v-if="isCompleted" class="w-3.5 h-3.5 stroke-[3] animate-check" style="stroke-dasharray: 24;" />
-      </button>
-
+    <!-- Topo: Título e Projeto -->
+    <div class="flex items-start justify-between gap-3">
       <div class="min-w-0 flex-1">
-        <p 
-          class="text-sm font-medium text-content group-hover:text-content-accent transition-colors duration-fast truncate"
-          :class="{ 'line-through text-content-muted': isCompleted }"
-        >
-          {{ item.title }}
-        </p>
-
-        <!-- Metadados -->
-        <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-content-muted font-mono">
-          <span v-if="item.projectName" class="hidden lg:inline text-content-muted">
-            [{ item.projectName }]
-          </span>
-
-          <TacticBadge v-if="item.deadline" variant="urgent">
-            Vence em breve
-          </TacticBadge>
-
-          <TacticBadge v-if="isHabit && item.currentStreak > 0" variant="execution">
-            <Flame class="w-3 h-3 mr-0.5 inline text-status-success-text" /> {{ item.currentStreak }}d
-          </TacticBadge>
-
-          <span class="flex items-center gap-1 bg-surface px-1.5 py-0.5 rounded border border-borderbase">
-            <Clock class="w-3 h-3 text-content-muted" /> {{ item.estimatedDurationMinutes }}m
-          </span>
+        <div v-if="action.projectName" class="text-[10px] font-bold text-content-accent uppercase tracking-wider mb-0.5 flex items-center gap-1">
+          <Folder class="w-3 h-3 flex-shrink-0" />
+          <span class="truncate">#{{ action.projectName }}</span>
         </div>
+        <h3 class="text-sm font-sans font-semibold text-content group-hover:underline truncate">
+          {{ action.title }}
+        </h3>
       </div>
+      <span class="text-xs font-bold text-content bg-surface-hover px-1.5 py-0.5 rounded border border-borderbase flex-shrink-0">
+        {{ action.scorePercentage }}%
+      </span>
     </div>
 
-    <!-- Lado Direito: Geometria de Energia e Opções -->
-    <div class="flex items-center gap-2 flex-shrink-0" @click.stop>
-      <EnergyIndicator class="hidden sm:inline-flex" :level="item.energyRequired || 2" />
+    <!-- Base: Metadados Táticos e Badges Algorítmicos -->
+    <div class="flex items-center justify-between text-xs text-content-muted pt-2 border-t border-borderbase/40">
+      <div class="flex items-center gap-3">
+        <!-- Duração com transparência de EAI -->
+        <span class="flex items-center gap-1" :title="hasEaiAdjustment ? 'Tempo calibrado automaticamente via EAI' : 'Tempo estimado'">
+          <Clock class="w-3.5 h-3.5" :class="hasEaiAdjustment ? 'text-content font-bold' : ''" />
+          <span v-if="hasEaiAdjustment" class="line-through opacity-50 text-[10px] mr-0.5">{{ action.nominalDurationMinutes }}m</span>
+          <strong class="text-content font-sans">{{ action.effectiveDurationMinutes }}m</strong>
+        </span>
 
-      <button 
-        type="button"
-        @click="handleOpenEdit"
-        class="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded text-content-muted hover:text-content hover:bg-surface-hover transition-opacity duration-fast cursor-pointer"
-        title="Opções de Edição"
-      >
-        <MoreHorizontal class="w-4 h-4" />
-      </button>
+        <!-- Energia Requerida -->
+        <span class="flex items-center gap-1">
+          <Zap class="w-3.5 h-3.5" />
+          <strong class="text-content font-sans">!{{ action.energyRequired }}</strong>
+        </span>
+
+        <!-- Tag Tática de Transparência EAI -->
+        <span 
+          v-if="hasEaiAdjustment" 
+          class="flex items-center gap-1 text-[10px] font-bold bg-surface-active px-1.5 py-0.5 rounded border border-borderfocus/80 text-content"
+          title="O algoritmo ajustou esta estimativa com base na sua velocidade real anterior"
+        >
+          <ShieldAlert class="w-3 h-3" />
+          <span>EAI Ajustado</span>
+        </span>
+      </div>
+
+      <ArrowRight class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-content transform group-hover:translate-x-0.5 duration-150" />
+    </div>
+
+    <!-- Razão Explícita em Lista -->
+    <div class="text-[11px] text-content-muted/80 truncate font-sans -mt-1">
+      ↳ {{ action.reason }}
     </div>
   </div>
 </template>

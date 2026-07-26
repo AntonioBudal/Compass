@@ -327,3 +327,45 @@
 - Testes unitários para o parser NLP.
 - Testes de desempenho e precisão do `TrieIndex`.
 - Testes do `useKeyboardNavigation`.
+
+# 2026-07-26
+
+## Banco de Dados
+
+- Criação da tabela `user_scoring_profiles` com suporte a controle de concorrência utilizando `xmin` (`IsRowVersion()`).
+- Criação de índice parcial `idx_decision_snapshots_user_recent_analytics` para otimizar consultas de histórico analítico.
+- Correção do filtro do índice `idx_projects_user_catalog_lru`, ajustando os valores do enum para minúsculas (`completed` e `archived`) para compatibilidade com o PostgreSQL.
+- Criação e aplicação da migration `AddAdaptiveScoringProfiles`.
+
+---
+
+## Backend
+
+- Refatoração do `ScoringEngine`, adicionando pesos adaptativos, limites de segurança para os cálculos e calibração baseada no Índice de Acurácia de Estimativa (EAI).
+- Implementação do padrão **Null Object** (`UserScoringProfile.Default`).
+- Implementação da regra mínima de amostragem para ativação da calibração (`SampleCount >= 10`).
+- Implementação do `UserBehaviorProfilerService`, responsável por analisar o histórico do usuário, calcular o perfil comportamental e tratar valores extremos.
+- Criação do `BehavioralCalibrationWorker`, executando a recalibração automática em segundo plano e atualizando os perfis por meio de UPSERT no PostgreSQL.
+
+---
+
+## API
+
+- Atualização dos DTOs `DecisionResponseDto` e `ScoredActionDto`, adicionando informações do perfil adaptativo (`AdaptiveProfileDto`).
+- Refatoração do `DecisionsController` para eliminar problemas de concorrência durante o acesso ao `DbContext`.
+
+---
+
+## Frontend
+
+- Atualização da `useDecisionStore` com suporte ao armazenamento local do perfil adaptativo e funcionamento em modo offline.
+- Adição do alias `fetchNow` para manter compatibilidade com versões anteriores da aplicação.
+- Inclusão do indicador de transparência algorítmica nos componentes `TopFocusCard.vue` e `CommitmentCard.vue`.
+- Criação do componente `ScoreBreakdownPanel.vue` para exibir a composição detalhada da pontuação calculada pelo motor de decisão.
+
+---
+
+## Testes
+
+- Criação de testes unitários para `ScoringEngine` e `UserBehaviorProfilerService`, cobrindo cálculos, regras de calibração e tratamento de casos extremos.
+- Criação de testes para `decisionStore`, validando hidratação da API, funcionamento offline e uso do cache em memória.

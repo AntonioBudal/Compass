@@ -1,133 +1,157 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { CompassApi } from '@/services/api';
-import { useCommitmentsStore } from './commitmentsStore';
-import type { 
-  DecisionResponseDto, 
-  ScoredActionDto 
-} from '@/types/index';
+import axios from 'axios';
+import { useToastStore } from './toastStore';
+
+// Contratos espelhando fielmente o payload enriquecido da API .NET 10
+export interface AdaptiveProfileDto {
+  isCalibrated: boolean;
+  sampleCount: number;
+  eaiMultiplier: number;
+  morningEnergyBias: number;
+  afternoonEnergyBias: number;
+  eveningEnergyBias: number;
+}
+
+export interface ScoredActionDto {
+  commitmentId: string;
+  title: string;
+  type: string;
+  nominalDurationMinutes: number;
+  effectiveDurationMinutes: number;
+  energyRequired: number;
+  scorePercentage: number;
+  reason: string;
+  wasTimeAdjustedByEai: boolean;
+  projectName: string | null;
+}
+
+export interface DecisionResponseDto {
+  generatedAtUtc: string;
+  availableWindowMinutes: number;
+  operatorEnergyLevel: number;
+  adaptiveProfile: AdaptiveProfileDto;
+  topActions: ScoredActionDto[];
+}
+
+const STORAGE_KEY = 'compass_now_engine_cache_v3';
 
 export const useDecisionStore = defineStore('decision', () => {
-  const commitmentsStore = useCommitmentsStore();
+  const toastStore = useToastStore();
 
-  // --- Estado Reativo (State) ---
-  const currentDecision = ref<DecisionResponseDto | null>(null);
+  // --- Estado Reativo ---
+  const topActions = ref<ScoredActionDto[]>([]);
+  const adaptiveProfile = ref<AdaptiveProfileDto>({
+    isCalibrated: false,
+    sampleCount: 0,
+    eaiMultiplier: 1.0,
+    morningEnergyBias: 1.0,
+    afternoonEnergyBias: 1.0,
+    eveningEnergyBias: 1.0
+  });
+  const availableWindow = ref<number>(60);
+  const currentEnergy = ref<number>(2);
   const isLoading = ref<boolean>(false);
-  const error = ref<string | null>(null);
-  
-  // Override local de energia (Permite que o usuário mude de 2 para 3 na UI instantaneamente)
-  const userOverrideEnergy = ref<number | null>(null);
+  const isServingFromCache = ref<boolean>(false);
+  const lastSyncedAt = ref<Date | null>(null);
 
-  // --- Getters Computados ---
-  const topFocus = computed<ScoredActionDto | null>(() => 
-    currentDecision.value?.topFocus || null
-  );
-
-  const alternatives = computed<ScoredActionDto[]>(() => 
-    currentDecision.value?.alternatives || []
-  );
-
-  const availableMinutes = computed<number>(() => 
-    currentDecision.value?.context.availableWindowMinutes || 0
-  );
-
-  const effectiveEnergy = computed<number>(() => 
-    userOverrideEnergy.value ?? currentDecision.value?.context.effectiveEnergy ?? 2
-  );
-
-  const activeHardBlocker = computed(() => 
-    currentDecision.value?.context.activeHardBlocker || null
-  );
-
-  // --- Ações do Motor (Actions) ---
-  const fetchNow = async (timeZoneId = 'America/Sao_Paulo') => {
-    isLoading.value = true;
-    error.value = null;
+  // --- Persistência em Disco (Resiliência Offline) ---
+  function saveToDisk() {
     try {
-      const data = await CompassApi.getNowDecision(timeZoneId);
-      currentDecision.value = data;
+      const payload = {
+        timestamp: new Date().toISOString(),
+        profile: adaptiveProfile.value,
+        actions: topActions.value,
+        window: availableWindow.value,
+        energy: currentEnergy.value
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.warn('[DecisionStore] Falha ao gravar perfil adaptativo no localStorage.', e);
+    }
+  }
+
+  function loadFromDisk(): boolean {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        adaptiveProfile.value = parsed.profile || adaptiveProfile.value;
+        topActions.value = parsed.actions || [];
+        availableWindow.value = parsed.window || 60;
+        currentEnergy.value = parsed.energy || 2;
+        lastSyncedAt.value = parsed.timestamp ? new Date(parsed.timestamp) : null;
+        isServingFromCache.value = true;
+        return true;
+      }
+    } catch (e) {
+      console.warn('[DecisionStore] Cache local corrompido. Reiniciando com perfil basal.', e);
+    }
+    return false;
+  }
+
+  // --- Sincronização Principal com o Backend ---
+  const fetchDecisions = async (windowMinutes = 60, energy = 2, forceRefresh = false) => {
+    availableWindow.value = windowMinutes;
+    currentEnergy.value = energy;
+
+    // Tenta hidratar do disco primeiro se a RAM estiver vazia
+    if (topActions.value.length === 0 && !forceRefresh) {
+      loadFromDisk();
+    }
+
+    isLoading.value = true;
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+    const headers = { 'X-User-Id': '11111111-1111-1111-1111-111111111111' };
+
+    try {
+      const res = await axios.get<DecisionResponseDto>(
+        `${baseUrl}/now?windowMinutes=${windowMinutes}&energy=${energy}`, 
+        { headers, timeout: 5000 }
+      );
+
+      if (res.status === 200) {
+        topActions.value = res.data.topActions;
+        adaptiveProfile.value = res.data.adaptiveProfile;
+        isServingFromCache.value = false;
+        lastSyncedAt.value = new Date();
+        saveToDisk();
+      }
     } catch (err: any) {
-      error.value = 'Não foi possível consultar o motor de decisão.';
-      console.error('Erro em fetchNow:', err);
+      console.warn('[DecisionStore] Falha na API do Now Engine. Ativando fallback analítico offline...', err);
+      
+      const hasOfflineData = topActions.value.length > 0 || loadFromDisk();
+      if (hasOfflineData) {
+        toastStore.showToast('[OFFLINE] Recomendações servidas do cache comportamental.', 'neutral');
+      } else {
+        toastStore.showToast('Sem conexão para calcular o Now Engine.', 'error');
+      }
     } finally {
       isLoading.value = false;
     }
   };
 
-  // Executa a transição de foco: Conclui o Top 1 e promove a alternativa imediatamente (Cap. 6.2)
-  const completeTopFocus = async () => {
-    if (!topFocus.value || !currentDecision.value) return;
+  // --- Getters Computados para a UI ---
+  const primaryFocus = computed<ScoredActionDto | null>(() => {
+    return topActions.value.length > 0 ? topActions.value[0] : null;
+  });
 
-    const completedId = topFocus.value.id;
-    const snapshotId = `snap-${currentDecision.value.generatedAt}`; // ID transacional de rastreio
-
-    // 1. Promoção Visual Otimista Instantânea (< 16ms)
-    const promotedNext = alternatives.value.length > 0 ? alternatives.value[0] : null;
-    const remainingAlternatives = alternatives.value.slice(1);
-
-    // Atualiza o estado da store local para que a animação de slide-up aconteça no DOM
-    currentDecision.value = {
-      ...currentDecision.value,
-      topFocus: promotedNext,
-      alternatives: remainingAlternatives
-    };
-
-    // 2. Disparo sincronizado para a store de compromissos e telemetria
-    try {
-      // Conclui a tarefa no banco de dados e processa cascatas
-      await commitmentsStore.updateStatus(completedId, 'COMPLETED');
-      // Registra a auditoria da escolha para calibrar o algoritmo
-      await CompassApi.registerChoice(snapshotId, completedId);
-    } catch (err) {
-      console.error('Erro ao sincronizar conclusão do Top Focus. Sincronizando motor...');
-      // Em caso de erro, recarrega a visão do motor para restaurar a consistência
-      await fetchNow();
-    }
-  };
-
-  const postponeTopFocus = async () => {
-    if (!topFocus.value || !currentDecision.value) return;
-
-    const postponedId = topFocus.value.id;
-
-    // 1. Otimismo: Rebaixa o Top Focus para o final das alternativas e promove a próxima
-    const currentTop = topFocus.value;
-    const promotedNext = alternatives.value.length > 0 ? alternatives.value[0] : null;
-    const newAlternatives = [...alternatives.value.slice(1), currentTop].filter(Boolean) as ScoredActionDto[];
-
-    currentDecision.value = {
-      ...currentDecision.value,
-      topFocus: promotedNext,
-      alternatives: newAlternatives
-    };
-
-    // 2. Atualiza no backend (Adiamento incrementa o PostponedCount e gera penalidade P_atrito)
-    try {
-      await commitmentsStore.updateStatus(postponedId, 'PENDING');
-    } catch (err) {
-      await fetchNow();
-    }
-  };
-
-  const setEnergyOverride = (level: number) => {
-    userOverrideEnergy.value = level;
-    // Opcional: Re-consultar o motor passando a nova energia
-    fetchNow();
-  };
+  const secondaryActions = computed<ScoredActionDto[]>(() => {
+    return topActions.value.length > 1 ? topActions.value.slice(1) : [];
+  });
 
   return {
-    currentDecision,
+    topActions,
+    adaptiveProfile,
+    availableWindow,
+    currentEnergy,
     isLoading,
-    error,
-    userOverrideEnergy,
-    topFocus,
-    alternatives,
-    availableMinutes,
-    effectiveEnergy,
-    activeHardBlocker,
-    fetchNow,
-    completeTopFocus,
-    postponeTopFocus,
-    setEnergyOverride
+    isServingFromCache,
+    lastSyncedAt,
+    primaryFocus,
+    secondaryActions,
+    fetchDecisions,
+    fetchNow: fetchDecisions,
+    loadFromDisk
   };
 });

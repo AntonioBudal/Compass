@@ -55,7 +55,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         // Permite que o GET /catalog retorne os projetos ativos mais usados instantaneamente
         builder.HasIndex(p => new { p.UserId, p.Status, p.LastUsedAt })
             .HasDatabaseName("idx_projects_user_catalog_lru")
-            .HasFilter("status != 'Completed' AND status != 'Archived'") // Ou os valores minúsculos se salvos assim
+            .HasFilter("status != 'completed' AND status != 'archived'")
             .IsDescending(false, false, true);
     }
 }

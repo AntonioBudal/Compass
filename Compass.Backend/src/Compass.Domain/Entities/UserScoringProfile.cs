@@ -4,97 +4,95 @@ namespace Compass.Domain.Entities;
 
 public class UserScoringProfile
 {
+    public Guid Id { get; private set; }
     public Guid UserId { get; private set; }
+    
+    // Contagem de ações concluídas analisadas para validar calibração (> 10 amostras)
+    public int SampleCount { get; private set; }
+    
+    // Ajustes Aditivos de Pesos (Delta sobre a base)
+    public double UrgencyWeightAdjust { get; private set; }
+    public double StrategyWeightAdjust { get; private set; }
+    public double EnergyAlignmentWeight { get; private set; }
+    public double PostponementPenaltyWeight { get; private set; }
+    
+    // Multiplicador do Índice de Acurácia de Estimativa (EAI)
     public double EaiMultiplier { get; private set; }
+    
+    // Vieses Cronobiológicos por Turno (1.0 = Neutro; > 1.0 = Afinidade alta)
     public double MorningEnergyBias { get; private set; }
     public double AfternoonEnergyBias { get; private set; }
     public double EveningEnergyBias { get; private set; }
-    public double UrgencyWeightAdjust { get; private set; }
-    public double StrategyWeightAdjust { get; private set; }
-    public int SampleCount { get; private set; }
+    public double NightEnergyBias { get; private set; }
+    
     public DateTime UpdatedAt { get; private set; }
+    
+    // Token de concorrência nativo do PostgreSQL (xmin)
+    public uint Version { get; private set; }
 
-    // Construtor protegido para hidratação pelo EF Core
     protected UserScoringProfile() { }
 
-    public UserScoringProfile(
-        Guid userId,
-        double eaiMultiplier = 1.0,
-        double morningEnergyBias = 1.0,
-        double afternoonEnergyBias = 1.0,
-        double eveningEnergyBias = 1.0,
-        double urgencyWeightAdjust = 0.0,
-        double strategyWeightAdjust = 0.0,
-        int sampleCount = 0)
+    public UserScoringProfile(Guid userId)
     {
-        ValidateAndSet(
-            eaiMultiplier, 
-            morningEnergyBias, 
-            afternoonEnergyBias, 
-            eveningEnergyBias, 
-            urgencyWeightAdjust, 
-            strategyWeightAdjust, 
-            sampleCount);
-
+        Id = Guid.NewGuid();
         UserId = userId;
+        SampleCount = 0;
+        
+        // Inicialização neutra (Deltas em 0.0 e Multiplicadores em 1.0)
+        UrgencyWeightAdjust = 0.0;
+        StrategyWeightAdjust = 0.0;
+        EnergyAlignmentWeight = 1.0;
+        PostponementPenaltyWeight = 1.0;
+        EaiMultiplier = 1.0;
+        
+        MorningEnergyBias = 1.0;
+        AfternoonEnergyBias = 1.0;
+        EveningEnergyBias = 1.0;
+        NightEnergyBias = 1.0;
+        
         UpdatedAt = DateTime.UtcNow;
     }
 
     /// <summary>
-    /// Objeto Nulo (Cold Start Pattern): Retorna um perfil neutro imutável 
-    /// para usuários novos com menos de 10 amostras no ecossistema.
+    /// Fábrica estática para o Padrão Objeto Nulo (Null Object Pattern).
+    /// Retorna um perfil basal neutro em memória quando o usuário ainda não tem calibração suficiente.
     /// </summary>
-    public static UserScoringProfile Default(Guid userId) => new(userId, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0);
+    public static UserScoringProfile Default(Guid userId) => new(userId);
 
-    public void UpdateCalibration(
-        double eaiMultiplier,
-        double morningEnergyBias,
-        double afternoonEnergyBias,
-        double eveningEnergyBias,
-        double urgencyWeightAdjust,
-        double strategyWeightAdjust,
-        int sampleCount)
+    /// <summary>
+    /// Atualiza as estatísticas e os deltas do perfil com blindagem de limites (Clamping).
+    /// </summary>
+    public void UpdateProfile(
+        int sampleCount,
+        double urgencyAdjust, 
+        double strategyAdjust, 
+        double energyWeight, 
+        double penaltyWeight, 
+        double eaiMultiplier)
     {
-        ValidateAndSet(
-            eaiMultiplier, 
-            morningEnergyBias, 
-            afternoonEnergyBias, 
-            eveningEnergyBias, 
-            urgencyWeightAdjust, 
-            strategyWeightAdjust, 
-            sampleCount);
-
+        SampleCount = Math.Max(0, sampleCount);
+        UrgencyWeightAdjust = Clamp(urgencyAdjust, -0.20, 0.25);
+        StrategyWeightAdjust = Clamp(strategyAdjust, -0.10, 0.30);
+        EnergyAlignmentWeight = Clamp(energyWeight, 0.1, 3.0);
+        PostponementPenaltyWeight = Clamp(penaltyWeight, 0.1, 3.0);
+        EaiMultiplier = Clamp(eaiMultiplier, 0.5, 2.0);
+        
         UpdatedAt = DateTime.UtcNow;
     }
 
-    private void ValidateAndSet(
-        double eai, 
-        double morning, 
-        double afternoon, 
-        double evening, 
-        double urgency, 
-        double strategy, 
-        int samples)
+    public void UpdateChronologyBiases(double morning, double afternoon, double evening, double night)
     {
-        // Proteção anti-poisoning: Winsorização estrita entre 0.25x e 3.0x
-        if (eai < 0.25 || eai > 3.0)
-            throw new DomainException("O multiplicador de EAI deve estar no limite seguro entre 0.25x e 3.0x.");
+        MorningEnergyBias = Clamp(morning, 0.5, 2.0);
+        AfternoonEnergyBias = Clamp(afternoon, 0.5, 2.0);
+        EveningEnergyBias = Clamp(evening, 0.5, 2.0);
+        NightEnergyBias = Clamp(night, 0.5, 2.0);
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
 
-        if (morning < 0.5 || morning > 1.5 || afternoon < 0.5 || afternoon > 1.5 || evening < 0.5 || evening > 1.5)
-            throw new DomainException("Os vieses cronobiológicos de energia devem estar entre 0.5x e 1.5x.");
-
-        if (urgency < -0.20 || urgency > 0.25 || strategy < -0.15 || strategy > 0.30)
-            throw new DomainException("Os ajustes dinâmicos de peso excederam a banda permitida de calibração.");
-
-        if (samples < 0)
-            throw new DomainException("A contagem de amostras não pode ser negativa.");
-
-        EaiMultiplier = Math.Round(eai, 2);
-        MorningEnergyBias = Math.Round(morning, 2);
-        AfternoonEnergyBias = Math.Round(afternoon, 2);
-        EveningEnergyBias = Math.Round(evening, 2);
-        UrgencyWeightAdjust = Math.Round(urgency, 2);
-        StrategyWeightAdjust = Math.Round(strategy, 2);
-        SampleCount = samples;
+    private static double Clamp(double val, double min, double max)
+    {
+        if (double.IsNaN(val) || double.IsInfinity(val)) return 0.0;
+        return Math.Max(min, Math.Min(max, val));
     }
 }

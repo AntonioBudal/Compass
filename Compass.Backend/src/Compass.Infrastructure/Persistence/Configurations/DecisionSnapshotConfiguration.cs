@@ -37,7 +37,8 @@ public class DecisionSnapshotConfiguration : IEntityTypeConfiguration<DecisionSn
 
         // Índice analítico para consultas no histórico de decisões do usuário por data recente
         builder.HasIndex(d => new { d.UserId, d.CreatedAt })
-            .IsDescending(false, true)
-            .HasDatabaseName("idx_decision_snapshots_user_history");
+            .HasDatabaseName("idx_decision_snapshots_user_recent_analytics")
+            .HasFilter("was_bypassed = true OR action_taken IS NOT NULL")
+            .IsDescending(false, true); // CreatedAt DESC
     }
 }

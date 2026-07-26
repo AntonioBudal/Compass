@@ -10,6 +10,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Compass.Infrastructure.Services;
+using Compass.Api.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IDecisionService, DecisionService>();
 builder.Services.AddScoped<ICommitmentService, CommitmentService>();
 builder.Services.AddScoped<IProgressService, ProgressService>();
+builder.Services.AddScoped<IUserBehaviorProfilerService, UserBehaviorProfilerService>();
+builder.Services.AddHostedService<BehavioralCalibrationWorker>();
 
 // 5. Registro dos Validadores do FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<CreateCommitmentDtoValidator>();
