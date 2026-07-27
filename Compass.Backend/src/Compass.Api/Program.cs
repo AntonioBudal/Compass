@@ -64,6 +64,8 @@ builder.Services.AddHostedService<BehavioralCalibrationWorker>();
 
 // 5. Registro dos Validadores do FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<CreateCommitmentDtoValidator>();
+builder.Services.AddScoped<IDataPortabilityService, DataPortabilityService>();
+builder.Services.AddScoped<IDailyCycleService, DailyCycleService>();
 
 // 6. Configuração de CORS para o Frontend (Vue.js 3 / Vite)
 builder.Services.AddCors(options =>

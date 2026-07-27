@@ -20,6 +20,9 @@ public class CompassDbContext : DbContext
     public DbSet<DecisionSnapshot> DecisionSnapshots { get; set; } = null!; 
     public DbSet<UserScoringProfile> UserScoringProfiles { get; set; } = null!;
 
+    
+    public DbSet<DailyReview> DailyReviews { get; set; } = null!;
+
     public CompassDbContext(DbContextOptions<CompassDbContext> options) : base(options)
     {
     }

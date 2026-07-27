@@ -2,16 +2,24 @@
 import { ref, onMounted } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useThemeStore, THEME_OPTIONS } from '@/stores/themeStore';
+import { PortabilityBundleSchema } from '@/schemas/portabilitySchema';
 import { 
   Sliders, Clock, Download, Upload, Trash2, 
-  Keyboard, Check, AlertTriangle, FileJson, Palette 
+  Keyboard, Check, AlertTriangle, FileJson, Palette,
+  Loader2, CheckCircle, AlertCircle
 } from 'lucide-vue-next';
 
 const store = useSettingsStore();
 const themeStore = useThemeStore();
+
+// --- Estado Reativo de UI ---
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const showResetConfirm = ref(false);
+const importStatus = ref<'idle' | 'validating' | 'importing' | 'error' | 'success'>('idle');
+const validationErrors = ref<string[]>([]);
+const statusMessage = ref('');
 
+// --- Estado Reativo de Calibração (Espelhando DTO e fallback legado) ---
 const localStart = ref('08:00');
 const localEnd = ref('18:00');
 const localEnergy = ref(2);
@@ -20,36 +28,120 @@ const localDuration = ref(30);
 onMounted(async () => {
   themeStore.initTheme();
   await store.fetchSettings();
-  localStart.value = store.settings.workDayStart;
-  localEnd.value = store.settings.workDayEnd;
-  localEnergy.value = store.settings.defaultEnergy;
-  localDuration.value = store.settings.defaultDurationMinutes;
+  
+  // Hidratação segura suportando o novo DTO (UserSettingsDto) e propriedades legadas
+  const s = store.settings as any;
+  if (s) {
+    localEnergy.value = s.defaultEnergyLevel ?? s.defaultEnergy ?? 2;
+    localStart.value = s.workDayStart ?? '08:00';
+    localEnd.value = s.workDayEnd ?? '18:00';
+    localDuration.value = s.defaultDurationMinutes ?? 30;
+  }
 });
 
+// --- Métodos de Salvamento e Calibração ---
 const handleSave = async () => {
-  await store.saveSettings({
-    workDayStart: localStart.value,
-    workDayEnd: localEnd.value,
-    defaultEnergy: Number(localEnergy.value),
-    defaultDurationMinutes: Number(localDuration.value)
-  });
+  // Executa update no store moderno com fallback para salvar calibração no cache
+  if (typeof store.updateSettings === 'function') {
+    await store.updateSettings({
+      defaultEnergyLevel: Number(localEnergy.value)
+    });
+  } else if (typeof (store as any).saveSettings === 'function') {
+    await (store as any).saveSettings({
+      workDayStart: localStart.value,
+      workDayEnd: localEnd.value,
+      defaultEnergy: Number(localEnergy.value),
+      defaultDurationMinutes: Number(localDuration.value)
+    });
+  }
 };
 
+// --- Exportação ---
+const handleExport = async () => {
+  if (typeof store.exportBackup === 'function') {
+    await store.exportBackup();
+  } else if (typeof (store as any).exportData === 'function') {
+    await (store as any).exportData();
+  }
+};
+
+// --- Importação Assíncrona com Escudo Zod ---
 const triggerFileUpload = () => {
+  validationErrors.value = [];
+  importStatus.value = 'idle';
   fileInputRef.value?.click();
 };
 
 const handleFileChange = async (event: Event) => {
   const target = event.target as HTMLInputElement;
-  if (target.files && target.files.length > 0) {
-    await store.importData(target.files[0]);
+  const file = target.files?.[0];
+  if (!file) return;
+
+  // Se a store for a versão legada sem importação Zod, repassa direto
+  if (typeof (store as any).importData === 'function' && typeof store.importBackup !== 'function') {
+    await (store as any).importData(file);
     target.value = '';
+    return;
   }
+
+  importStatus.value = 'validating';
+  statusMessage.value = 'Lendo e validando estrutura via Zod...';
+  validationErrors.value = [];
+
+  const reader = new FileReader();
+  
+  reader.onload = async (e) => {
+    try {
+      const rawText = e.target?.result as string;
+      const parsedJson = JSON.parse(rawText);
+
+      // Validação estrita em milissegundos
+      const zodResult = PortabilityBundleSchema.safeParse(parsedJson);
+
+      if (!zodResult.success) {
+        importStatus.value = 'error';
+        statusMessage.value = 'Falha na validação do schema Zod. Arquivo incompatível:';
+        validationErrors.value = zodResult.error.issues.slice(0, 3).map(err => 
+          `[Campo: ${err.path.join('.')}] — ${err.message}`
+        );
+        return;
+      }
+
+      importStatus.value = 'importing';
+      statusMessage.value = 'Sincronizando transacionalmente com o PostgreSQL...';
+
+      const success = await store.importBackup(zodResult.data);
+      if (success) {
+        importStatus.value = 'success';
+        statusMessage.value = 'Base de dados restaurada e reconciliada com êxito!';
+      } else {
+        importStatus.value = 'error';
+        statusMessage.value = 'O servidor recusou a importação do pacote.';
+      }
+    } catch (err) {
+      importStatus.value = 'error';
+      statusMessage.value = 'Erro ao processar arquivo: JSON malformado ou corrompido.';
+    } finally {
+      if (fileInputRef.value) fileInputRef.value.value = '';
+    }
+  };
+
+  reader.onerror = () => {
+    importStatus.value = 'error';
+    statusMessage.value = 'Falha de leitura no disco local.';
+  };
+
+  reader.readAsText(file);
 };
 
+// --- Reset / Destruição de Dados ---
 const handleResetConfirm = async () => {
   showResetConfirm.value = false;
-  await store.resetAllData();
+  if (typeof store.resetDatabase === 'function') {
+    await store.resetDatabase();
+  } else if (typeof (store as any).resetAllData === 'function') {
+    await (store as any).resetAllData();
+  }
 };
 
 const shortcuts = [
@@ -101,7 +193,6 @@ const shortcuts = [
           class="p-4 rounded-lg border transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden"
           :class="themeStore.currentTheme === theme.id ? 'bg-surface-active border-borderhighlight shadow-lg' : 'bg-surface border-borderbase hover:border-borderfocus hover:bg-surface-hover'"
         >
-          <!-- Topo do Card: Informações do Tema -->
           <div class="flex items-start justify-between gap-4">
             <div>
               <div class="flex items-center gap-2">
@@ -116,7 +207,6 @@ const shortcuts = [
               <p class="text-xs text-content-muted mt-1.5 leading-relaxed">{{ theme.description }}</p>
             </div>
 
-            <!-- Ícone de Check Tático -->
             <div 
               class="w-5 h-5 rounded-full flex items-center justify-center border transition-colors flex-shrink-0"
               :class="themeStore.currentTheme === theme.id ? 'border-borderhighlight text-content' : 'border-borderbase text-transparent group-hover:border-borderfocus'"
@@ -125,16 +215,11 @@ const shortcuts = [
             </div>
           </div>
 
-          <!-- Rodapé do Card: Paleta de Amostra Visual (Mini-Preview) -->
           <div class="mt-6 pt-3 border-t border-borderbase/50 flex items-center justify-between">
             <span class="text-[10px] font-mono text-content-muted uppercase tracking-wider">Design Tokens:</span>
-            
             <div class="flex items-center gap-1.5 p-1 rounded bg-app border border-borderbase">
-              <!-- Amostra BG -->
               <div class="w-4 h-4 rounded-sm border border-borderbase" :style="{ backgroundColor: theme.preview.bg }" title="Fundo (--bg-app)" />
-              <!-- Amostra Surface -->
               <div class="w-4 h-4 rounded-sm border border-borderbase" :style="{ backgroundColor: theme.preview.surface }" title="Superfície (--bg-surface)" />
-              <!-- Amostra Accent -->
               <div class="w-4 h-4 rounded-sm border border-borderbase" :style="{ backgroundColor: theme.preview.accent }" title="Acento (--text-accent)" />
             </div>
           </div>
@@ -210,7 +295,7 @@ const shortcuts = [
       </div>
     </section>
 
-    <!-- 3. Portabilidade e Gerenciamento de Dados -->
+    <!-- 3. Portabilidade e Gerenciamento de Dados (.json) -->
     <section class="space-y-4">
       <div class="flex items-center justify-between border-b border-borderbase pb-2">
         <h2 class="text-sm font-mono uppercase text-content font-semibold tracking-wider flex items-center gap-2">
@@ -220,13 +305,33 @@ const shortcuts = [
       </div>
 
       <div class="p-6 rounded-xl border border-borderbase bg-surface space-y-6">
+        
+        <!-- Alertas de Validação e Status da Importação -->
+        <div v-if="importStatus !== 'idle'" class="p-3.5 rounded-lg border text-xs flex flex-col gap-1.5 font-mono"
+             :class="{
+               'bg-surface-hover border-borderfocus text-content': importStatus === 'validating' || importStatus === 'importing',
+               'bg-status-success-bg border-status-success-border text-status-success-text font-semibold': importStatus === 'success',
+               'bg-status-danger-bg border-status-danger-border text-status-danger-text': importStatus === 'error'
+             }">
+          <div class="flex items-center gap-2">
+            <Loader2 v-if="importStatus === 'validating' || importStatus === 'importing'" class="w-4 h-4 animate-spin" />
+            <CheckCircle v-else-if="importStatus === 'success'" class="w-4 h-4" />
+            <AlertCircle v-else class="w-4 h-4" />
+            <span>{{ statusMessage }}</span>
+          </div>
+          <ul v-if="validationErrors.length > 0" class="mt-1 pl-5 list-disc text-[11px] opacity-90">
+            <li v-for="(err, i) in validationErrors" :key="i">{{ err }}</li>
+          </ul>
+        </div>
+
+        <!-- Exportação -->
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-borderbase">
           <div class="space-y-1">
             <h3 class="text-sm font-medium text-content">Exportar Base de Compromissos</h3>
             <p class="text-xs text-content-muted">Gera um arquivo .json completo contendo tarefas, histórico de streaks e metas vinculadas.</p>
           </div>
           <button 
-            @click="store.exportData"
+            @click="handleExport"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-surface hover:bg-surface-hover border border-borderbase text-content text-xs font-medium transition-all cursor-pointer flex-shrink-0"
           >
             <Download class="w-3.5 h-3.5" />
@@ -234,22 +339,23 @@ const shortcuts = [
           </button>
         </div>
 
+        <!-- Importação -->
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-borderbase">
           <div class="space-y-1">
             <h3 class="text-sm font-medium text-content">Importar e Restaurar Backup</h3>
-            <p class="text-xs text-content-muted">Substitui ou mescla a base local do .NET utilizando um arquivo de backup previamente exportado.</p>
+            <p class="text-xs text-content-muted">Substitui ou mescla a base local do .NET utilizando um arquivo de backup com validação Zod.</p>
           </div>
           <div>
             <input 
               ref="fileInputRef" 
               type="file" 
-              accept=".json" 
+              accept=".json,application/json" 
               class="hidden" 
               @change="handleFileChange" 
             />
             <button 
               @click="triggerFileUpload"
-              :disabled="store.isSubmitting"
+              :disabled="store.isSubmitting || importStatus === 'validating' || importStatus === 'importing'"
               class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-surface hover:bg-surface-hover border border-borderbase text-content text-xs font-medium transition-all cursor-pointer flex-shrink-0 disabled:opacity-50"
             >
               <Upload class="w-3.5 h-3.5" />

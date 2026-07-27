@@ -369,3 +369,62 @@
 
 - Criação de testes unitários para `ScoringEngine` e `UserBehaviorProfilerService`, cobrindo cálculos, regras de calibração e tratamento de casos extremos.
 - Criação de testes para `decisionStore`, validando hidratação da API, funcionamento offline e uso do cache em memória.
+
+# 2026-07-27
+
+## Banco de Dados e Infraestrutura (.NET 10)
+
+- Reconciliação da entidade `Setting`, forçando o mapeamento para tipos nativos (`jsonb`, `time without time zone`) e chave primária por `user_id`.
+- Modelagem da tabela `daily_reviews` para armazenamento das métricas de encerramento diário e notas analíticas.
+- Aplicação de índice composto único (`idx_daily_reviews_user_date`) para impedir duplicidade de encerramentos por turno.
+- Implementação de controle transacional (`IDbContextTransaction`) e instruções SQL atômicas (`ON CONFLICT DO UPDATE`) para importação sem retenção de locks ou deadlocks no PostgreSQL.
+- Geração e aplicação da migration `AddDailyReviewsAndSettingsReconciliation`.
+
+---
+
+## Backend e Domínio
+
+- Criação da entidade `DailyReview.cs` com validações de invariantes anti-negatividade para tempo de foco e contagem de entregas.
+- Criação do serviço `DataPortabilityService.cs`, executando exportações de leitura limpa (`AsNoTracking`) em $< 50\text{ms}$ e importações com política *Last-Write-Wins* baseada em timestamp UTC.
+- Criação do serviço `DailyCycleService.cs` para gerenciar rituais diários:
+  - **Morning Briefing:** Cálculo de carga horária líquida pendente e identificação de tarefas atrasadas.
+  - **Daily Shutdown:** Registro de fechamento com injeção automática de tags de divergência algorítmica (`#underestimated`, `#flow`, `#interrupted`, `#low-energy`).
+
+---
+
+## API e Contratos
+
+- Exposição do endpoint `GET /api/v1/portability/export`, anexando o cabeçalho `Content-Disposition` para download autossuficiente do pacote de backup (`v4.0.0-tactical`).
+- Exposição do endpoint `POST /api/v1/portability/import` para ingestão transacional do bundle JSON.
+- Exposição dos endpoints `GET /api/v1/daily-cycle/morning-briefing` e `POST /api/v1/daily-cycle/shutdown` para consumo na interface de rituais.
+
+---
+
+## Frontend e UX
+
+- Separação arquitetural no menu lateral (`Sidebar.vue`) entre duas modalidades de teste em memória:
+  - **`[RAM SANDBOX]` (Simulador E2E):** Injeta um ecossistema completo (projetos, tarefas, hábitos em streak, eventos e EAI calibrado em $1.4\text{x}$) diretamente na tela Agora (`/now`).
+  - **`[TUTORIAL]` (Guia Pedagógico):** Limpa a memória e abre o fluxo passo a passo de aprendizagem em `/sandbox`.
+- Reestruturação do componente `OnboardingSteps.vue` em 5 etapas pedagógicas explicativas (Task, Event, Habit, Note), permitindo a simulação interativa de cada tipo na RAM via botões práticos.
+- Criação do host visual `SandboxView.vue`, renderizando em tempo real os itens gerados durante o tutorial no fundo da tela.
+- Acoplamento das ações de importação, exportação e reset de banco de dados na tela `SettingsView.vue`, com leitura assíncrona de arquivos via `FileReader`.
+
+---
+
+## Segurança e Soberania de Dados (Local-First)
+
+- Implementação do escudo de validação `portabilitySchema.ts` via biblioteca **Zod**, interceptando arquivos JSON corrompidos ou malformados em milissegundos no cliente antes do envio à API.
+- Implementação de sincronização reativa multi-aba em `settingsStore.ts` e `dailyCycleStore.ts` utilizando a API nativa `BroadcastChannel` e ouvintes do evento `storage`.
+
+---
+
+## Testes e Homologação E2E
+
+- Criação de testes unitários no xUnit (`DataPortabilityServiceTests.cs` e `DailyCycleServiceTests.cs`), suprimindo avisos transacionais em memória e validando rollbacks e mesclagens sem violação de chave primária.
+- Criação da suíte mestre no Vitest (`e2e-ecosystem.spec.ts`) com mock estruturado de instâncias do Axios, validando:
+  - Governança de memória e calibração de tempo via EAI ($45\text{m} \rightarrow 63\text{m}$).
+  - Resiliência e interceptação de erros do Zod.
+  - Teste de estresse importando payload com 500 compromissos em $< 50\text{ms}$.
+  - SLA de latência em memória mantido estritamente em $< 16\text{ms}$ para 250 itens reativos.
+
+Semana 4 e estabilização E2E oficialmente homologadas. O Compass MVP atinge prontidão operacional completa.

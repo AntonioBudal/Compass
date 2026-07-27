@@ -1,111 +1,194 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { CompassApi, type UserSettingsDto } from '@/services/api';
-import { useToastStore } from '@/stores/toastStore';
-import { useCommitmentsStore } from '@/stores/commitmentsStore';
+import axios from 'axios';
+import { useToastStore } from './toastStore';
+
+// Contrato espelhando exatamente o Setting.cs e Portability do Backend .NET 10
+export interface UserSettingsDto {
+  defaultEnergyLevel: number;
+  theme: string;
+  autoPostponeEnabled: boolean;
+  dailyReviewTime: string;
+  preferencesJson: string;
+}
+
+const STORAGE_KEY = 'compass_settings_cache';
 
 export const useSettingsStore = defineStore('settings', () => {
   const toastStore = useToastStore();
-  const commitmentsStore = useCommitmentsStore();
+
+  // --- Estado Reativo Basal ---
+  const settings = ref<UserSettingsDto>({
+    defaultEnergyLevel: 2,
+    theme: 'dark',
+    autoPostponeEnabled: true,
+    dailyReviewTime: '20:00',
+    preferencesJson: '{}'
+  });
+  
   const isLoading = ref(false);
   const isSubmitting = ref(false);
 
-  const settings = ref<UserSettingsDto>({
-    workDayStart: '08:00',
-    workDayEnd: '18:00',
-    defaultEnergy: 2,
-    defaultDurationMinutes: 30
-  });
+  // --- Sincronização em Disco e Multi-Aba ---
+  function saveToDisk() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value));
+    } catch (e) {
+      console.warn('[SettingsStore] Falha ao persistir configurações no localStorage.', e);
+    }
+  }
 
-  const fetchSettings = async () => {
+  function loadFromDisk(): boolean {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        Object.assign(settings.value, JSON.parse(raw));
+        return true;
+      }
+    } catch (e) {
+      console.warn('[SettingsStore] Cache local corrompido.', e);
+    }
+    return false;
+  }
+
+  function listenToCrossTabSettings() {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (event) => {
+        if (event.key === STORAGE_KEY && event.newValue) {
+          try {
+            Object.assign(settings.value, JSON.parse(event.newValue));
+            toastStore.showToast('Configurações atualizadas por outra aba.', 'neutral');
+          } catch (e) {
+            console.error('[SettingsStore] Erro no sync multi-aba.', e);
+          }
+        }
+      });
+    }
+  }
+
+  // --- Ações de Comunicação com a API ---
+  const fetchSettings = async (force = false) => {
+    if (!force && loadFromDisk()) return;
+    
     isLoading.value = true;
     try {
-      const data = await CompassApi.getSettings();
-      settings.value = data;
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      const headers = { 'X-User-Id': '11111111-1111-1111-1111-111111111111' };
+      
+      const res = await axios.get<UserSettingsDto>(`${baseUrl}/settings`, { headers });
+      if (res.status === 200 && res.data) {
+        Object.assign(settings.value, res.data);
+        saveToDisk();
+      }
     } catch (e) {
-      console.warn('Usando configurações padrão locais (offline/fallback).');
+      console.warn('[SettingsStore] API offline. Mantendo configurações em memória/disco.', e);
     } finally {
       isLoading.value = false;
     }
   };
 
-  const saveSettings = async (newSettings: UserSettingsDto) => {
+  const updateSettings = async (newSettings: Partial<UserSettingsDto>) => {
+    if (isSubmitting.value) return;
     isSubmitting.value = true;
+
+    // Atualização otimista na UI
+    const previous = { ...settings.value };
+    Object.assign(settings.value, newSettings);
+    saveToDisk();
+
     try {
-      const updated = await CompassApi.updateSettings(newSettings);
-      settings.value = updated;
-      toastStore.showToast('Configurações salvas e motor recalibrado.', 'success');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      const headers = { 
+        'X-User-Id': '11111111-1111-1111-1111-111111111111',
+        'Content-Type': 'application/json' 
+      };
+
+      await axios.put(`${baseUrl}/settings`, settings.value, { headers });
+      toastStore.showToast('Preferências salvas com sucesso!', 'success');
     } catch (e) {
-      // Fallback otimista se a rota ainda não estiver exposta no .NET
-      settings.value = { ...newSettings };
-      toastStore.showToast('Configurações atualizadas localmente.', 'neutral');
+      console.error('[SettingsStore] Falha ao salvar no backend. Revertendo.', e);
+      Object.assign(settings.value, previous);
+      saveToDisk();
+      toastStore.showToast('Erro ao sincronizar preferências com o servidor.', 'error');
     } finally {
       isSubmitting.value = false;
     }
   };
 
-  const exportData = async () => {
+  // --- Portabilidade e Soberania de Dados (Semana 4) ---
+  const exportBackup = async () => {
     try {
-      const blob = await CompassApi.exportBackup();
-      const url = window.URL.createObjectURL(blob);
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      const headers = { 'X-User-Id': '11111111-1111-1111-1111-111111111111' };
+      
+      const res = await axios.get(`${baseUrl}/portability/export`, { headers, responseType: 'blob' });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `compass_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      link.setAttribute('download', `compass_export_${new Date().toISOString().slice(0, 10)}.json`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
-      toastStore.showToast('Backup JSON gerado com sucesso.', 'success');
+      
+      toastStore.showToast('Backup exportado com sucesso!', 'success');
     } catch (e) {
-      // Dump local em memória caso o endpoint de export via stream falhe
-      const localDump = JSON.stringify(commitmentsStore.items, null, 2);
-      const blob = new Blob([localDump], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `compass_local_dump_${Date.now()}.json`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      toastStore.showToast('Backup gerado a partir do cache local.', 'neutral');
+      console.error('[SettingsStore] Erro ao exportar backup.', e);
+      toastStore.showToast('Falha ao gerar arquivo de exportação.', 'error');
     }
   };
 
-  const importData = async (file: File) => {
-    isSubmitting.value = true;
+  const importBackup = async (bundleJson: any): Promise<boolean> => {
+    isLoading.value = true;
     try {
-      await CompassApi.importBackup(file);
-      await commitmentsStore.fetchAllActive();
-      toastStore.showToast('Backup restaurado e sincronizado com o banco.', 'success');
-    } catch (e) {
-      toastStore.showToast('Falha ao importar arquivo JSON. Verifique a estrutura.', 'error');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      const headers = { 
+        'X-User-Id': '11111111-1111-1111-1111-111111111111',
+        'Content-Type': 'application/json' 
+      };
+
+      const res = await axios.post(`${baseUrl}/portability/import`, bundleJson, { headers });
+      if (res.status === 200) {
+        toastStore.showToast('Base de dados restaurada com sucesso!', 'success');
+        await fetchSettings(true); // Re-hidrata as preferências
+        return true;
+      }
+    } catch (e: any) {
+      console.error('[SettingsStore] Erro no import.', e);
+      toastStore.showToast(e.response?.data?.message || 'Arquivo de backup inválido ou incompatível.', 'error');
     } finally {
-      isSubmitting.value = false;
+      isLoading.value = false;
+    }
+    return false;
+  };
+
+  const resetDatabase = async () => {
+    if (!confirm('ATENÇÃO: Isso apagará todo o seu histórico local e remoto. Deseja continuar?')) return;
+    
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      const headers = { 'X-User-Id': '11111111-1111-1111-1111-111111111111' };
+      
+      await axios.delete(`${baseUrl}/portability/reset`, { headers });
+      localStorage.clear();
+      window.location.reload();
+    } catch (e) {
+      console.error('[SettingsStore] Erro ao resetar banco.', e);
+      toastStore.showToast('Falha ao resetar base de dados.', 'error');
     }
   };
 
-  const resetAllData = async () => {
-    isSubmitting.value = true;
-    try {
-      await CompassApi.resetDatabase();
-      commitmentsStore.items = [];
-      toastStore.showToast('Todos os dados foram resetados.', 'urgent');
-    } catch (e) {
-      commitmentsStore.items = [];
-      toastStore.showToast('Cache local limpo.', 'neutral');
-    } finally {
-      isSubmitting.value = false;
-    }
-  };
+  // Inicializa o ouvinte multi-aba
+  listenToCrossTabSettings();
 
   return {
     settings,
     isLoading,
     isSubmitting,
     fetchSettings,
-    saveSettings,
-    exportData,
-    importData,
-    resetAllData
+    updateSettings,
+    exportBackup,
+    importBackup,
+    resetDatabase
   };
 });
