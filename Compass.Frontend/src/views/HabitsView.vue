@@ -2,22 +2,46 @@
 import { computed, onMounted, ref } from 'vue';
 import { useCommitmentsStore, type CommitmentItem } from '@/stores/commitmentsStore';
 import { isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
-import { RefreshCw, Flame, Check, PlusCircle, Zap, Clock, Calendar, Trophy } from 'lucide-vue-next';
+import { RefreshCw, Flame, Check, PlusCircle, Trophy, Calendar, Sparkles } from 'lucide-vue-next';
+import TacticalHorizonBar, { type HorizonOption } from '@/components/core/TacticalHorizonBar.vue';
 
 const store = useCommitmentsStore();
 const pulsingHabitId = ref<string | null>(null);
+
+// ABA ATUAL DE HORIZONTE TÁTICO
+const currentHorizon = ref<HorizonOption>('today');
 
 onMounted(() => {
   store.fetchAllActive();
 });
 
-const habits = computed(() => store.habitsToday);
+// Filtra os hábitos visíveis conforme o horizonte selecionado no topo
+const habits = computed(() => {
+  const allHabits = store.items.filter(i => i.type === 'HABIT' && i.status !== 'ARCHIVED');
+  
+  if (currentHorizon.value === 'today') {
+    return allHabits.filter(i => !i.cronExpression || i.cronExpression.includes('*'));
+  }
+  // Em horizontes expandidos ("tomorrow", "3days", "week"), exibe todos os hábitos cadastrados
+  return allHabits;
+});
+
+// Contadores para o cabeçalho temporal
+const horizonCounts = computed(() => {
+  const all = store.items.filter(i => i.type === 'HABIT' && i.status !== 'ARCHIVED').length;
+  return {
+    today: store.habitsToday.length,
+    tomorrow: all,
+    '3days': all,
+    week: all
+  };
+});
 
 const openNewHabitModal = () => {
   isQuickCaptureOpen.value = true;
 };
 
-// Conclusão Otimista com animação tática no ícone de fogo (Cap. 7.2)
+// Conclusão com trava defensiva (impedir dois cliques e comemorar consistência)
 const handleCompleteHabit = (item: CommitmentItem) => {
   if (item.status === 'COMPLETED') return;
 
@@ -29,30 +53,22 @@ const handleCompleteHabit = (item: CommitmentItem) => {
   }, 300);
 };
 
-// Rastreio de calor de consistência (Cap. 5.5)
 const getStreakVariant = (streak: number) => {
-  if (streak > 21) {
-    return 'bg-content text-content-invert border-borderhighlight font-semibold';
-  }
-
-  if (streak >= 8) {
-    return 'bg-status-warning-bg text-status-warning border-status-warning-border';
-  }
-
+  if (streak > 21) return 'bg-content text-content-invert border-borderhighlight font-semibold';
+  if (streak >= 8) return 'bg-status-warning-bg text-status-warning border-status-warning-border';
   return 'bg-surface text-content-muted border-borderbase';
 };
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto space-y-8 select-none">
+  <div class="max-w-4xl mx-auto space-y-6 select-none">
     <!-- Cabeçalho de Hábitos -->
     <div class="flex items-center justify-between gap-4 pb-4 border-b border-borderbase">
-    
       <div>
         <h1 class="text-2xl font-semibold text-content tracking-tight flex items-center gap-2.5">
           <span>Hábitos Diários</span>
           <span class="text-xs font-mono bg-surface text-content-muted px-2 py-0.5 rounded border border-borderbase">
-            {{ habits.length }} Ativos
+            {{ habits.length }} no Horizonte
           </span>
         </h1>
         <p class="text-sm text-content-muted mt-1">
@@ -70,27 +86,44 @@ const getStreakVariant = (streak: number) => {
       </button>
     </div>
 
-    <!-- ESTADO VAZIO -->
+    <!-- HORIZONTE TÁTICO (Evita que itens fiquem escondidos por ciclo) -->
+    <TacticalHorizonBar v-model="currentHorizon" :counts="horizonCounts" />
+
+    <!-- ESTADO VAZIO DEFENSIVO COM EXPLICAÇÃO DO HORIZONTE -->
     <div v-if="habits.length === 0" class="p-12 rounded-xl border border-dashed border-borderbase bg-app/40 text-center space-y-4">
       <div class="w-12 h-12 rounded-full bg-surface border border-borderfocus flex items-center justify-center mx-auto text-content">
         <RefreshCw class="w-6 h-6" />
       </div>
       <div class="max-w-sm mx-auto space-y-1">
-        <h3 class="text-base font-semibold text-content">Nenhum hábito diário monitorado</h3>
+        <h3 class="text-base font-semibold text-content">
+          {{ currentHorizon === 'today' ? 'Nenhum hábito programado para Hoje' : 'Nenhum hábito diário cadastrado' }}
+        </h3>
         <p class="text-xs text-content-muted leading-relaxed">
-          Hábitos criam disciplina mecânica. Cadastre sua primeira rotina diária para iniciar o rastreamento de calor.
+          {{ currentHorizon === 'today'
+            ? 'Você possui hábitos configurados em outros dias da semana. Alterne para [Amanhã] ou [Próxima Semana] para visualizá-los.'
+            : 'Hábitos criam disciplina mecânica. Cadastre sua primeira rotina diária para iniciar o rastreamento de calor.' }}
         </p>
       </div>
-      <button 
-        @click="openNewHabitModal"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-content hover:bg-content-accent text-content-invert text-xs font-medium transition-all cursor-pointer"
-      >
-        <PlusCircle class="w-4 h-4" />
-        <span>Criar Hábito Agora</span>
-      </button>
+      <div class="flex items-center justify-center gap-3">
+        <button 
+          @click="openNewHabitModal"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-content hover:bg-content-accent text-content-invert text-xs font-medium transition-all cursor-pointer shadow-sm"
+        >
+          <PlusCircle class="w-4 h-4" />
+          <span>Criar Hábito Agora</span>
+        </button>
+
+        <button
+          v-if="currentHorizon === 'today' && horizonCounts.week > 0"
+          @click="currentHorizon = 'week'"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-tactic bg-surface hover:bg-surface-hover border border-borderbase text-content text-xs font-medium transition-all cursor-pointer"
+        >
+          <span>Ver Próxima Semana ({{ horizonCounts.week }})</span>
+        </button>
+      </div>
     </div>
 
-    <!-- LISTA DE HÁBITOS DE ALTA DENSIDADE (Cap. 5.5) -->
+    <!-- LISTA DE HÁBITOS DE ALTA DENSIDADE -->
     <div v-else class="space-y-3">
       <div 
         v-for="item in habits" 
@@ -105,8 +138,8 @@ const getStreakVariant = (streak: number) => {
             @click="handleCompleteHabit(item)"
             class="mt-0.5 w-5 h-5 rounded border border-borderbase bg-app flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-borderhighlight cursor-pointer"
             :class="item.status === 'COMPLETED'
-            ? 'bg-status-success-bg border-status-success-border text-status-success-text shadow-sm'
-            : 'hover:border-borderfocus'"
+              ? 'bg-status-success-bg border-status-success-border text-status-success-text shadow-sm'
+              : 'hover:border-borderfocus'"
             :disabled="item.status === 'COMPLETED'"
             title="Concluir Hábito Hoje"
           >
@@ -136,7 +169,7 @@ const getStreakVariant = (streak: number) => {
           </div>
         </div>
 
-        <!-- Lado Direito: O Badge de Rastreio de Calor (Streak Heat Badge) -->
+        <!-- Lado Direito: O Badge de Rastreio de Calor -->
         <div class="flex items-center gap-3 flex-shrink-0">
           <span 
             class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border transition-transform duration-tactic"

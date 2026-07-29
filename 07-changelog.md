@@ -420,11 +420,75 @@
 
 ## Testes e Homologação E2E
 
-- Criação de testes unitários no xUnit (`DataPortabilityServiceTests.cs` e `DailyCycleServiceTests.cs`), suprimindo avisos transacionais em memória e validando rollbacks e mesclagens sem violação de chave primária.
-- Criação da suíte mestre no Vitest (`e2e-ecosystem.spec.ts`) com mock estruturado de instâncias do Axios, validando:
-  - Governança de memória e calibração de tempo via EAI ($45\text{m} \rightarrow 63\text{m}$).
-  - Resiliência e interceptação de erros do Zod.
-  - Teste de estresse importando payload com 500 compromissos em $< 50\text{ms}$.
-  - SLA de latência em memória mantido estritamente em $< 16\text{ms}$ para 250 itens reativos.
+- Criação de testes unitários no xUnit (`DataPortabilityServiceTests.cs` e `DailyCycleServiceTests.cs`), 
+- Criação da suíte mestre no Vitest (`e2e-ecosystem.spec.ts`) com mock estruturado de instâncias
 
-Semana 4 e estabilização E2E oficialmente homologadas. O Compass MVP atinge prontidão operacional completa.
+# 2026-07-28
+
+## Arquitetura de UX Defensiva e Visibilidade
+
+- Criação dos contratos `DefensiveIntervention` e `DefensiveAction` em `types/index.ts`.
+- Evolução da `toastStore.ts` e do `ToastContainer.vue` para suportar notificações de intervenção com ações imediatas.
+- Criação do composable `useVisibilityTracker.ts` para detectar quando um item recém-criado não está visível na view atual ou foi roteado para outra tela.
+- Implementação de validações defensivas na `commitmentsStore.ts`:
+  - Alerta para criação de tarefas fora do turno útil.
+  - Aviso ao criar tarefas sem projeto vinculado.
+  - Bloqueio de hábitos duplicados no mesmo dia com feedback de streak.
+  - Inserção automática da expressão CRON (`0 8 * * *`) na criação de hábitos.
+
+---
+
+## Horizonte Tático e Navegação Temporal
+
+- Criação do componente `TacticalHorizonBar.vue`.
+- Navegação entre **Hoje**, **Amanhã**, **Próximos 3 Dias** e **Próxima Semana**.
+- Suporte aos atalhos `Shift + 1..4`.
+- Integração da navegação temporal nas views:
+  - `NowEngineView.vue`
+  - `HabitsView.vue`
+  - `AgendaView.vue`
+
+---
+
+## Evolução de Views e Componentes
+
+- Criação do componente `DefensiveEmptyState.vue` para estados vazios com explicação e ações de recuperação.
+
+### Projetos
+
+- Refatoração da `ProjectsView.vue`.
+- Organização em abas (**Em Andamento** e **Concluídos**).
+- Exibição do progresso do turno.
+- Adição do botão **+ Turno**, abrindo o Quick Capture com o projeto pré-selecionado.
+
+### Metas
+
+- Refatoração da `GoalsView.vue`.
+- Estrutura em Accordion (Strategic Tree).
+- Edição inline de títulos.
+- Ajuste reativo de progresso por slider.
+- Criação da `goalsStore.ts` com persistência em `localStorage`.
+
+---
+
+## Rede, Offline e Portabilidade
+
+- Padronização das portas da aplicação:
+  - API (.NET 10): `http://localhost:5000`
+  - Frontend (Vite): `http://localhost:5173`
+- Criação do `SandboxTopBanner.vue`, exibindo um aviso permanente durante o modo Sandbox.
+- Implementação de proteção contra fechamento da aba no `StatusBar.vue` quando houver sincronizações offline pendentes.
+- Melhoria das mensagens de erro na importação de arquivos `.json`, indicando exatamente quais campos falharam na validação do Zod.
+
+---
+
+## Testes e Homologação
+
+- Atualização da suíte `e2e-ecosystem.spec.ts`.
+- Cobertura para:
+  - Injeção automática de CRON em hábitos.
+  - Bloqueio de duplicidade diária.
+  - Alertas para tarefas fora do turno e sem projeto.
+  - Validação de arquivos corrompidos via Zod.
+  - Teste de estresse com **500 compromissos**.
+  - Verificação de latência reativa em memória inferior a **16 ms**.

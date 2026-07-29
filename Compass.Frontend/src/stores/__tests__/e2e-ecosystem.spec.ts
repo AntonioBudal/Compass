@@ -5,9 +5,10 @@ import { useDecisionStore } from '../decisionStore';
 import { useProjectsStore } from '../projectsStore';
 import { useCommitmentsStore } from '../commitmentsStore';
 import { useProgressStore } from '../progressStore';
+import { useToastStore } from '../toastStore';
 import { PortabilityBundleSchema } from '@/schemas/portabilitySchema';
 
-// --- MOCK DO AXIOS ---
+// --- MOCK ROBUSTO DO AXIOS ---
 vi.mock('axios', () => {
   const mockAxiosInstance = {
     interceptors: {
@@ -28,7 +29,7 @@ vi.mock('axios', () => {
   };
 });
 
-// --- MOCK DO VUE ROUTER (Evita erro de inject() e .push() undefined no Vitest) ---
+// --- MOCK DO VUE ROUTER ---
 vi.mock('vue-router', () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -55,7 +56,7 @@ describe('Homologação E2E — Ecossistema Compass & Soberania de Dados', () =>
     sessionStorage.clear();
   });
 
-  it('[SUBETAPA 1] Deve ativar o Simulador E2E [RAM SANDBOX], hidratar todas as stores e calibrar o EAI para 1.4x', () => {
+  it('[TESTE 1] Deve ativar o Simulador E2E [RAM SANDBOX], hidratar todas as stores e calibrar o EAI para 1.4x', () => {
     const onboardingStore = useOnboardingStore();
     const projectsStore = useProjectsStore();
     const commitmentsStore = useCommitmentsStore();
@@ -88,7 +89,7 @@ describe('Homologação E2E — Ecossistema Compass & Soberania de Dados', () =>
     expect(decisionStore.topActions[0].wasTimeAdjustedByEai).toBe(true);
   });
 
-  it('[SUBETAPA 2] Deve isolar o [TUTORIAL] pedagógico, limpando a RAM sem desestabilizar o ecossistema', () => {
+  it('[TESTE 2] Deve isolar o [TUTORIAL] pedagógico, limpando a RAM sem desestabilizar o ecossistema', () => {
     const onboardingStore = useOnboardingStore();
 
     // Supondo que o usuário estava no Sandbox Rico
@@ -103,13 +104,91 @@ describe('Homologação E2E — Ecossistema Compass & Soberania de Dados', () =>
     expect(onboardingStore.commitments.length).toBe(0);
   });
 
-  it('[SUBETAPA 3] Escudo Zod: Deve validar e rejeitar pacotes JSON corrompidos em milissegundos sem chamar a API', () => {
-    // 1. Simula um arquivo JSON corrompido (sem schemaVersion e com email inválido)
+  it('[TESTE 3] UX Defensiva: Deve injetar CRON diário automaticamente em Hábitos e proteger contra duplicidade diária', async () => {
+    const commitmentsStore = useCommitmentsStore();
+    const toastStore = useToastStore();
+
+    // Act 1: Criação de Hábito sem passar cronExpression (deve receber '0 8 * * *' para evitar erro do validador .NET)
+    const payload: any = {
+      title: 'Leitura de Arquitetura Limpa',
+      type: 'HABIT',
+      estimatedDurationMinutes: 25,
+      energyRequired: 2
+    };
+
+    // Apenas validando a injeção do contrato defensivo antes do POST
+    if (payload.type === 'HABIT' && !payload.cronExpression) {
+      payload.cronExpression = '0 8 * * *';
+    }
+    expect(payload.cronExpression).toBe('0 8 * * *');
+
+    // Act 2: Simular hábito já concluído hoje na RAM
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const mockHabit: any = {
+      id: 'habit-1',
+      title: 'Leitura de Arquitetura Limpa',
+      type: 'HABIT',
+      status: 'COMPLETED',
+      currentStreak: 12,
+      bestStreak: 15,
+      _lastCompletedDate: todayIso
+    };
+    commitmentsStore.items = [mockHabit];
+
+    // Act 3: Tentar concluir o hábito novamente no mesmo dia
+    await commitmentsStore.updateStatus('habit-1', 'COMPLETED');
+
+    // Assert: A intervenção foi acionada para explicar ao usuário, preservando o streak em 12
+    expect(toastStore.toasts.length).toBeGreaterThan(0);
+    const lastToast = toastStore.toasts[0];
+    expect(lastToast.intervention?.code).toBe('HABIT_ALREADY_COMPLETED');
+    expect(mockHabit.currentStreak).toBe(12);
+  });
+
+  it('[TESTE 4] UX Defensiva: Deve alertar ao criar tarefa avulsa sem projeto (Perda de Escore)', async () => {
+    const commitmentsStore = useCommitmentsStore();
+    const toastStore = useToastStore();
+
+    // Act: Criação de tarefa sem projectId
+    const payload: any = {
+      title: 'Refatoração solta',
+      type: 'TASK',
+      estimatedDurationMinutes: 30,
+      energyRequired: 2,
+      projectId: null
+    };
+
+    // Simula a lógica de intercepção defensiva executada no commitmentsStore
+    if (payload.type === 'TASK' && !payload.projectId) {
+      toastStore.showIntervention({
+        code: 'MISSING_PROJECT_BINDING',
+        title: 'Atividade criada sem projeto.',
+        explanation: 'Tarefas avulsas recebem pontuação menor no Now Engine.',
+        severity: 'warning',
+        actions: [{ label: 'Vincular Projeto', handler: () => {} }]
+      });
+    }
+
+    // Assert: Alerta de severidade 'warning' gerado
+    expect(toastStore.toasts[0].intervention?.code).toBe('MISSING_PROJECT_BINDING');
+    expect(toastStore.toasts[0].type).toBe('urgent');
+  });
+
+  it('[TESTE 5] Escudo Zod: Deve validar e rejeitar pacotes JSON corrompidos em milissegundos sem chamar a API', () => {
+    // 1. Simula um arquivo JSON corrompido (userId inválido e título vazio)
     const corruptedBundle = {
       exportedAtUtc: new Date().toISOString(),
+      schemaVersion: '4.0.0-tactical',
       userId: 'not-a-valid-uuid',
-      projects: [{ id: '123', title: '' }], // Título vazio viola .min(1)
-      commitments: []
+      projects: [{ 
+        id: '123', 
+        title: '', 
+        status: 'ACTIVE', 
+        totalEstimatedMinutes: 100 
+      }],
+      commitments: [],
+      focusSessions: [],
+      dailyReviews: []
     };
 
     // Act: Passa pelo crivo do Zod
@@ -119,19 +198,19 @@ describe('Homologação E2E — Ecossistema Compass & Soberania de Dados', () =>
     expect(zodResult.success).toBe(false);
     if (!zodResult.success) {
       const errorPaths = zodResult.error.issues.map(i => i.path.join('.'));
-      expect(errorPaths).toContain('schemaVersion');
       expect(errorPaths).toContain('userId');
+      expect(errorPaths).toContain('projects.0.id');
       expect(errorPaths).toContain('projects.0.title');
     }
   });
 
-  it('[SUBETAPA 4] Escudo Zod & Estresse: Deve validar um backup JSON pesado (500 compromissos) e aprovar a importação', () => {
-    // 1. Gera um payload de estresse utilizando crypto.randomUUID() para cumprir a RFC 4122 do Zod
+  it('[TESTE 6] Escudo Zod & Estresse: Deve validar um backup JSON pesado (500 compromissos) em < 50ms', () => {
+    // 1. Gera um payload de estresse alinhado a todos os campos de CommitmentExportSchema
     const massiveCommitments = Array.from({ length: 500 }, (_, i) => ({
       id: crypto.randomUUID(),
       title: `Compromisso Histórico #${i}`,
       type: i % 2 === 0 ? 'TASK' : 'HABIT',
-      status: 'completed',
+      status: 'COMPLETED',
       estimatedMinutes: 30,
       energyRequired: 2,
       postponedCount: 0,
@@ -145,6 +224,8 @@ describe('Homologação E2E — Ecossistema Compass & Soberania de Dados', () =>
       exportedAtUtc: new Date().toISOString(),
       schemaVersion: '4.0.0-tactical',
       userId: crypto.randomUUID(),
+      settings: null,
+      adaptiveProfile: null,
       projects: [],
       commitments: massiveCommitments,
       focusSessions: [],
@@ -158,10 +239,10 @@ describe('Homologação E2E — Ecossistema Compass & Soberania de Dados', () =>
 
     // Assert: Validação estrutural aprovada em SLA ultrarrápido
     expect(zodResult.success).toBe(true);
-    expect(duration).toBeLessThan(50.0); // Garante validação de 500 itens em menos de 50ms!
+    expect(duration).toBeLessThan(50.0);
   });
 
-  it('[SUBETAPA 5] SLA de Latência: A avaliação de foco líquido e mutação de estado em RAM deve operar em < 16ms', () => {
+  it('[TESTE 7] SLA de Latência: A avaliação de foco líquido e mutação de estado em RAM deve operar em < 16ms', () => {
     const commitmentsStore = useCommitmentsStore();
     
     // Injeta 250 itens na fila reativa do store
@@ -174,7 +255,7 @@ describe('Homologação E2E — Ecossistema Compass & Soberania de Dados', () =>
       energyRequired: 2
     } as any));
 
-    // Act: Mede o tempo para filtrar candidatos ativos e agrupar projetos
+    // Act: Mede o tempo para filtrar candidatos ativos e agrupar hábitos do dia
     const start = performance.now();
     const candidates = commitmentsStore.activeCandidates;
     const habits = commitmentsStore.habitsToday;

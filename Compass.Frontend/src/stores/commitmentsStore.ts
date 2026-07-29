@@ -12,6 +12,7 @@ import type {
 export type CommitmentItem = CommitmentDto & {
   _isSyncing?: boolean;
   _syncError?: string | null;
+  _lastCompletedDate?: string | null;
 };
 
 export const useCommitmentsStore = defineStore('commitments', () => {
@@ -61,7 +62,17 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     }
   };
 
+  // --- Mutações com UX Defensiva ---
+
   const createCommitment = async (payload: CreateCommitmentDto) => {
+    // 1. BLINDAGEM DE CONTRATO: Evita rejeição do validador FluentValidation no .NET 10
+    if (payload.type === 'HABIT' && !payload.cronExpression) {
+      payload.cronExpression = '0 8 * * *'; // Recorrência diária padrão às 08:00
+    }
+    if (payload.type === 'NOTE') {
+      payload.estimatedDurationMinutes = 0; // Notas possuem duração líquida zero
+    }
+
     const tempId = `temp-${Date.now()}`;
     const optimisticItem: CommitmentItem = {
       id: tempId,
@@ -86,6 +97,57 @@ export const useCommitmentsStore = defineStore('commitments', () => {
 
     items.value.unshift(optimisticItem);
 
+    // 2. INTERVENÇÃO DEFENSIVA: Criação de Tarefa Fora do Turno Útil (18:00 às 07:00)
+    const currentHour = new Date().getHours();
+    const isOutsideShift = currentHour >= 18 || currentHour < 7;
+    if (payload.type === 'TASK' && isOutsideShift) {
+      toastStore.showIntervention({
+        code: 'OUTSIDE_SHIFT_CREATION',
+        title: 'Seu turno de hoje já terminou.',
+        explanation: 'O motor de decisão agendou esta atividade para o início de amanhã, evitando sobrecarregar sua tela Agora.',
+        severity: 'info',
+        actions: [
+          {
+            label: 'Mover para amanhã',
+            isPrimary: true,
+            handler: () => {}
+          },
+          {
+            label: 'Executar hoje (Hora Extra)',
+            handler: async () => {
+              const target = items.value.find(i => i.id === tempId);
+              if (target) {
+                target.deadline = new Date().toISOString();
+              }
+            }
+          }
+        ]
+      });
+    }
+
+    // 3. INTERVENÇÃO DEFENSIVA: Tarefa Avulsa (Sem Projeto Vinculado)
+    if (payload.type === 'TASK' && !payload.projectId && !isOutsideShift) {
+      toastStore.showIntervention({
+        code: 'MISSING_PROJECT_BINDING',
+        title: 'Atividade criada sem projeto.',
+        explanation: 'Tarefas avulsas recebem pontuação menor no Now Engine. Itens vinculados a projetos ativos ganham prioridade de foco.',
+        severity: 'warning',
+        actions: [
+          {
+            label: 'Manter como avulsa',
+            isPrimary: true,
+            handler: () => {}
+          },
+          {
+            label: 'Vincular a um Projeto',
+            handler: () => {
+              window.dispatchEvent(new CustomEvent('compass:open-project-selector', { detail: { commitmentId: tempId } }));
+            }
+          }
+        ]
+      });
+    }
+
     try {
       const created = await CompassApi.createCommitment(payload);
       const index = items.value.findIndex(i => i.id === tempId);
@@ -95,7 +157,6 @@ export const useCommitmentsStore = defineStore('commitments', () => {
       return created;
     } catch (err: any) {
       items.value = items.value.filter(i => i.id !== tempId);
-      toastStore.showToast('Erro ao criar compromisso. Tente novamente.', 'error');
       throw err;
     }
   };
@@ -126,6 +187,25 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     const previousStatus = targetItem.status;
     if (previousStatus === newStatus) return;
 
+    // 4. INTERVENÇÃO DEFENSIVA: Proteção de Consistência (Hábito Concluído 2x no Mesmo Dia)
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (targetItem.type === 'HABIT' && newStatus === 'COMPLETED' && targetItem._lastCompletedDate === todayIso) {
+      toastStore.showIntervention({
+        code: 'HABIT_ALREADY_COMPLETED',
+        title: 'Você já registrou este hábito hoje!',
+        explanation: `Sua sequência atual de 🔥 ${targetItem.currentStreak || 1} dias já está garantida. Hábitos contam apenas uma vez por dia.`,
+        severity: 'info',
+        actions: [
+          {
+            label: 'Entendi, fechar',
+            isPrimary: true,
+            handler: () => {}
+          }
+        ]
+      });
+      return;
+    }
+
     targetItem.status = newStatus;
     targetItem._isSyncing = true;
     targetItem._syncError = null;
@@ -133,6 +213,10 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     try {
       const response = await CompassApi.updateStatus(id, { newStatus });
       targetItem._isSyncing = false;
+
+      if (newStatus === 'COMPLETED' && targetItem.type === 'HABIT') {
+        targetItem._lastCompletedDate = todayIso;
+      }
 
       if (response.cascadedDomainEvents && response.cascadedDomainEvents.length > 0) {
         response.cascadedDomainEvents.forEach(evt => {
@@ -176,7 +260,6 @@ export const useCommitmentsStore = defineStore('commitments', () => {
       async () => {
         items.value.splice(index, 0, removedItem);
         try {
-          // CORREÇÃO DO ERRO TS2345: Passando o objeto DTO correto.
           await CompassApi.updateStatus(removedItem.id, { newStatus: 'PENDING' });
         } catch (e) {
           console.error('Falha ao reverter exclusão no servidor', e);

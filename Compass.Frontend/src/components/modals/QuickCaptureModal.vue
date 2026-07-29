@@ -8,6 +8,7 @@ import { TrieIndex } from '@/utils/trieIndex';
 import { useKeyboardNavigation } from '@/composables/useKeyboardNavigation';
 import AutoCompleteDropdown, { type DropdownItem } from '@/components/core/AutoCompleteDropdown.vue';
 import { Terminal, CornerDownLeft, Clock, Zap, Calendar, Folder } from 'lucide-vue-next';
+import { useVisibilityTracker } from '@/composables/useVisibilityTracker';
 
 const props = defineProps<{ isOpen: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -15,12 +16,12 @@ const emit = defineEmits<{ (e: 'close'): void }>();
 const commitmentsStore = useCommitmentsStore();
 const projectsStore = useProjectsStore();
 const toastStore = useToastStore();
+const { verifyCreationVisibility } = useVisibilityTracker();
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const rawInput = ref('');
 const isSubmitting = ref(false);
 
-// --- MOTOR DE AUTO-COMPLETE EM RAM ---
 const projectsTrie = new TrieIndex();
 const activeDropdown = ref<'PROJECT' | 'TYPE' | 'TIME' | 'DATE' | null>(null);
 const dropdownQuery = ref('');
@@ -94,7 +95,6 @@ const currentSuggestions = computed<DropdownItem[]>(() => {
 
 const suggestionsCount = computed(() => currentSuggestions.value.length);
 
-// Seleção de um item na interface
 const selectSuggestion = (item: DropdownItem) => {
   if (!inputRef.value) return;
   const cursor = inputRef.value.selectionStart || rawInput.value.length;
@@ -109,7 +109,6 @@ const selectSuggestion = (item: DropdownItem) => {
   setTimeout(() => inputRef.value?.focus(), 10);
 };
 
-// --- MÁQUINA DE ESTADOS DO TECLADO ---
 const { selectedIndex, handleKeyDown } = useKeyboardNavigation(suggestionsCount, {
   onSelect: (index) => {
     const selected = currentSuggestions.value[index];
@@ -144,7 +143,7 @@ const handleSubmit = async () => {
       }
     }
 
-    await commitmentsStore.createCommitment({
+    const createdItem = await commitmentsStore.createCommitment({
       title: parsed.title,
       type: parsed.type,
       estimatedDurationMinutes: parsed.estimatedDurationMinutes,
@@ -154,10 +153,30 @@ const handleSubmit = async () => {
     });
 
     toastStore.showToast(`[${parsed.type}] capturado com sucesso!`, 'success');
+    
+    // --- MOTOR DE UX DEFENSIVA: Visibility Tracker ---
+    setTimeout(() => {
+      const currentList = parsed.type === 'HABIT' ? commitmentsStore.habitsToday : commitmentsStore.activeCandidates;
+      verifyCreationVisibility(createdItem, currentList);
+    }, 100);
+
     rawInput.value = '';
     emit('close');
-  } catch (err) {
-    toastStore.showToast('Erro ao processar captura rápida.', 'error');
+  } catch (err: any) {
+    const isNetworkError = !err.response;
+    const errorMessage = err.response?.data?.detail || 
+                         err.response?.data?.title || 
+                         'Falha na validação das regras de negócio no servidor.';
+    
+    toastStore.showIntervention({
+      code: isNetworkError ? 'NETWORK_FAILURE' : 'VALIDATION_ERROR',
+      title: isNetworkError ? 'Falha de Conexão com o Servidor' : 'Ação Bloqueada pelo Motor',
+      explanation: isNetworkError 
+        ? 'Não foi possível salvar no backend (.NET 10). Verifique se a API está rodando na porta 5000.'
+        : errorMessage,
+      severity: isNetworkError ? 'blocking' : 'warning',
+      actions: [{ label: 'Fechar', isPrimary: true, handler: () => {} }]
+    });
   } finally {
     isSubmitting.value = false;
   }
@@ -196,7 +215,6 @@ watch(() => props.isOpen, (open) => {
               @keydown="onInputKeyDown"
             />
 
-            <!-- O Dropdown agora flutua sem recortes sobre o rodapé e o backdrop -->
             <AutoCompleteDropdown
               :items="currentSuggestions"
               :selected-index="selectedIndex"

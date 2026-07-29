@@ -91,3 +91,19 @@ export interface StatusTransitionResponseDto {
   timestamp: string;
   cascadedDomainEvents: CascadedDomainEventDto[];
 }
+
+
+export interface DefensiveAction {
+  label: string;
+  isPrimary?: boolean;
+  handler: () => void | Promise<void>;
+}
+
+export interface DefensiveIntervention {
+  id: string;
+  code: string;
+  title: string;              // O que aconteceu? (Linguagem humana e direta)
+  explanation: string;        // Por que aconteceu? (Motivo algorítmico / regra do turno)
+  severity: 'info' | 'warning' | 'blocking';
+  actions: DefensiveAction[]; // Ações rápidas para resolver o problema
+}

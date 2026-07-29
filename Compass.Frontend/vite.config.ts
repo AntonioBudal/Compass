@@ -13,6 +13,13 @@ export default defineConfig({
     }
   },
 
+  // 1. BLINDAGEM DE PORTA DO FRONTEND: Trava estritamente no 5173
+  server: {
+    port: 5173,
+    strictPort: true,
+    host: true
+  },
+
   build: {
     target: 'esnext',
     minify: true,

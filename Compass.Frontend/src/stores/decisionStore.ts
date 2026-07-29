@@ -3,7 +3,6 @@ import { ref, computed } from 'vue';
 import axios from 'axios';
 import { useToastStore } from './toastStore';
 
-// Contratos espelhando fielmente o payload enriquecido da API .NET 10
 export interface AdaptiveProfileDto {
   isCalibrated: boolean;
   sampleCount: number;
@@ -14,6 +13,7 @@ export interface AdaptiveProfileDto {
 }
 
 export interface ScoredActionDto {
+  id?: string;
   commitmentId: string;
   title: string;
   type: string;
@@ -95,7 +95,6 @@ export const useDecisionStore = defineStore('decision', () => {
     availableWindow.value = windowMinutes;
     currentEnergy.value = energy;
 
-    // Tenta hidratar do disco primeiro se a RAM estiver vazia
     if (topActions.value.length === 0 && !forceRefresh) {
       loadFromDisk();
     }
@@ -131,7 +130,7 @@ export const useDecisionStore = defineStore('decision', () => {
     }
   };
 
-  // --- Getters Computados para a UI ---
+  // --- Getters Computados Compatíveis ---
   const primaryFocus = computed<ScoredActionDto | null>(() => {
     return topActions.value.length > 0 ? topActions.value[0] : null;
   });
@@ -140,16 +139,21 @@ export const useDecisionStore = defineStore('decision', () => {
     return topActions.value.length > 1 ? topActions.value.slice(1) : [];
   });
 
+  const availableMinutes = computed<number>(() => availableWindow.value);
+
   return {
     topActions,
     adaptiveProfile,
     availableWindow,
+    availableMinutes,
     currentEnergy,
     isLoading,
     isServingFromCache,
     lastSyncedAt,
     primaryFocus,
     secondaryActions,
+    topFocus: primaryFocus,          // Alias reativo para compatibilidade visual
+    alternatives: secondaryActions,  // Alias reativo para compatibilidade visual
     fetchDecisions,
     fetchNow: fetchDecisions,
     loadFromDisk

@@ -1,44 +1,52 @@
 ﻿<script setup lang="ts">
-import Sidebar from './Sidebar.vue';
-import HeaderContext from './HeaderContext.vue';
-import StatusBar from './StatusBar.vue';
+import Sidebar from '@/components/layout/Sidebar.vue';
+import HeaderContext from '@/components/layout/HeaderContext.vue';
+import StatusBar from '@/components/layout/StatusBar.vue';
+import ToastContainer from '@/components/core/ToastContainer.vue';
+import SandboxTopBanner from '@/components/core/SandboxTopBanner.vue';
 import CommandBarModal from '@/components/modals/CommandBarModal.vue';
 import QuickCaptureModal from '@/components/modals/QuickCaptureModal.vue';
-import EditCommitmentModal from '@/components/modals/EditCommitmentModal.vue';
-import DailyShutdownModal from '@/components/modals/DailyShutdownModal.vue';
-import ToastContainer from '@/components/core/ToastContainer.vue';
-import DeveloperConsole from '@/components/dev/DeveloperConsole.vue';
-import ErrorBoundary from '@/components/core/ErrorBoundary.vue';
-import { usePerformanceMonitor } from '@/composables/usePerformanceMonitor';
-usePerformanceMonitor();
+import { isCommandBarOpen, isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
 </script>
 
 <template>
-  <div class="h-screen w-screen flex overflow-hidden bg-compass-bg text-compass-text font-sans antialiased">
-    <Sidebar />
+  <div class="h-screen w-screen flex flex-col bg-app text-content overflow-hidden select-none font-sans">
+    <!-- 1. BLINDAGEM DO SANDBOX (Faixa Fixa no Topo) -->
+    <SandboxTopBanner />
 
-    <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-      <HeaderContext />
+    <!-- 2. LAYOUT PRINCIPAL (Sidebar + Área de Trabalho) -->
+    <div class="flex-1 flex min-h-0 relative">
+      <Sidebar />
 
-      <main class="flex-1 overflow-y-auto min-h-0 relative">
-        <div class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
-          <ErrorBoundary>
-            <slot />
-          </ErrorBoundary>
-        </div>
-      </main>
+      <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <HeaderContext />
 
-      <StatusBar />
+        <main class="flex-1 overflow-y-auto p-6 md:p-8">
+          <router-view v-slot="{ Component }">
+            <transition name="page-fade" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
+        </main>
+
+        <StatusBar />
+      </div>
     </div>
 
-    <!-- Modais Flutuantes do Sistema -->
-    <CommandBarModal />
-    <QuickCaptureModal />
-    <EditCommitmentModal />
-    <DailyShutdownModal />
-
-    <!-- Resiliência -->
+    <!-- 3. GESTÃO GLOBAL DE MODAIS E NOTIFICAÇÕES -->
     <ToastContainer />
-    <DeveloperConsole />
+    <CommandBarModal :is-open="isCommandBarOpen" @close="isCommandBarOpen = false" />
+    <QuickCaptureModal :is-open="isQuickCaptureOpen" @close="isQuickCaptureOpen = false" />
   </div>
 </template>
+
+<style scoped>
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 120ms ease;
+}
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}
+</style>
