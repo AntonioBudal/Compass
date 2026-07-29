@@ -492,3 +492,53 @@
   - Validação de arquivos corrompidos via Zod.
   - Teste de estresse com **500 compromissos**.
   - Verificação de latência reativa em memória inferior a **16 ms**.
+
+  # 2026-07-29
+
+## Laboratório Interativo & "Glass-Box" Pipeline
+
+- Criação do componente `GlassBoxPipeline.vue`, atuando como um **Raio-X** da inteligência do sistema.
+- Exposição visual, em tempo real, do fluxo completo de processamento:
+  - **Input → Parser NLP → Validação Defensiva → Motor de Decisão → Preview → Efeito Borboleta**.
+- Reestruturação da `OnboardingView.vue` para uma jornada híbrida:
+  - Introdução teórica rápida.
+  - Transição automática para o laboratório interativo em **Split View**.
+
+---
+
+## Trilha de Descoberta (10 Fases)
+
+- Criação da tela `InteractiveLabView.vue`, substituindo o onboarding estático por **10 desafios pedagógicos interativos**.
+- Implementação de uma máquina de estados integrada ao `nlpParser`, avaliando os comandos digitados em tempo real.
+- Desenvolvimento das fases de aprendizagem dos arquétipos:
+  - **Task:** criação guiada com cálculo dinâmico de Score.
+  - **Event:** demonstração de bloqueio da Agenda e conflitos de horário.
+  - **Habit:** explicação da consistência diária e sistema de *Streaks*.
+  - **Note:** utilização do *Brain Dump* para captura rápida de ideias.
+
+### Simuladores Interativos
+
+- Implementação de um simulador do **Now Engine**, utilizando controles de Energia e Tempo para demonstrar o reordenamento dinâmico da fila de execução.
+- Implementação de uma simulação visual do **Estimation Accuracy Index (EAI)**, mostrando como o sistema aprende e recalibra estimativas de duração.
+
+### Pedagogia Baseada em Erros
+
+- Inclusão de cenários com falhas intencionais (como sobreposição de horários e criação de tarefas fora do turno) para demonstrar o funcionamento da **UX Defensiva**.
+- Explicação contextual do motivo de cada erro e das possíveis formas de resolução diretamente durante o laboratório.
+
+### Missão Final
+
+- Desenvolvimento de um desafio final em formato de "Boss Fight", exigindo o uso correto da gramática do Terminal Prompt para validar todo o conhecimento adquirido durante o treinamento.
+
+---
+
+## Desbloqueio Progressivo (Boot Sequence)
+
+- Reengenharia do `AppLayout.vue`, ocultando **Sidebar**, **Header** e **StatusBar** para usuários que ainda não concluíram o onboarding (`compass_onboarded === false`).
+- Criação do evento SPA `compass:boot-sequence` no `onboardingStore.ts`, permitindo que a interface seja construída gradualmente ao redor do usuário por meio de animações CSS, sem necessidade de recarregar a página.
+- Desenvolvimento do componente `PilotChecklistWidget.vue`, exibindo um checklist flutuante e reativo para orientar os primeiros passos no banco de dados real, incluindo:
+  - Criação do primeiro Projeto.
+  - Criação da primeira Task.
+  - Registro do primeiro Habit.
+  - Acesso à Agenda.
+  - Realização da primeira Daily Review.

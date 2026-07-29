@@ -199,19 +199,22 @@ export const useOnboardingStore = defineStore('onboarding', () => {
 
   // --- ENCERRAMENTO DO SANDBOX E RESTAURAÇÃO DE REDE ---
   const finishOnboarding = () => {
-    isSandboxActive.value = false;
-    commitments.value = [];
-    sessionStorage.removeItem('compass_sandbox_mode');
-    
-    try {
-      localStorage.setItem('compass_onboarded', 'true');
-    } catch (e) {
-      console.warn('[SandboxStore]: Falha ao persistir flag de onboarding.', e);
-    }
+  isSandboxActive.value = false;
+  commitments.value = [];
+  sessionStorage.removeItem('compass_sandbox_mode');
+  
+  try {
+    localStorage.setItem('compass_onboarded', 'true');
+  } catch (e) {
+    console.warn('[SandboxStore]: Falha ao persistir flag de onboarding.', e);
+  }
 
-    toastStore.showToast('Sandbox encerrado. Conectando à infraestrutura real!', 'success');
-    window.location.href = '/'; // Reload limpo para reidratar do PostgreSQL
-  };
+  // NOVA ABORDAGEM: Aciona o Boot Cinematográfico e manda para a tela /now
+  window.dispatchEvent(new Event('compass:boot-sequence'));
+  router.push('/now');
+
+  toastStore.showToast('Inicialização Completa. Banco de dados local ativado!', 'success');
+};
 
   const skipOnboarding = () => finishOnboarding();
 

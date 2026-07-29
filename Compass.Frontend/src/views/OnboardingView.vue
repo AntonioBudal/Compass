@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useOnboardingStore } from '@/stores/onboardingStore';
-import { useToastStore } from '@/stores/toastStore';
+import InteractiveLabView from '@/views/InteractiveLabView.vue';
 import { 
   Terminal, CheckCircle2, Clock, RefreshCw, 
-  FileText, ArrowRight, Check, ShieldAlert, Zap, Flame 
+  FileText, ArrowRight, Zap 
 } from 'lucide-vue-next';
 
 const emit = defineEmits<{
@@ -13,45 +13,18 @@ const emit = defineEmits<{
 }>();
 
 const onboardingStore = useOnboardingStore();
-const toastStore = useToastStore();
 
+// Fases: 'THEORY' (Passo 1 ao 5) -> 'LAB' (Tela dividida)
+const currentPhase = ref<'THEORY' | 'LAB'>('THEORY');
 const currentStep = ref(1);
 const totalSteps = 5;
-
-// Estado interativo de teste para cada tipo
-const createdTypes = ref<Record<string, boolean>>({
-  TASK: false,
-  EVENT: false,
-  HABIT: false,
-  NOTE: false
-});
-
-// Ações práticas no Sandbox (Ensinando fazendo)
-const simulateTask = () => {
-  onboardingStore.addSandboxItem('Refatorar módulo de autenticação (@45m !3)', 'TASK');
-  createdTypes.value.TASK = true;
-};
-
-const simulateEvent = () => {
-  onboardingStore.addSandboxItem('Alinhamento de Arquitetura (14:00 - 15:00)', 'EVENT');
-  createdTypes.value.EVENT = true;
-};
-
-const simulateHabit = () => {
-  onboardingStore.addSandboxItem('Beber 500ml de água e alongar (+1 Streak 🔥)', 'HABIT');
-  createdTypes.value.HABIT = true;
-};
-
-const simulateNote = () => {
-  onboardingStore.addSandboxItem('Ideia: Pesquisar sobre CRDTs para sync offline', 'NOTE');
-  createdTypes.value.NOTE = true;
-};
 
 const nextStep = () => {
   if (currentStep.value < totalSteps) {
     currentStep.value++;
   } else {
-    emit('complete');
+    // Ao final da teoria, entramos no laboratório!
+    currentPhase.value = 'LAB';
   }
 };
 
@@ -59,10 +32,19 @@ const prevStep = () => {
   if (currentStep.value > 1) currentStep.value--;
 };
 
-// Suporte a teclado Zero-Mouse
+const finishTutorial = () => {
+  onboardingStore.finishOnboarding();
+  emit('complete');
+};
+
+const skipTutorial = () => {
+  onboardingStore.skipOnboarding();
+  emit('skip');
+};
+
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') emit('skip');
-  if (e.key === 'Enter') nextStep();
+  if (e.key === 'Escape') skipTutorial();
+  if (e.key === 'Enter' && currentPhase.value === 'THEORY') nextStep();
 };
 
 onMounted(() => window.addEventListener('keydown', handleKeyDown));
@@ -70,175 +52,144 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-surface text-content font-mono select-none">
+  <div class="h-full w-full bg-surface text-content flex flex-col font-sans select-none overflow-hidden">
     
-    <!-- Cabeçalho de Progresso -->
-    <div class="p-4 border-b border-borderbase flex items-center justify-between text-xs">
-      <div class="flex items-center gap-2">
-        <span class="px-2 py-0.5 rounded bg-content text-content-invert font-bold">
-          0{{ currentStep }} / 0{{ totalSteps }}
-        </span>
-        <span class="text-content-muted uppercase tracking-wider">Anatomia dos Compromissos</span>
-      </div>
-      <button @click="emit('skip')" class="text-content-muted hover:text-content text-xs transition-colors cursor-pointer">
-        [ESC] Pular Tutorial
-      </button>
-    </div>
-
-    <!-- Conteúdo Pedagógico (5 Etapas) -->
-    <div class="p-6 md:p-8 space-y-6 min-h-[340px] flex flex-col justify-center font-sans">
+    <transition name="phase-transition" mode="out-in">
       
-      <!-- PASSO 1: TAREFA (TASK) -->
-      <div v-if="currentStep === 1" class="space-y-4 animate-fadeIn">
-        <div class="flex items-center gap-3 text-content">
-          <div class="p-2 rounded bg-app border border-borderfocus text-content">
-            <CheckCircle2 class="w-6 h-6 stroke-[2.5]" />
-          </div>
-          <h2 class="text-xl font-bold font-mono uppercase tracking-tight">1. Tarefa (Task) — Esforço Finito</h2>
-        </div>
-        
-        <p class="text-sm text-content-muted leading-relaxed font-sans">
-          A <strong>Tarefa</strong> é a unidade fundamental de trabalho do Compass. Ela representa uma ação finita que consome <strong>Tempo Estimado (minutos)</strong> e exige um nível específico de <strong>Energia Cognitiva (!1 a !3)</strong>. Assim que concluída, ela sai da sua fila de execução.
-        </p>
-
-        <div class="p-4 rounded-lg bg-app border border-borderbase space-y-3">
-          <div class="text-xs font-mono uppercase text-content-muted flex items-center justify-between">
-            <span>Teste Prático no Sandbox:</span>
-            <span v-if="createdTypes.TASK" class="text-status-success-text font-bold flex items-center gap-1">
-              <Check class="w-3.5 h-3.5" /> Gerado em RAM
+      <!-- ========================================== -->
+      <!-- FASE 1: TEORIA RÁPIDA (THEORY)             -->
+      <!-- ========================================== -->
+      <div v-if="currentPhase === 'THEORY'" class="flex flex-col h-full w-full max-w-3xl mx-auto" key="theory">
+        <!-- Cabeçalho de Progresso -->
+        <div class="p-6 border-b border-borderbase flex items-center justify-between text-xs font-mono">
+          <div class="flex items-center gap-3">
+            <span class="px-2 py-0.5 rounded bg-content text-content-invert font-bold">
+              0{{ currentStep }} / 0{{ totalSteps }}
             </span>
+            <span class="text-content-muted uppercase tracking-wider font-bold">Anatomia do Sistema</span>
           </div>
+          <button @click="skipTutorial" class="text-content-muted hover:text-content text-xs transition-colors cursor-pointer border border-borderbase px-2 py-1 rounded">
+            [ESC] Pular Tudo
+          </button>
+        </div>
+
+        <!-- Conteúdo Pedagógico Limpo -->
+        <div class="flex-1 p-8 md:p-12 flex flex-col justify-center relative">
+          <transition name="step-fade" mode="out-in">
+            
+            <!-- PASSO 1: TAREFA -->
+            <div v-if="currentStep === 1" class="space-y-6" key="step1">
+              <div class="w-14 h-14 rounded-xl bg-app border border-borderfocus flex items-center justify-center text-content shadow-sm">
+                <CheckCircle2 class="w-7 h-7 stroke-[2.5]" />
+              </div>
+              <div class="space-y-3">
+                <h2 class="text-2xl font-bold font-mono uppercase tracking-tight">1. Tarefa (Task) — Esforço Finito</h2>
+                <p class="text-base text-content-muted leading-relaxed max-w-lg">
+                  A <strong>Tarefa</strong> é a unidade fundamental de trabalho do Compass. Ela representa uma ação finita que consome <strong>Tempo Estimado</strong> e exige um nível específico de <strong>Energia Cognitiva (!1 a !3)</strong>. Assim que concluída, ela sai da sua fila para sempre.
+                </p>
+              </div>
+            </div>
+
+            <!-- PASSO 2: EVENTO -->
+            <div v-else-if="currentStep === 2" class="space-y-6" key="step2">
+              <div class="w-14 h-14 rounded-xl bg-app border border-borderfocus flex items-center justify-center text-content shadow-sm">
+                <Clock class="w-7 h-7 stroke-[2.5]" />
+              </div>
+              <div class="space-y-3">
+                <h2 class="text-2xl font-bold font-mono uppercase tracking-tight">2. Evento (Event) — Bloco Rígido</h2>
+                <p class="text-base text-content-muted leading-relaxed max-w-lg">
+                  O <strong>Evento</strong> é um compromisso preso ao relógio (ex: reuniões, consultas). Diferente da tarefa, ele não é ordenado pelo algoritmo: ele <strong>corta e bloqueia a sua Janela de Foco</strong>, impedindo conflitos temporais.
+                </p>
+              </div>
+            </div>
+
+            <!-- PASSO 3: HÁBITO -->
+            <div v-else-if="currentStep === 3" class="space-y-6" key="step3">
+              <div class="w-14 h-14 rounded-xl bg-app border border-borderfocus flex items-center justify-center text-content shadow-sm">
+                <RefreshCw class="w-7 h-7 stroke-[2.5]" />
+              </div>
+              <div class="space-y-3">
+                <h2 class="text-2xl font-bold font-mono uppercase tracking-tight">3. Hábito (Habit) — Consistência</h2>
+                <p class="text-base text-content-muted leading-relaxed max-w-lg">
+                  O <strong>Hábito</strong> é recorrente e orientado à disciplina. Concluí-lo incrementa sua sequência ativa (<strong>Streak</strong>). Ele foca em proteger sua consistência sem gerar estresse de atraso.
+                </p>
+              </div>
+            </div>
+
+            <!-- PASSO 4: NOTA -->
+            <div v-else-if="currentStep === 4" class="space-y-6" key="step4">
+              <div class="w-14 h-14 rounded-xl bg-app border border-borderfocus flex items-center justify-center text-content shadow-sm">
+                <FileText class="w-7 h-7 stroke-[2.5]" />
+              </div>
+              <div class="space-y-3">
+                <h2 class="text-2xl font-bold font-mono uppercase tracking-tight">4. Nota (Note) — Brain Dump</h2>
+                <p class="text-base text-content-muted leading-relaxed max-w-lg">
+                  A <strong>Nota</strong> é uma descarga mental de atrito zero. Possui duração nula (0m) e não consome sua janela de foco. Use para capturar ideias rápidas durante o dia para processar depois.
+                </p>
+              </div>
+            </div>
+
+            <!-- PASSO 5: TRANSIÇÃO -->
+            <div v-else-if="currentStep === 5" class="space-y-6 text-center flex flex-col items-center justify-center" key="step5">
+              <div class="w-16 h-16 rounded-full bg-app border-2 border-content flex items-center justify-center text-content shadow-lg">
+                <Terminal class="w-8 h-8 stroke-[2]" />
+              </div>
+              <div class="space-y-3">
+                <h2 class="text-3xl font-bold font-mono uppercase tracking-tight">Pronto para a Prática</h2>
+                <p class="text-base text-content-muted leading-relaxed max-w-md mx-auto">
+                  Você já sabe a teoria da arquitetura. Agora, vamos colocar as mãos no teclado e entender como o algoritmo extrai dados da sua mente em tempo real.
+                </p>
+              </div>
+            </div>
+
+          </transition>
+        </div>
+
+        <!-- Rodapé de Navegação da Teoria -->
+        <div class="p-6 bg-app border-t border-borderbase flex items-center justify-between font-mono text-xs">
           <button 
-            @click="simulateTask"
-            class="w-full py-2 px-4 rounded bg-surface hover:bg-surface-hover border border-borderfocus font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            @click="prevStep"
+            class="px-5 py-2.5 rounded-lg border border-borderbase hover:border-borderfocus text-content-muted hover:text-content transition-all cursor-pointer font-bold"
+            :class="currentStep === 1 ? 'opacity-0 pointer-events-none' : ''"
           >
-            <span>+ Simular Criação de Tarefa (@45m !3)</span>
+            [←] Voltar
+          </button>
+
+          <button 
+            @click="nextStep"
+            class="px-6 py-2.5 rounded-lg bg-content text-content-invert font-bold tracking-wider uppercase transition-all shadow-md flex items-center gap-2 cursor-pointer hover:opacity-90"
+          >
+            <span>{{ currentStep === totalSteps ? 'Entrar no Laboratório [ENTER]' : 'Avançar [ENTER]' }}</span>
+            <ArrowRight class="w-4 h-4 stroke-[3]" />
           </button>
         </div>
       </div>
 
-      <!-- PASSO 2: EVENTO (EVENT) -->
-      <div v-else-if="currentStep === 2" class="space-y-4 animate-fadeIn">
-        <div class="flex items-center gap-3 text-content">
-          <div class="p-2 rounded bg-app border border-borderfocus text-content">
-            <Clock class="w-6 h-6 stroke-[2.5]" />
-          </div>
-          <h2 class="text-xl font-bold font-mono uppercase tracking-tight">2. Evento (Event) — Bloco Rígido</h2>
-        </div>
-        
-        <p class="text-sm text-content-muted leading-relaxed font-sans">
-          O <strong>Evento</strong> é um compromisso preso ao relógio (reuniões, consultas, aulas). Diferente da tarefa, ele não é movido livremente pelo algoritmo: ele <strong>corta e bloqueia a sua Janela de Foco</strong>, impedindo que o sistema agende tarefas profundas no mesmo horário.
-        </p>
-
-        <div class="p-4 rounded-lg bg-app border border-borderbase space-y-3">
-          <div class="text-xs font-mono uppercase text-content-muted flex items-center justify-between">
-            <span>Teste Prático no Sandbox:</span>
-            <span v-if="createdTypes.EVENT" class="text-status-success-text font-bold flex items-center gap-1">
-              <Check class="w-3.5 h-3.5" /> Gerado em RAM
-            </span>
-          </div>
-          <button 
-            @click="simulateEvent"
-            class="w-full py-2 px-4 rounded bg-surface hover:bg-surface-hover border border-borderfocus font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-          >
-            <span>+ Simular Evento de Agenda (14:00 - 15:00)</span>
-          </button>
-        </div>
+      <!-- ========================================== -->
+      <!-- FASE 2: O LABORATÓRIO (LAB)                -->
+      <!-- ========================================== -->
+      <div v-else-if="currentPhase === 'LAB'" class="h-full w-full" key="lab">
+        <InteractiveLabView @complete="finishTutorial" />
       </div>
 
-      <!-- PASSO 3: HÁBITO (HABIT) -->
-      <div v-else-if="currentStep === 3" class="space-y-4 animate-fadeIn">
-        <div class="flex items-center gap-3 text-content">
-          <div class="p-2 rounded bg-app border border-borderfocus text-content">
-            <RefreshCw class="w-6 h-6 stroke-[2.5]" />
-          </div>
-          <h2 class="text-xl font-bold font-mono uppercase tracking-tight">3. Hábito (Habit) — Consistência</h2>
-        </div>
-        
-        <p class="text-sm text-content-muted leading-relaxed font-sans">
-          O <strong>Hábito</strong> é uma ação recorrente orientada à disciplina, não a prazos de entrega (ex: leitura, exercícios, revisão diária). Concluir um hábito incrementa sua sequência ativa (<strong>Streak 🔥</strong>), protegendo sua consistência diária sem gerar estresse de atraso.
-        </p>
-
-        <div class="p-4 rounded-lg bg-app border border-borderbase space-y-3">
-          <div class="text-xs font-mono uppercase text-content-muted flex items-center justify-between">
-            <span>Teste Prático no Sandbox:</span>
-            <span v-if="createdTypes.HABIT" class="text-status-success-text font-bold flex items-center gap-1">
-              <Check class="w-3.5 h-3.5" /> Gerado em RAM
-            </span>
-          </div>
-          <button 
-            @click="simulateHabit"
-            class="w-full py-2 px-4 rounded bg-surface hover:bg-surface-hover border border-borderfocus font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-          >
-            <span>+ Simular Hábito Diário (+1 Streak)</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- PASSO 4: NOTA (NOTE) -->
-      <div v-else-if="currentStep === 4" class="space-y-4 animate-fadeIn">
-        <div class="flex items-center gap-3 text-content">
-          <div class="p-2 rounded bg-app border border-borderfocus text-content">
-            <FileText class="w-6 h-6 stroke-[2.5]" />
-          </div>
-          <h2 class="text-xl font-bold font-mono uppercase tracking-tight">4. Nota (Note) — Captura Rápida</h2>
-        </div>
-        
-        <p class="text-sm text-content-muted leading-relaxed font-sans">
-          A <strong>Nota</strong> é uma descarga mental (Brain Dump) de atrito zero. Ela possui <strong>duração zero (0m)</strong> e não consome sua janela de foco. Use notas para capturar ideias, links, insights ou referências durante o dia para processar e triar com calma no encerramento.
-        </p>
-
-        <div class="p-4 rounded-lg bg-app border border-borderbase space-y-3">
-          <div class="text-xs font-mono uppercase text-content-muted flex items-center justify-between">
-            <span>Teste Prático no Sandbox:</span>
-            <span v-if="createdTypes.NOTE" class="text-status-success-text font-bold flex items-center gap-1">
-              <Check class="w-3.5 h-3.5" /> Gerado em RAM
-            </span>
-          </div>
-          <button 
-            @click="simulateNote"
-            class="w-full py-2 px-4 rounded bg-surface hover:bg-surface-hover border border-borderfocus font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-          >
-            <span>+ Simular Captura de Nota (0m)</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- PASSO 5: SÍNTESE E LIBERAÇÃO -->
-      <div v-else-if="currentStep === 5" class="space-y-4 animate-fadeIn text-center py-2 font-sans">
-        <div class="w-12 h-12 rounded-full bg-app border border-borderhighlight flex items-center justify-center text-content mx-auto">
-          <Zap class="w-6 h-6" />
-        </div>
-        <h2 class="text-xl font-bold font-mono uppercase tracking-tight">Anatomia Dominada com Sucesso</h2>
-        <p class="text-sm text-content-muted max-w-md mx-auto leading-relaxed">
-          Você testou os quatro pilares do ecossistema. O motor de decisão agora sabe como ponderar seus esforços finitos, blocos de agenda, rituais de disciplina e descargas mentais.
-        </p>
-        <div class="p-3 rounded bg-app border border-borderbase font-mono text-xs text-status-warning inline-block">
-          ⚡ Dica: Use o atalho [C] a qualquer momento para abrir a captura rápida.
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Rodapé de Navegação do Tutorial -->
-    <div class="p-4 bg-app border-t border-borderbase flex items-center justify-between text-xs font-mono">
-      <button 
-        v-if="currentStep > 1"
-        @click="prevStep"
-        class="px-4 py-2 rounded border border-borderbase hover:border-borderfocus text-content-muted hover:text-content transition-all cursor-pointer"
-      >
-        [←] Anterior
-      </button>
-      <div v-else />
-
-      <button 
-        @click="nextStep"
-        class="px-5 py-2 rounded bg-content text-content-invert font-bold tracking-wider uppercase transition-all shadow-md flex items-center gap-2 cursor-pointer hover:opacity-90"
-      >
-        <span>{{ currentStep === totalSteps ? 'Concluir Tutorial [ENTER]' : 'Próximo [ENTER]' }}</span>
-        <ArrowRight class="w-3.5 h-3.5 stroke-[3]" />
-      </button>
-    </div>
-
+    </transition>
   </div>
 </template>
+
+<style scoped>
+/* Transição Macro entre Teoria e Lab */
+.phase-transition-enter-active,
+.phase-transition-leave-active {
+  transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.phase-transition-enter-from { opacity: 0; transform: scale(0.98); }
+.phase-transition-leave-to { opacity: 0; transform: scale(1.02); }
+
+/* Transição Micro entre os 5 Passos Teóricos */
+.step-fade-enter-active,
+.step-fade-leave-active {
+  transition: all 200ms ease;
+}
+.step-fade-enter-from { opacity: 0; transform: translateX(10px); }
+.step-fade-leave-to { opacity: 0; transform: translateX(-10px); }
+</style>

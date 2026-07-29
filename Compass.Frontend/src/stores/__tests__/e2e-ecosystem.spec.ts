@@ -91,17 +91,20 @@ describe('Homologação E2E — Ecossistema Compass & Soberania de Dados', () =>
 
   it('[TESTE 2] Deve isolar o [TUTORIAL] pedagógico, limpando a RAM sem desestabilizar o ecossistema', () => {
     const onboardingStore = useOnboardingStore();
+    const commitmentsStore = useCommitmentsStore(); // Adicionado para checar o lugar certo
 
     // Supondo que o usuário estava no Sandbox Rico
     onboardingStore.activateRichSandbox();
-    expect(onboardingStore.commitments.length).toBeGreaterThan(0);
+    
+    // CORREÇÃO: Os dados do ecossistema agora vivem no commitmentsStore, não no onboarding
+    expect(commitmentsStore.items.length).toBeGreaterThan(0);
 
     // Act: Alterna para o modo Tutorial na Sidebar
     onboardingStore.startTutorialMode();
 
     // Assert: Memória limpa e pronta para o aprendizado passo a passo
     expect(onboardingStore.isSandboxActive).toBe(false);
-    expect(onboardingStore.commitments.length).toBe(0);
+    expect(commitmentsStore.items.length).toBe(0);
   });
 
   it('[TESTE 3] UX Defensiva: Deve injetar CRON diário automaticamente em Hábitos e proteger contra duplicidade diária', async () => {
@@ -122,13 +125,13 @@ describe('Homologação E2E — Ecossistema Compass & Soberania de Dados', () =>
     }
     expect(payload.cronExpression).toBe('0 8 * * *');
 
-    // Act 2: Simular hábito já concluído hoje na RAM
+    // Act 2: Simular hábito pendente, porém que já foi concluído hoje na RAM
     const todayIso = new Date().toISOString().slice(0, 10);
     const mockHabit: any = {
       id: 'habit-1',
       title: 'Leitura de Arquitetura Limpa',
       type: 'HABIT',
-      status: 'COMPLETED',
+      status: 'PENDING', // CORREÇÃO: Deve ser PENDING para não cair no "Early Return" do store!
       currentStreak: 12,
       bestStreak: 15,
       _lastCompletedDate: todayIso
