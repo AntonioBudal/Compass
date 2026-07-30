@@ -1,6 +1,5 @@
 // ============================================================================
 // COMPASS — TRIE INDEX ENGINE v1.0
-// Estrutura de Dados em RAM para Indexação Prefixada Ultrarrápida (O(L))
 // ============================================================================
 
 export interface TriePayload {

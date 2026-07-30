@@ -8,9 +8,9 @@ import SandboxTopBanner from '@/components/core/SandboxTopBanner.vue';
 import CommandBarModal from '@/components/modals/CommandBarModal.vue';
 import QuickCaptureModal from '@/components/modals/QuickCaptureModal.vue';
 import PilotChecklistWidget from '@/components/onboarding/PilotChecklistWidget.vue';
+import UniversalEntityInspector from '@/components/modals/UniversalEntityInspector.vue';
 import { isCommandBarOpen, isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
 
-// Flag de Desbloqueio Progressivo (Boot Sequence)
 const isAppReady = ref(false);
 
 const handleBootSequence = () => {
@@ -18,10 +18,7 @@ const handleBootSequence = () => {
 };
 
 onMounted(() => {
-  // 1. Checa se já fez onboarding no passado
   isAppReady.value = localStorage.getItem('compass_onboarded') === 'true';
-  
-  // 2. Escuta o evento exato do momento em que o Laboratório termina
   window.addEventListener('compass:boot-sequence', handleBootSequence);
 });
 
@@ -36,15 +33,11 @@ onUnmounted(() => {
     <SandboxTopBanner />
 
     <div class="flex-1 flex min-h-0 relative">
-      
-      <!-- BOOT SEQUENCE DA SIDEBAR -->
       <transition name="boot-sidebar">
         <Sidebar v-if="isAppReady" />
       </transition>
 
       <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        
-        <!-- BOOT SEQUENCE DO HEADER -->
         <transition name="boot-header">
           <HeaderContext v-if="isAppReady" />
         </transition>
@@ -57,17 +50,16 @@ onUnmounted(() => {
           </router-view>
         </main>
 
-        <!-- BOOT SEQUENCE DA BARRA DE STATUS -->
         <transition name="boot-status">
           <StatusBar v-if="isAppReady" />
         </transition>
       </div>
     </div>
 
-    <!-- WIDGET DO PILOTO (Só aparece se o app estiver bootado) -->
     <PilotChecklistWidget v-if="isAppReady" />
 
-    <!-- MODAIS E TOASTS -->
+    <!-- GESTÃO GLOBAL DE MODAIS (AQUI ELES EXISTEM NO DOM DE VERDADE) -->
+    <UniversalEntityInspector />
     <ToastContainer />
     <CommandBarModal :is-open="isCommandBarOpen" @close="isCommandBarOpen = false" />
     <QuickCaptureModal :is-open="isQuickCaptureOpen" @close="isQuickCaptureOpen = false" />
@@ -80,7 +72,6 @@ onUnmounted(() => {
 .page-fade-enter-from,
 .page-fade-leave-to { opacity: 0; }
 
-/* Animações Cinematográficas de Boot */
 .boot-sidebar-enter-active { transition: all 600ms cubic-bezier(0.16, 1, 0.3, 1); }
 .boot-sidebar-enter-from { opacity: 0; transform: translateX(-100%); }
 .boot-sidebar-leave-active { transition: all 300ms ease; }

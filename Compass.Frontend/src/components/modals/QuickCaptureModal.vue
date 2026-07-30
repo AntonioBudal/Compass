@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useCommitmentsStore } from '@/stores/commitmentsStore';
 import { useProjectsStore } from '@/stores/projectsStore';
 import { useToastStore } from '@/stores/toastStore';
@@ -54,6 +54,19 @@ watch(() => projectsStore.catalog, (newCatalog) => {
     projectsTrie.insertMultiWord(p.name, { id: p.id, title: p.name, lastUsedAtUtc: p.lastUsedAtUtc });
   });
 }, { immediate: true });
+
+// Listener global de injeção de projetos
+watch(() => props.isOpen, (open) => {
+  if (open) setTimeout(() => inputRef.value?.focus(), 50);
+  else { rawInput.value = ''; activeDropdown.value = null; }
+});
+
+onMounted(() => {
+  window.addEventListener('compass:inject-project', ((e: CustomEvent<string>) => {
+    rawInput.value = `#${e.detail} `;
+    setTimeout(() => inputRef.value?.focus(), 50);
+  }) as EventListener);
+});
 
 watch(rawInput, (val) => {
   if (!inputRef.value) return;
@@ -114,12 +127,8 @@ const { selectedIndex, handleKeyDown } = useKeyboardNavigation(suggestionsCount,
     const selected = currentSuggestions.value[index];
     if (selected) selectSuggestion(selected);
   },
-  onDismiss: () => {
-    activeDropdown.value = null;
-  },
-  onSubmitFallback: () => {
-    handleSubmit();
-  }
+  onDismiss: () => { activeDropdown.value = null; },
+  onSubmitFallback: () => { handleSubmit(); }
 });
 
 const onInputKeyDown = (e: KeyboardEvent) => {
@@ -128,7 +137,17 @@ const onInputKeyDown = (e: KeyboardEvent) => {
 
 const livePreview = computed(() => parseQuickCapture(rawInput.value));
 
-const handleSubmit = async () => {
+// Fallback de cálculo do próximo dia útil na ausência de resposta da API
+const getNextWorkDay = (currentIso: string | null) => {
+  const date = currentIso ? new Date(currentIso) : new Date();
+  date.setDate(date.getDate() + 1);
+  // Se cair no sábado (6), pula pra segunda (8). Se domingo (0), pula pra segunda (1).
+  if (date.getDay() === 6) date.setDate(date.getDate() + 2);
+  if (date.getDay() === 0) date.setDate(date.getDate() + 1);
+  return date.toISOString();
+};
+
+const handleSubmit = async (forceSchedule = false, overrideDateIso: string | null = null) => {
   if (!rawInput.value.trim() || isSubmitting.value) return;
   const parsed = livePreview.value;
   isSubmitting.value = true;
@@ -148,13 +167,12 @@ const handleSubmit = async () => {
       type: parsed.type,
       estimatedDurationMinutes: parsed.estimatedDurationMinutes,
       energyRequired: parsed.energyRequired,
-      deadline: parsed.deadlineIso,
+      deadline: overrideDateIso || parsed.deadlineIso,
       projectId: matchedProjectId
     });
 
     toastStore.showToast(`[${parsed.type}] capturado com sucesso!`, 'success');
     
-    // --- MOTOR DE UX DEFENSIVA: Visibility Tracker ---
     setTimeout(() => {
       const currentList = parsed.type === 'HABIT' ? commitmentsStore.habitsToday : commitmentsStore.activeCandidates;
       verifyCreationVisibility(createdItem, currentList);
@@ -163,17 +181,45 @@ const handleSubmit = async () => {
     rawInput.value = '';
     emit('close');
   } catch (err: any) {
+    const errData = err.response?.data || {};
+    const errorCode = errData.code || errData.type || '';
+    
+    // --- MOTOR DE UX DEFENSIVA: CONFLITO DE CALENDÁRIO ---
+    if (errorCode.includes('SCHEDULE_CONFLICT') || errData.message?.includes('turno') || errData.detail?.includes('turno') || errData.detail?.includes('Schedule')) {
+       // Pega a sugestão da API ou calcula o próximo dia útil
+       const suggestedDate = errData.suggestedDate || getNextWorkDay(parsed.deadlineIso);
+       
+       toastStore.showIntervention({
+         code: 'SCHEDULE_CONFLICT',
+         title: 'Fora do Calendário Útil',
+         explanation: 'A data que você escolheu cai em um período bloqueado ou dia de descanso na sua agenda. O algoritmo pode ajustá-la para você.',
+         severity: 'warning',
+         actions: [
+           {
+             label: 'Mover para o Próximo Dia Útil',
+             isPrimary: true,
+             handler: async () => {
+               isSubmitting.value = false;
+               await handleSubmit(false, suggestedDate);
+             }
+           },
+           {
+             label: 'Cancelar',
+             handler: () => {}
+           }
+         ]
+       });
+       return;
+    }
+
+    // Fallback de erro normal
     const isNetworkError = !err.response;
-    const errorMessage = err.response?.data?.detail || 
-                         err.response?.data?.title || 
-                         'Falha na validação das regras de negócio no servidor.';
+    const errorMessage = errData.detail || errData.title || 'Falha na validação das regras de negócio no servidor.';
     
     toastStore.showIntervention({
       code: isNetworkError ? 'NETWORK_FAILURE' : 'VALIDATION_ERROR',
-      title: isNetworkError ? 'Falha de Conexão com o Servidor' : 'Ação Bloqueada pelo Motor',
-      explanation: isNetworkError 
-        ? 'Não foi possível salvar no backend (.NET 10). Verifique se a API está rodando na porta 5000.'
-        : errorMessage,
+      title: isNetworkError ? 'Falha de Conexão' : 'Ação Bloqueada',
+      explanation: errorMessage,
       severity: isNetworkError ? 'blocking' : 'warning',
       actions: [{ label: 'Fechar', isPrimary: true, handler: () => {} }]
     });
@@ -181,11 +227,6 @@ const handleSubmit = async () => {
     isSubmitting.value = false;
   }
 };
-
-watch(() => props.isOpen, (open) => {
-  if (open) setTimeout(() => inputRef.value?.focus(), 50);
-  else { rawInput.value = ''; activeDropdown.value = null; }
-});
 </script>
 
 <template>
@@ -240,14 +281,14 @@ watch(() => props.isOpen, (open) => {
                 <Folder class="w-3.5 h-3.5" />
                 <span>#{{ livePreview.projectQuery }}</span>
               </span>
-              <span v-if="livePreview.deadlineIso" class="flex items-center gap-1 text-content-muted" title="Limite temporal (23:59 local)">
+              <span v-if="livePreview.deadlineIso" class="flex items-center gap-1 text-content-muted" title="Limite temporal">
                 <Calendar class="w-3.5 h-3.5 text-content" />
                 <span>{{ new Date(livePreview.deadlineIso).toLocaleDateString() }}</span>
               </span>
             </div>
 
             <button
-              @click="handleSubmit"
+              @click="() => handleSubmit(false, null)"
               :disabled="!rawInput.trim() || isSubmitting"
               class="px-3.5 py-1.5 rounded-tactic bg-content hover:opacity-90 disabled:opacity-40 text-content-invert font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >

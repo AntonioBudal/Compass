@@ -1,32 +1,35 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useCommitmentsStore, type CommitmentItem } from '@/stores/commitmentsStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
-import { RefreshCw, Flame, Check, PlusCircle, Trophy, Calendar, Sparkles } from 'lucide-vue-next';
+import { RefreshCw, Flame, Check, PlusCircle, Trophy } from 'lucide-vue-next';
 import TacticalHorizonBar, { type HorizonOption } from '@/components/core/TacticalHorizonBar.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import InspectableCard from '@/components/core/InspectableCard.vue';
 
 const store = useCommitmentsStore();
-const pulsingHabitId = ref<string | null>(null);
+const settingsStore = useSettingsStore();
 
-// ABA ATUAL DE HORIZONTE TÁTICO
+const pulsingHabitId = ref<string | null>(null);
 const currentHorizon = ref<HorizonOption>('today');
+
+// Reatividade de Densidade (Compacto vs Detalhado)
+const viewDensity = computed(() => settingsStore.getViewDensity('habits'));
 
 onMounted(() => {
   store.fetchAllActive();
 });
 
-// Filtra os hábitos visíveis conforme o horizonte selecionado no topo
 const habits = computed(() => {
   const allHabits = store.items.filter(i => i.type === 'HABIT' && i.status !== 'ARCHIVED');
   
   if (currentHorizon.value === 'today') {
     return allHabits.filter(i => !i.cronExpression || i.cronExpression.includes('*'));
   }
-  // Em horizontes expandidos ("tomorrow", "3days", "week"), exibe todos os hábitos cadastrados
   return allHabits;
 });
 
-// Contadores para o cabeçalho temporal
 const horizonCounts = computed(() => {
   const all = store.items.filter(i => i.type === 'HABIT' && i.status !== 'ARCHIVED').length;
   return {
@@ -41,7 +44,6 @@ const openNewHabitModal = () => {
   isQuickCaptureOpen.value = true;
 };
 
-// Conclusão com trava defensiva (impedir dois cliques e comemorar consistência)
 const handleCompleteHabit = (item: CommitmentItem) => {
   if (item.status === 'COMPLETED') return;
 
@@ -62,34 +64,23 @@ const getStreakVariant = (streak: number) => {
 
 <template>
   <div class="max-w-4xl mx-auto space-y-6 select-none">
-    <!-- Cabeçalho de Hábitos -->
-    <div class="flex items-center justify-between gap-4 pb-4 border-b border-borderbase">
-      <div>
-        <h1 class="text-2xl font-semibold text-content tracking-tight flex items-center gap-2.5">
-          <span>Hábitos Diários</span>
-          <span class="text-xs font-mono bg-surface text-content-muted px-2 py-0.5 rounded border border-borderbase">
-            {{ habits.length }} no Horizonte
-          </span>
-        </h1>
-        <p class="text-sm text-content-muted mt-1">
-          Manutenção de consistência diária (streaks) integrada diretamente às invariantes de energia do motor.
-        </p>
-      </div>
+    
+    <!-- 1. CABEÇALHO UNIVERSAL COM DENSITY TOGGLE -->
+    <PageHeader 
+      title="Hábitos Diários"
+      :badgeCount="habits.length"
+      badgeLabel="no Horizonte"
+      description="Manutenção de consistência diária (streaks) integrada diretamente às invariantes de energia do motor."
+      actionLabel="Novo Hábito"
+      :actionIcon="PlusCircle"
+      @action="openNewHabitModal"
+      viewName="habits"
+      :showDensityToggle="true"
+    />
 
-      <button 
-        @click="openNewHabitModal"
-        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-tactic bg-surface hover:bg-surface-hover border border-borderbase text-xs font-medium text-content-muted hover:text-content transition-all shadow-sm cursor-pointer"
-      >
-        <PlusCircle class="w-3.5 h-3.5 text-content-muted" />
-        <span>Novo Hábito</span>
-        <kbd class="px-1 text-[10px] font-mono bg-app rounded border border-borderbase text-content-muted">C</kbd>
-      </button>
-    </div>
-
-    <!-- HORIZONTE TÁTICO (Evita que itens fiquem escondidos por ciclo) -->
     <TacticalHorizonBar v-model="currentHorizon" :counts="horizonCounts" />
 
-    <!-- ESTADO VAZIO DEFENSIVO COM EXPLICAÇÃO DO HORIZONTE -->
+    <!-- ESTADO VAZIO DEFENSIVO -->
     <div v-if="habits.length === 0" class="p-12 rounded-xl border border-dashed border-borderbase bg-app/40 text-center space-y-4">
       <div class="w-12 h-12 rounded-full bg-surface border border-borderfocus flex items-center justify-center mx-auto text-content">
         <RefreshCw class="w-6 h-6" />
@@ -100,7 +91,7 @@ const getStreakVariant = (streak: number) => {
         </h3>
         <p class="text-xs text-content-muted leading-relaxed">
           {{ currentHorizon === 'today'
-            ? 'Você possui hábitos configurados em outros dias da semana. Alterne para [Amanhã] ou [Próxima Semana] para visualizá-los.'
+            ? 'Você possui hábitos configurados em outros dias. Alterne para [Amanhã] ou [Próxima Semana].'
             : 'Hábitos criam disciplina mecânica. Cadastre sua primeira rotina diária para iniciar o rastreamento de calor.' }}
         </p>
       </div>
@@ -123,66 +114,78 @@ const getStreakVariant = (streak: number) => {
       </div>
     </div>
 
-    <!-- LISTA DE HÁBITOS DE ALTA DENSIDADE -->
-    <div v-else class="space-y-3">
-      <div 
+    <!-- LISTA DE HÁBITOS COM DENSIDADE REATIVA -->
+    <div v-else class="space-y-2">
+      <InspectableCard
         v-for="item in habits" 
         :key="item.id"
-        class="group relative flex items-start justify-between gap-4 p-4 rounded-lg border border-borderbase bg-surface hover:bg-surface-hover transition-all duration-tactic"
-        :class="{ 'opacity-60 bg-app/40': item.status === 'COMPLETED' }"
+        :entity="item"
+        type="COMMITMENT"
       >
-        <!-- Checkbox de Streak Diário -->
-        <div class="flex items-start gap-3 min-w-0 flex-1">
-          <button 
-            type="button"
-            @click="handleCompleteHabit(item)"
-            class="mt-0.5 w-5 h-5 rounded border border-borderbase bg-app flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-borderhighlight cursor-pointer"
-            :class="item.status === 'COMPLETED'
-              ? 'bg-status-success-bg border-status-success-border text-status-success-text shadow-sm'
-              : 'hover:border-borderfocus'"
-            :disabled="item.status === 'COMPLETED'"
-            title="Concluir Hábito Hoje"
-          >
-            <Check v-if="item.status === 'COMPLETED'" class="w-3.5 h-3.5 stroke-[3]" />
-          </button>
-
-          <!-- Centro: Hierarquia de Dados -->
-          <div class="min-w-0 flex-1 space-y-1.5">
-            <p 
-              class="text-sm font-medium text-content group-hover:text-content-accent transition-colors truncate"
-              :class="{ 'line-through text-content-muted': item.status === 'COMPLETED' }"
+        <div 
+          class="flex justify-between gap-4 rounded-lg border border-borderbase bg-surface hover:bg-surface-hover transition-all duration-tactic w-full"
+          :class="[
+            { 'opacity-60 bg-app/40': item.status === 'COMPLETED' },
+            viewDensity === 'compact' ? 'p-2.5 items-center' : 'p-4 items-start'
+          ]"
+        >
+          <div class="flex items-start gap-3 min-w-0 flex-1">
+            <!-- Checkbox de Streak -->
+            <button 
+              type="button"
+              @click.stop="handleCompleteHabit(item)"
+              class="rounded border border-borderbase bg-app flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-borderhighlight cursor-pointer flex-shrink-0"
+              :class="[
+                item.status === 'COMPLETED' ? 'bg-status-success-bg border-status-success-border text-status-success-text shadow-sm' : 'hover:border-borderfocus',
+                viewDensity === 'compact' ? 'w-4 h-4 mt-0' : 'w-5 h-5 mt-0.5'
+              ]"
+              :disabled="item.status === 'COMPLETED'"
+              title="Concluir Hábito Hoje"
             >
-              {{ item.title }}
-            </p>
+              <Check v-if="item.status === 'COMPLETED'" class="stroke-[3]" :class="viewDensity === 'compact' ? 'w-3 h-3' : 'w-3.5 h-3.5'" />
+            </button>
 
-            <div class="flex flex-wrap items-center gap-3 text-xs font-mono text-content-muted">
-              <span class="text-content-muted">
-                {{ item.energyRequired === 3 ? 'Alta' : item.energyRequired === 1 ? 'Baixa' : 'Média' }}
-              </span>
-              <span>•</span>
-              <span>CRON: {{ item.cronExpression || 'Todos os dias' }}</span>
-              <span>•</span>
-              <span class="flex items-center gap-1 text-content-muted">
-                <Trophy class="w-3 h-3 text-status-warning" /> Recorde: {{ item.bestStreak || item.currentStreak }}d
-              </span>
+            <!-- Título e Dados -->
+            <div class="min-w-0 flex-1" :class="viewDensity === 'compact' ? 'flex items-center justify-between gap-4' : 'space-y-1.5'">
+              <p 
+                class="font-medium text-content transition-colors truncate"
+                :class="[
+                  { 'line-through text-content-muted': item.status === 'COMPLETED' },
+                  viewDensity === 'compact' ? 'text-xs' : 'text-sm'
+                ]"
+              >
+                {{ item.title }}
+              </p>
+
+              <!-- Metadados Táticos (Ocultos no modo Compacto para limpar a tela) -->
+              <div v-if="viewDensity === 'detailed'" class="flex flex-wrap items-center gap-3 text-xs font-mono text-content-muted">
+                <span class="text-content-muted">{{ item.energyRequired === 3 ? 'Alta' : item.energyRequired === 1 ? 'Baixa' : 'Média' }}</span>
+                <span>•</span>
+                <span>CRON: {{ item.cronExpression || 'Todos os dias' }}</span>
+                <span>•</span>
+                <span class="flex items-center gap-1 text-content-muted">
+                  <Trophy class="w-3 h-3 text-status-warning" /> Recorde: {{ item.bestStreak || item.currentStreak }}d
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Lado Direito: O Badge de Rastreio de Calor -->
-        <div class="flex items-center gap-3 flex-shrink-0">
-          <span 
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border transition-transform duration-tactic"
-            :class="[
-              getStreakVariant(item.currentStreak),
-              { 'scale-125 shadow-[0_0_14px_rgba(255,255,255,0.18)]': pulsingHabitId === item.id }
-            ]"
-          >
-            <Flame class="w-3.5 h-3.5 inline text-status-warning" :class="{ 'animate-bounce': pulsingHabitId === item.id }" />
-            <span>{{ item.currentStreak }}d</span>
-          </span>
+          <!-- Flame Badge Rastreio de Calor -->
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <span 
+              class="inline-flex items-center gap-1.5 rounded-md font-mono border transition-transform duration-tactic"
+              :class="[
+                getStreakVariant(item.currentStreak),
+                { 'scale-125 shadow-[0_0_14px_rgba(255,255,255,0.18)]': pulsingHabitId === item.id },
+                viewDensity === 'compact' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'
+              ]"
+            >
+              <Flame class="inline text-status-warning" :class="[{ 'animate-bounce': pulsingHabitId === item.id }, viewDensity === 'compact' ? 'w-3 h-3' : 'w-3.5 h-3.5']" />
+              <span>{{ item.currentStreak }}d</span>
+            </span>
+          </div>
         </div>
-      </div>
+      </InspectableCard>
     </div>
   </div>
 </template>
