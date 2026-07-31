@@ -43,4 +43,17 @@ public class EventCommitment : Commitment
         if (end <= start)
             throw new InvalidTimeRangeException(start, end);
     }
+
+    public void UpdateEventDetails(DateTime start, DateTime end, string? location)
+    {
+        if (Status == CommitmentStatus.Archived)
+            throw new DomainException("Não é possível alterar os detalhes de um evento arquivado.");
+            
+        if (end <= start)
+            throw new InvalidTimeRangeException(start, end);
+
+        StartTime = start;
+        EndTime = end;
+        LocationOrLink = location?.Trim();
+    }
 }

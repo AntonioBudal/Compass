@@ -28,4 +28,12 @@ public class NoteCommitment : Commitment
         ConvertedToCommitmentId = newCommitmentId;
         Status = CommitmentStatus.Archived;
     }
+
+    public void UpdateNoteDetails(string? content)
+    {
+        if (Status == CommitmentStatus.Archived)
+            throw new DomainException("Não é possível alterar os detalhes de uma nota arquivada.");
+            
+        Content = content?.Trim();
+    }
 }

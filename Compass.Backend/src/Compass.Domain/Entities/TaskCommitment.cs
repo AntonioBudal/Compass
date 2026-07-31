@@ -82,4 +82,20 @@ public class TaskCommitment : Commitment
             PostponedCount++;
         }
     }
+
+    public void UpdateTaskDetails(int duration, short energy, DateTime? deadline)
+    {
+        if (Status == CommitmentStatus.Archived)
+            throw new DomainException("Não é possível alterar os detalhes de uma tarefa arquivada.");
+        
+        if (duration < 5)
+            throw new DomainException("Toda tarefa executável deve possuir duração estimada maior ou igual a 5 minutos.");
+            
+        if (energy < 1 || energy > 3)
+            throw new DomainException("A energia requerida deve estar entre 1 (Baixa) e 3 (Alta).");
+
+        EstimatedDurationMinutes = duration;
+        EnergyRequired = energy;
+        Deadline = deadline;
+    }
 }

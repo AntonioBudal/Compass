@@ -143,4 +143,57 @@ public class CommitmentService : ICommitmentService
             c.ProjectId, projectName
         );
     }
+
+    public async Task<CommitmentDto> UpdateAsync(Guid userId, Guid commitmentId, UpdateCommitmentDto dto, CancellationToken cancellationToken = default)
+    {
+        var commitment = await _commitmentRepo.GetByIdAsync(commitmentId, cancellationToken)
+            ?? throw new DomainException("Compromisso não encontrado.");
+
+        if (commitment.UserId != userId)
+            throw new DomainException("Acesso negado a este compromisso.");
+
+        // 1. Atualiza propriedades base
+        commitment.UpdateBaseDetails(dto.Title, dto.ProjectId);
+
+        // 2. Atualiza propriedades específicas por Tipo
+        switch (commitment)
+        {
+            case TaskCommitment task:
+                task.UpdateTaskDetails(
+                    dto.EstimatedDurationMinutes ?? task.EstimatedDurationMinutes, 
+                    dto.EnergyRequired ?? task.EnergyRequired, 
+                    dto.Deadline);
+                break;
+                
+            case HabitCommitment habit:
+                habit.UpdateHabitDetails(
+                    dto.CronExpression ?? habit.CronExpression, 
+                    dto.EstimatedDurationMinutes ?? habit.EstimatedDurationMinutes, 
+                    dto.EnergyRequired ?? habit.EnergyRequired);
+                break;
+                
+            case EventCommitment evt:
+                evt.UpdateEventDetails(
+                    dto.StartTime ?? evt.StartTime, 
+                    dto.EndTime ?? evt.EndTime, 
+                    dto.LocationOrLink);
+                break;
+                
+            case NoteCommitment note:
+                note.UpdateNoteDetails(dto.Content);
+                break;
+        }
+
+        _commitmentRepo.Update(commitment);
+        await _commitmentRepo.SaveChangesAsync(cancellationToken);
+
+        string? projectName = null;
+        if (commitment.ProjectId.HasValue)
+        {
+            var project = await _projectRepo.GetByIdAsync(commitment.ProjectId.Value, cancellationToken);
+            projectName = project?.Title;
+        }
+
+        return MapToDto(commitment, projectName);
+    }
 }

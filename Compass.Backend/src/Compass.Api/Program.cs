@@ -81,6 +81,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<IGoalRepository, GoalRepository>();
+builder.Services.AddScoped<IGoalService, GoalService>();
 
 builder.Services.AddHealthChecks().AddDbContextCheck<CompassDbContext>("postgres_db", tags: new[] { "db", "sql", "postgresql" });
 

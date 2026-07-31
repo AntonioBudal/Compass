@@ -5,4 +5,11 @@
     <Project Path="src/Compass.Domain/Compass.Domain.csproj" />
     <Project Path="src/Compass.Infrastructure/Compass.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Compass.Api.Tests/Compass.Api.Tests.csproj" />
+    <Project Path="tests/Compass.Application.Tests/Compass.Application.Tests.csproj" />
+    <Project Path="tests/Compass.Domain.Tests/Compass.Domain.Tests.csproj" />
+    <Project Path="tests/Compass.Infrastructure.Tests/Compass.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Compass.Tests.Shared/Compass.Tests.Shared.csproj" />
+  </Folder>
 </Solution>

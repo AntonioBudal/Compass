@@ -36,6 +36,18 @@ public abstract class Commitment
         CreatedAt = DateTime.UtcNow;
     }
 
+    public virtual void UpdateBaseDetails(string title, Guid? projectId)
+    {
+        if (Status == CommitmentStatus.Archived)
+            throw new DomainException("Não é possível alterar os detalhes de um item arquivado.");
+
+        if (string.IsNullOrWhiteSpace(title) || title.Trim().Length < 3)
+            throw new DomainException("O título do compromisso deve ter pelo menos 3 caracteres.");
+
+        Title = title.Trim();
+        ProjectId = projectId;
+    }
+
     public virtual void SetProject(Guid? projectId)
     {
         if (Status == CommitmentStatus.Archived)

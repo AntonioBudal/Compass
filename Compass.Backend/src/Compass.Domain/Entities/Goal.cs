@@ -51,6 +51,19 @@ public class Goal
         }
     }
 
+    public void UpdateGoalDetails(string title, string? whyDescription, DateTime? targetDate)
+    {
+        
+
+        if (string.IsNullOrWhiteSpace(title) || title.Trim().Length < 3)
+            throw new DomainException("O título da meta deve ter pelo menos 3 caracteres.");
+
+        Title = title.Trim();
+        WhyDescription = whyDescription?.Trim();
+        TargetDate = targetDate;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void ClearDomainEvents() => _domainEvents.Clear();
     protected void AddDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
 }

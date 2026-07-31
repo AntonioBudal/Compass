@@ -13,14 +13,18 @@ public class CommitmentsController : ControllerBase
     private readonly IValidator<CreateCommitmentDto> _createValidator;
     private readonly IValidator<UpdateStatusDto> _statusValidator;
 
+    private readonly IValidator<UpdateCommitmentDto> _updateValidator;
+
     public CommitmentsController(
         ICommitmentService commitmentService,
         IValidator<CreateCommitmentDto> createValidator,
+        IValidator<UpdateCommitmentDto> updateValidator,
         IValidator<UpdateStatusDto> statusValidator)
     {
         _commitmentService = commitmentService;
         _createValidator = createValidator;
         _statusValidator = statusValidator;
+        _updateValidator = updateValidator;
     }
 
     [HttpGet]
@@ -76,6 +80,25 @@ public class CommitmentsController : ControllerBase
         var userId = GetUserId();
         var result = await _commitmentService.UpdateStatusAsync(userId, id, dto, cancellationToken);
         return Ok(result);
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(CommitmentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Update(
+        Guid id, 
+        [FromBody] UpdateCommitmentDto dto, 
+        CancellationToken cancellationToken = default)
+    {
+        var validationResult = await _updateValidator.ValidateAsync(dto, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
+        }
+
+        var userId = GetUserId();
+        var updated = await _commitmentService.UpdateAsync(userId, id, dto, cancellationToken);
+        return Ok(updated);
     }
 
     private Guid GetUserId()

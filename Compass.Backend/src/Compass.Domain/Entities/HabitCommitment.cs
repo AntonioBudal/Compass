@@ -52,4 +52,17 @@ public class HabitCommitment : Commitment
         CurrentStreak = 0;
         Status = CommitmentStatus.Pending;
     }
+
+    public void UpdateHabitDetails(string cron, int duration, short energy)
+    {
+        if (Status == CommitmentStatus.Archived)
+            throw new DomainException("Não é possível alterar os detalhes de um hábito arquivado.");
+            
+        if (string.IsNullOrWhiteSpace(cron))
+            throw new DomainException("Um hábito deve possuir uma expressão CRON válida.");
+
+        CronExpression = cron.Trim();
+        EstimatedDurationMinutes = duration;
+        EnergyRequired = energy;
+    }
 }
