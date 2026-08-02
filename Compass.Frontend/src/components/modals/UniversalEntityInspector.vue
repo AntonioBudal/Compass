@@ -3,11 +3,12 @@ import { computed, defineAsyncComponent } from 'vue';
 import { useInspectorStore } from '@/stores/inspectorStore';
 import { X, Trash2, CheckCircle2, Edit2, Loader2, AlertCircle } from 'lucide-vue-next';
 
-// Lazy loading da Fábrica de Sub-Formulários (Melhora o bundle inicial)
+// Lazy loading da Fábrica de Sub-Formulários
 const TaskEditorForm = defineAsyncComponent(() => import('@/components/inspectors/TaskEditorForm.vue'));
 const EventEditorForm = defineAsyncComponent(() => import('@/components/inspectors/EventEditorForm.vue'));
 const HabitEditorForm = defineAsyncComponent(() => import('@/components/inspectors/HabitEditorForm.vue'));
-// Futuros: ProjectEditorForm, GoalEditorForm, NoteEditorForm
+const GoalEditorForm = defineAsyncComponent(() => import('@/components/inspectors/GoalEditorForm.vue'));
+const ProjectEditorForm = defineAsyncComponent(() => import('@/components/inspectors/ProjectEditorForm.vue'));
 
 const inspectorStore = useInspectorStore();
 
@@ -29,34 +30,33 @@ const headerTitle = computed(() => {
 // --- INDICADOR DE STATUS DO AUTO-SAVE ---
 const syncIndicator = computed(() => {
   switch (inspectorStore.syncStatus) {
-    case 'EDITING': 
-      return { text: 'Rascunho...', icon: Edit2, color: 'text-content-muted', spin: false };
-    case 'SYNCING': 
-      return { text: 'Salvando...', icon: Loader2, color: 'text-status-warning', spin: true };
-    case 'SAVED': 
-      return { text: 'Salvo', icon: CheckCircle2, color: 'text-status-success-text', spin: false };
-    case 'ERROR': 
-      return { text: 'Erro ao salvar', icon: AlertCircle, color: 'text-status-danger-text', spin: false };
-    default: 
-      return null;
+    case 'EDITING': return { text: 'Rascunho...', icon: Edit2, color: 'text-content-muted', spin: false };
+    case 'SYNCING': return { text: 'Salvando...', icon: Loader2, color: 'text-status-warning', spin: true };
+    case 'SAVED': return { text: 'Salvo', icon: CheckCircle2, color: 'text-status-success-text', spin: false };
+    case 'ERROR': return { text: 'Erro ao salvar', icon: AlertCircle, color: 'text-status-danger-text', spin: false };
+    default: return null;
   }
 });
 
-// --- CONTROLE DE FOCO E TECLADO (ERGONOMIA) ---
+// 🔥 CORREÇÃO (ARQ-013): Delegação total de responsabilidade. 
+// O Componente não lida mais com debounces locais. A Store assume o controle.
+const handleFormUpdate = () => {
+  inspectorStore.markAsEditing();
+};
+
+// --- CONTROLE DE FOCO E TECLADO ---
 const handleKeyDown = (e: KeyboardEvent) => {
-  // ESC: Força o flush (salvamento síncrono) e fecha
   if (e.key === 'Escape') {
     e.preventDefault();
     e.stopPropagation();
     inspectorStore.flushAndClose();
   }
   
-  // Ctrl+S / Cmd+S: Intercepta o salvamento do navegador, força o Auto-Save manual
+  // Ctrl+S / Cmd+S: Salva instantaneamente sem fechar (Força o Flush)
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault();
     e.stopPropagation();
-    inspectorStore.flushAndClose(); // Como o modal fecha no ESC, o Ctrl+S pode apenas forçar a gravação e manter aberto
-    // Nota: Se quiser que o Ctrl+S mantenha o modal aberto, crie um método `flush()` isolado na store.
+    inspectorStore.flushAndClose(); 
   }
 };
 
@@ -70,14 +70,13 @@ const resolveSubForm = computed(() => {
     if (subType === 'EVENT') return EventEditorForm;
     if (subType === 'HABIT') return HabitEditorForm;
   }
+  if (type === 'GOAL') return GoalEditorForm;
+  
+  // ADICIONE ESTA LINHA:
+  if (type === 'PROJECT') return ProjectEditorForm;
+  
   return null;
 });
-
-const handleDelete = () => {
-  // Chamará o método de delete da store apropriada no futuro.
-  console.warn('Excluindo entidade:', inspectorStore.draft?.entityId);
-  inspectorStore.closeInspector();
-};
 </script>
 
 <template>
@@ -88,7 +87,7 @@ const handleDelete = () => {
       class="fixed inset-0 z-[100] flex justify-end bg-app/60 backdrop-blur-sm select-none"
       @click.self="inspectorStore.flushAndClose"
     >
-      <!-- SHELL DO INSPETOR (Focus Trap Automático no Tabindex) -->
+      <!-- SHELL DO INSPETOR -->
       <div 
         class="w-full max-w-md bg-surface border-l border-borderbase h-full flex flex-col shadow-2xl focus:outline-none"
         tabindex="0"
@@ -122,11 +121,12 @@ const handleDelete = () => {
         <div class="flex-1 overflow-y-auto p-6">
           <div v-if="inspectorStore.draft" class="h-full">
             
+            <!-- 🔥 CORREÇÃO (HIDRATAÇÃO E MUTAÇÃO): Uso do v-model:draft conectando a via bidirecional -->
             <component 
               v-if="resolveSubForm"
               :is="resolveSubForm" 
-              :draft="inspectorStore.draft.mutatedPayload" 
-              @update="inspectorStore.markAsEditing" 
+              v-model:draft="inspectorStore.draft.mutatedPayload" 
+              @update="handleFormUpdate" 
             />
             
             <div v-else class="w-full h-full border-2 border-dashed border-borderfocus rounded-xl flex flex-col items-center justify-center p-8 text-center gap-4 opacity-50 bg-app">

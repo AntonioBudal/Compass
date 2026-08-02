@@ -4,11 +4,9 @@ import { useCommitmentsStore } from '@/stores/commitmentsStore';
 import { useProjectsStore } from '@/stores/projectsStore';
 import { useToastStore } from '@/stores/toastStore';
 import { parseQuickCapture } from '@/utils/nlpParser';
-import { TrieIndex } from '@/utils/trieIndex';
-import { useKeyboardNavigation } from '@/composables/useKeyboardNavigation';
-import AutoCompleteDropdown, { type DropdownItem } from '@/components/core/AutoCompleteDropdown.vue';
-import { Terminal, CornerDownLeft, Clock, Zap, Calendar, Folder } from 'lucide-vue-next';
 import { useVisibilityTracker } from '@/composables/useVisibilityTracker';
+import { Terminal, CornerDownLeft, Clock, Zap, Calendar, Folder } from 'lucide-vue-next';
+import OmniInput from '@/components/core/OmniInput.vue';
 
 const props = defineProps<{ isOpen: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -18,130 +16,24 @@ const projectsStore = useProjectsStore();
 const toastStore = useToastStore();
 const { verifyCreationVisibility } = useVisibilityTracker();
 
-const inputRef = ref<HTMLInputElement | null>(null);
 const rawInput = ref('');
 const isSubmitting = ref(false);
-
-const projectsTrie = new TrieIndex();
-const activeDropdown = ref<'PROJECT' | 'TYPE' | 'TIME' | 'DATE' | null>(null);
-const dropdownQuery = ref('');
-
-const typeSuggestions: DropdownItem[] = [
-  { label: '/t — Tarefa Operacional', value: '/t' },
-  { label: '/h — Hábito ou Rotina', value: '/h' },
-  { label: '/e — Evento ou Reunião', value: '/e' },
-  { label: '/n — Nota / Captura Rápida', value: '/n' }
-];
-
-const timeSuggestions: DropdownItem[] = [
-  { label: '@15m — Sprint Curta (15 min)', value: '@15m' },
-  { label: '@30m — Turno Padrão (30 min)', value: '@30m' },
-  { label: '@45m — Foco Intenso (45 min)', value: '@45m' },
-  { label: '@1h — Bloco Profundo (60 min)', value: '@1h' },
-  { label: '@2h — Imersão Total (120 min)', value: '@2h' }
-];
-
-const dateSuggestions: DropdownItem[] = [
-  { label: '^hoje — Limite às 23:59 de hoje', value: '^hoje' },
-  { label: '^amanha — Limite às 23:59 de amanhã', value: '^amanha' },
-  { label: '^seg — Próxima Segunda-feira', value: '^seg' },
-  { label: '^sex — Próxima Sexta-feira', value: '^sex' }
-];
-
-watch(() => projectsStore.catalog, (newCatalog) => {
-  projectsTrie.clear();
-  newCatalog.forEach(p => {
-    projectsTrie.insertMultiWord(p.name, { id: p.id, title: p.name, lastUsedAtUtc: p.lastUsedAtUtc });
-  });
-}, { immediate: true });
-
-// Listener global de injeção de projetos
-watch(() => props.isOpen, (open) => {
-  if (open) setTimeout(() => inputRef.value?.focus(), 50);
-  else { rawInput.value = ''; activeDropdown.value = null; }
-});
 
 onMounted(() => {
   window.addEventListener('compass:inject-project', ((e: CustomEvent<string>) => {
     rawInput.value = `#${e.detail} `;
-    setTimeout(() => inputRef.value?.focus(), 50);
   }) as EventListener);
 });
 
-watch(rawInput, (val) => {
-  if (!inputRef.value) return;
-  const cursor = inputRef.value.selectionStart || val.length;
-  const textBeforeCursor = val.slice(0, cursor);
-  const match = textBeforeCursor.match(/([#\/^@])([a-zA-Z0-9_-]*)$/);
-
-  if (match) {
-    const trigger = match[1];
-    dropdownQuery.value = match[2];
-
-    if (trigger === '#') activeDropdown.value = 'PROJECT';
-    else if (trigger === '/') activeDropdown.value = 'TYPE';
-    else if (trigger === '@') activeDropdown.value = 'TIME';
-    else if (trigger === '^') activeDropdown.value = 'DATE';
-  } else {
-    activeDropdown.value = null;
-  }
+watch(() => props.isOpen, (open) => {
+  if (!open) rawInput.value = '';
 });
-
-const currentSuggestions = computed<DropdownItem[]>(() => {
-  if (!activeDropdown.value) return [];
-
-  if (activeDropdown.value === 'PROJECT') {
-    if (!dropdownQuery.value) {
-      return projectsStore.lruProjects.slice(0, 6).map(p => ({
-        label: `#${p.name}`, value: `#${p.name}`, id: p.id
-      }));
-    }
-    const results = projectsTrie.searchPrefix(dropdownQuery.value, 6);
-    return results.map(r => ({ label: `#${r.title}`, value: `#${r.title}`, id: r.id }));
-  }
-  if (activeDropdown.value === 'TYPE') return typeSuggestions.filter(s => s.value.includes(dropdownQuery.value.toLowerCase()));
-  if (activeDropdown.value === 'TIME') return timeSuggestions.filter(s => s.value.includes(dropdownQuery.value.toLowerCase()));
-  if (activeDropdown.value === 'DATE') return dateSuggestions.filter(s => s.value.includes(dropdownQuery.value.toLowerCase()));
-
-  return [];
-});
-
-const suggestionsCount = computed(() => currentSuggestions.value.length);
-
-const selectSuggestion = (item: DropdownItem) => {
-  if (!inputRef.value) return;
-  const cursor = inputRef.value.selectionStart || rawInput.value.length;
-  const textBefore = rawInput.value.slice(0, cursor);
-  const textAfter = rawInput.value.slice(cursor);
-
-  const newTextBefore = textBefore.replace(/([#\/^@])([a-zA-Z0-9_-]*)$/, item.value + ' ');
-  rawInput.value = newTextBefore + textAfter;
-  activeDropdown.value = null;
-
-  if (item.id) projectsStore.promoteUsage(item.id);
-  setTimeout(() => inputRef.value?.focus(), 10);
-};
-
-const { selectedIndex, handleKeyDown } = useKeyboardNavigation(suggestionsCount, {
-  onSelect: (index) => {
-    const selected = currentSuggestions.value[index];
-    if (selected) selectSuggestion(selected);
-  },
-  onDismiss: () => { activeDropdown.value = null; },
-  onSubmitFallback: () => { handleSubmit(); }
-});
-
-const onInputKeyDown = (e: KeyboardEvent) => {
-  handleKeyDown(e, Boolean(activeDropdown.value && suggestionsCount.value > 0));
-};
 
 const livePreview = computed(() => parseQuickCapture(rawInput.value));
 
-// Fallback de cálculo do próximo dia útil na ausência de resposta da API
 const getNextWorkDay = (currentIso: string | null) => {
   const date = currentIso ? new Date(currentIso) : new Date();
   date.setDate(date.getDate() + 1);
-  // Se cair no sábado (6), pula pra segunda (8). Se domingo (0), pula pra segunda (1).
   if (date.getDay() === 6) date.setDate(date.getDate() + 2);
   if (date.getDay() === 0) date.setDate(date.getDate() + 1);
   return date.toISOString();
@@ -154,11 +46,19 @@ const handleSubmit = async (forceSchedule = false, overrideDateIso: string | nul
 
   try {
     let matchedProjectId: string | null = null;
+    
+    // 🔥 CORREÇÃO (ARQ-028 & BUG-027): CRIAÇÃO CASCADA (Projeto -> Tarefa)
     if (parsed.projectQuery) {
       const match = projectsStore.catalog.find(p => p.name.toLowerCase() === parsed.projectQuery?.toLowerCase());
+      
       if (match) {
+        // Projeto já existe
         matchedProjectId = match.id;
         projectsStore.promoteUsage(match.id);
+      } else {
+        // PROJETO NOVO! Cria no banco antes de criar a tarefa
+        const newProject = await projectsStore.createProject(parsed.projectQuery);
+        matchedProjectId = newProject.id;
       }
     }
 
@@ -184,9 +84,7 @@ const handleSubmit = async (forceSchedule = false, overrideDateIso: string | nul
     const errData = err.response?.data || {};
     const errorCode = errData.code || errData.type || '';
     
-    // --- MOTOR DE UX DEFENSIVA: CONFLITO DE CALENDÁRIO ---
     if (errorCode.includes('SCHEDULE_CONFLICT') || errData.message?.includes('turno') || errData.detail?.includes('turno') || errData.detail?.includes('Schedule')) {
-       // Pega a sugestão da API ou calcula o próximo dia útil
        const suggestedDate = errData.suggestedDate || getNextWorkDay(parsed.deadlineIso);
        
        toastStore.showIntervention({
@@ -195,24 +93,17 @@ const handleSubmit = async (forceSchedule = false, overrideDateIso: string | nul
          explanation: 'A data que você escolheu cai em um período bloqueado ou dia de descanso na sua agenda. O algoritmo pode ajustá-la para você.',
          severity: 'warning',
          actions: [
-           {
-             label: 'Mover para o Próximo Dia Útil',
-             isPrimary: true,
-             handler: async () => {
+           { label: 'Mover para o Próximo Dia Útil', isPrimary: true, handler: async () => {
                isSubmitting.value = false;
                await handleSubmit(false, suggestedDate);
              }
            },
-           {
-             label: 'Cancelar',
-             handler: () => {}
-           }
+           { label: 'Cancelar', handler: () => {} }
          ]
        });
        return;
     }
 
-    // Fallback de erro normal
     const isNetworkError = !err.response;
     const errorMessage = errData.detail || errData.title || 'Falha na validação das regras de negócio no servidor.';
     
@@ -238,7 +129,7 @@ const handleSubmit = async (forceSchedule = false, overrideDateIso: string | nul
           <div class="flex items-center justify-between px-4 py-2.5 bg-app border-b border-borderbase text-xs text-content-muted rounded-t-xl">
             <span class="flex items-center gap-2 font-bold uppercase tracking-wider text-content">
               <Terminal class="w-4 h-4 text-content-muted" />
-              <span>Quick Capture CLI v2.0</span>
+              <span>Quick Capture CLI v3.0</span>
             </span>
             <span class="text-[11px] flex items-center gap-3">
               <span>Gatilhos: <strong class="text-content">#</strong>proj <strong class="text-content">@</strong>tempo <strong class="text-content">!</strong>ene <strong class="text-content">^</strong>data <strong class="text-content">/</strong>tipo</span>
@@ -246,21 +137,13 @@ const handleSubmit = async (forceSchedule = false, overrideDateIso: string | nul
             </span>
           </div>
 
-          <div class="p-4 relative">
-            <input
-              ref="inputRef"
+          <div class="p-4 relative bg-surface">
+            <OmniInput
               v-model="rawInput"
-              type="text"
-              placeholder="Digite sua tarefa... (ex: Revisar PR #core @45m !3 ^amanha /t)"
-              class="w-full bg-transparent text-lg font-sans text-content placeholder-content-muted/50 focus:outline-none"
-              @keydown="onInputKeyDown"
-            />
-
-            <AutoCompleteDropdown
-              :items="currentSuggestions"
-              :selected-index="selectedIndex"
-              :trigger-type="activeDropdown"
-              @select="selectSuggestion"
+              placeholder="O que vamos fazer agora? (ex: Revisar PR #core @45m !3 ^amanha /t)"
+              :autofocus="isOpen"
+              @submit="handleSubmit(false, null)"
+              @escape="emit('close')"
             />
           </div>
 

@@ -54,6 +54,16 @@ const routes: RouteRecordRaw[] = [
     name: 'sandbox',
     component: () => import('@/views/OnboardingView.vue'),
     meta: { title: 'RAM Sandbox (Modo Treinamento)', requiresAuth: false, isSandbox: true }
+  },
+  {
+  path: '/library',
+  name: 'Library',
+  component: () => import('@/views/LibraryView.vue')
+  },
+  {
+  path: '/database',
+  name: 'Database',
+  component: () => import('@/views/DatabaseView.vue')
   }
 ];
 

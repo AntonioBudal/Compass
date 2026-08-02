@@ -493,7 +493,7 @@
   - Teste de estresse com **500 compromissos**.
   - Verificação de latência reativa em memória inferior a **16 ms**.
 
-  # 2026-07-29
+# 2026-07-29
 
 ## Laboratório Interativo & "Glass-Box" Pipeline
 
@@ -505,8 +505,6 @@
   - Transição automática para o laboratório interativo em **Split View**.
 
 ---
-
-## Trilha de Descoberta (10 Fases)
 
 - Criação da tela `InteractiveLabView.vue`, substituindo o onboarding estático por **10 desafios pedagógicos interativos**.
 - Implementação de uma máquina de estados integrada ao `nlpParser`, avaliando os comandos digitados em tempo real.
@@ -542,3 +540,101 @@
   - Registro do primeiro Habit.
   - Acesso à Agenda.
   - Realização da primeira Daily Review.
+
+# 2026-07-30
+
+# Universal Entity Inspector & UX Foundation
+
+- Início da substituição do `EditCommitmentModal.vue` pelo novo `UniversalEntityInspector.vue`, estabelecendo uma arquitetura única para edição de todas as entidades do sistema.
+
+- Criação da infraestrutura do `inspectorStore`, utilizando um **Draft isolado** para impedir mutações diretas nas Stores durante a edição.
+
+- Estruturação do **Shell do Inspetor Universal** com carregamento dinâmico  para formulários especializados de Tasks, Habits, Events, Projects, Goals e Notes.
+
+- Implementação do **Slide-over Inspector**, com atalhos de teclado (`ESC`, `Ctrl+S`), indicador de Auto-Save e base para persistência desacoplada das Stores de domínio.
+
+# Interface Adaptativa (View Density)
+
+- Planejamento da infraestrutura de **View Density**, permitindo alternar entre modo detalhado e modo compacto em diferentes telas do Compass.
+
+- Definição da arquitetura para reutilização da densidade visual em `NowEngineView`, `ProjectsView` e futuras páginas do sistema.
+
+- Preparação dos componentes (`CommitmentCard` e `TopFocusCard`) para suportarem múltiplos níveis de informação sem duplicação de código.
+
+# UX Defensiva
+
+- Planejamento da próxima camada de **UX Defensiva**, expandindo o conceito para todos os modais e fluxos de edição do sistema.
+
+- Definição dos principais cenários de intervenção ao usuário para evitar ações silenciosas, conflitos e perda de dados durante operações críticas.
+
+# 2026-07-31
+
+# Autocomplete Engine
+
+- Implementação da infraestrutura inicial do Autocomplete Engine baseada em Providers independentes.
+
+- Criação da primeira suíte de testes automatizados com Vitest para validar o funcionamento do motor de autocomplete.
+
+- Diagnóstico da integração entre o motor e a Quick Capture, identificando que o algoritmo estava funcionando, mas ainda não conectado à interface.
+
+- Definição da estratégia para utilizar o histórico de tarefas como principal fonte de sugestões inteligentes (Ghost Text).
+
+# Universal Entity Inspector
+
+- Finalização da auditoria do fluxo de edição do Universal Inspector.
+
+- Confirmação de que o Frontend está enviando corretamente os payloads de atualização para o Backend.
+
+- Investigação do problema de "Phantom Save", onde o Frontend indicava sucesso mesmo sem persistência dos dados.
+
+# Auditoria do Backend
+
+- Descoberta da ausência completa da infraestrutura de Update para Goals e Commitments.
+
+- Identificação da falta de Controllers, DTOs, Validators, Services e métodos de domínio responsáveis pela edição das entidades.
+
+- Planejamento da implementação completa do pipeline de atualização seguindo a arquitetura em camadas do projeto.
+
+# Infraestrutura de Testes
+
+- Planejamento da arquitetura de testes do Backend.
+
+- Organização da estrutura para testes de Domain, Application, Infrastructure e API.
+
+- Definição da base para testes unitários, integração, End-to-End e cobertura de código.
+
+# 2026-08-01
+
+# Correções de Backend e Sincronização
+
+- Correção dos erros de validação do Backend (.NET) relacionados à duração mínima de tarefas e expressões CRON de hábitos.
+
+- Implementação de sanitização de dados legados no Frontend para evitar envio de tarefas com duração inválida.
+
+- Refatoração das Stores para preservar a reatividade utilizando `Object.assign`, corrigindo a atualização das telas após edições.
+
+- Adição do controle de hidratação (`isLoaded`) para evitar requisições desnecessárias e problemas de cache.
+
+# Universal Entity Inspector
+
+- Finalização da integração do Auto-Save entre o Inspector e o Backend para Compromissos, Metas e Projetos.
+
+- Migração dos formulários para o padrão `defineModel`, simplificando a comunicação entre o Inspector e os componentes de edição.
+
+# Agenda
+
+- Refatoração do `AllocationPickerModal`, permitindo alocação direta de tarefas e hábitos na Agenda com cálculo automático de horários.
+
+- Ajustes no payload enviado ao endpoint `PUT` para compatibilidade com as validações do Backend.
+
+# Biblioteca View
+
+- Criação da `LibraryView.vue` reunindo documentação da arquitetura, sintaxe do Quick Capture, atalhos de teclado e conceitos do sistema.
+
+- Integração da nova tela na Sidebar e no sistema de rotas.
+
+# Database View
+
+- Implementação da `DatabaseView.vue`, exibindo todos os registros persistidos em uma tabela de alta densidade.
+
+- Adição de filtros por tipo, status e projeto, além de ações para abrir o Inspector e excluir registros.

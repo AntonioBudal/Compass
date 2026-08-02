@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { useCommitmentsStore } from '@/stores/commitmentsStore';
 import { useDecisionStore } from '@/stores/decisionStore';
 import { useJournalStore } from '@/stores/journalStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -9,12 +8,11 @@ import { isCommandBarOpen, isQuickCaptureOpen } from '@/composables/useKeyboardS
 import { 
   Search, Zap, Calendar, Folder, Target, RefreshCw, 
   PlusCircle, FileText, Sliders, Power, Download, 
-  CheckCircle2, CornerDownLeft 
+  CornerDownLeft 
 } from 'lucide-vue-next';
 import { useFocusTrap } from '@/composables/useFocusTrap';
 
 const router = useRouter();
-const commitmentsStore = useCommitmentsStore();
 const decisionStore = useDecisionStore();
 const journalStore = useJournalStore();
 const settingsStore = useSettingsStore();
@@ -43,7 +41,7 @@ interface CommandItem {
   title: string;
   subtitle?: string;
   icon: any;
-  category: 'ação' | 'navegação' | 'sistema' | 'compromisso';
+  category: 'ação' | 'navegação' | 'sistema';
   action: () => void;
 }
 
@@ -97,7 +95,7 @@ const allItems = computed<CommandItem[]>(() => {
     category: 'sistema',
     action: () => {
       isCommandBarOpen.value = false;
-      settingsStore.exportData();
+      settingsStore.exportBackup();
     }
   });
 
@@ -123,25 +121,6 @@ const allItems = computed<CommandItem[]>(() => {
         router.push(n.path);
       }
     });
-  });
-
-  // 3. Compromissos Locais
-  commitmentsStore.items.forEach(item => {
-    if (item.status !== 'COMPLETED' && item.status !== 'ARCHIVED') {
-      list.push({
-        id: `com-${item.id}`,
-        title: item.title,
-        subtitle: `[${item.type}] | ${item.estimatedDurationMinutes}m | Status: ${item.status}`,
-        icon: CheckCircle2,
-        category: 'compromisso',
-        action: () => {
-          isCommandBarOpen.value = false;
-          if (item.type === 'TASK') {
-            commitmentsStore.updateStatus(item.id, 'COMPLETED');
-          }
-        }
-      });
-    }
   });
 
   if (!query) return list;
@@ -177,10 +156,9 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
 <template>
   <transition name="modal-snap">
-    <!-- Fundo Flutuante Tático (Corrige o bug da barra fixa no DOM!) -->
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] p-4 bg-app/80 backdrop-blur-sm select-none"
+      class="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] p-4 bg-app/80 backdrop-blur-sm select-none"
       @click="isCommandBarOpen = false"
     >
       <div
@@ -192,14 +170,13 @@ const handleKeyDown = (e: KeyboardEvent) => {
         @click.stop
         @keydown="handleKeyDown"
       >
-        <!-- Input de Busca -->
         <div class="relative flex items-center px-4 border-b border-borderbase">
           <Search class="w-5 h-5 text-content-muted flex-shrink-0" />
           <input 
             ref="inputRef"
             v-model="searchQuery"
             type="text" 
-            placeholder="Digitar comando ou buscar tarefa..." 
+            placeholder="Digitar comando para navegação (ex: agenda)..." 
             class="w-full py-4 px-3 bg-transparent text-sm text-content placeholder:text-content-muted focus:outline-none font-sans"
           />
           <button 
@@ -210,7 +187,6 @@ const handleKeyDown = (e: KeyboardEvent) => {
           </button>
         </div>
 
-        <!-- Lista -->
         <div class="flex-1 overflow-y-auto p-2 space-y-1 max-h-[50vh]">
           <div v-if="allItems.length === 0" class="py-12 text-center text-xs font-mono text-content-muted">
             Nenhum comando encontrado para "[{{ searchQuery }}]".
@@ -241,7 +217,6 @@ const handleKeyDown = (e: KeyboardEvent) => {
           </button>
         </div>
 
-        <!-- Rodapé Monocromático -->
         <div class="px-4 py-2 bg-app border-t border-borderbase flex items-center justify-between text-[11px] font-mono text-content-muted">
           <div class="flex items-center gap-3">
             <span><kbd class="bg-surface border border-borderbase px-1 rounded text-content-muted">↑↓</kbd> Navegar</span>

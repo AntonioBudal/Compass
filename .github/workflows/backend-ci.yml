@@ -1,0 +1,41 @@
+name: Compass Backend CI
+
+# Gatilhos: O robô roda em qualquer push para a main ou ao abrir um PR
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "main", "master", "develop" ]
+
+jobs:
+  build-and-test:
+    name: Build & Test (.NET 10)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout do Código
+      uses: actions/checkout@v4
+
+    - name: Configurar o .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restaurar Dependências
+      # Ajuste o caminho se o seu arquivo .slnx estiver em outra pasta
+      run: dotnet restore Compass.Backend/Compass.slnx
+
+    - name: Compilar a Solution (Release)
+      run: dotnet build Compass.Backend/Compass.slnx --no-restore --configuration Release
+
+    - name: Executar Bateria de Testes
+      # O robô roda os testes em Release para garantir a performance e coleta a cobertura nativamente
+      run: dotnet test Compass.Backend/Compass.slnx --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
+
+    - name: Salvar Relatórios de Cobertura (Artefato)
+      uses: actions/upload-artifact@v4
+      # Salva o arquivo XML de cobertura para podermos auditar no painel do GitHub depois
+      if: always() 
+      with:
+        name: cobertura-de-codigo
+        path: 'Compass.Backend/**/TestResults/**/*.xml'

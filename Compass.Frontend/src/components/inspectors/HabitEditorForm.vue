@@ -2,11 +2,13 @@
 import { Clock, Folder } from 'lucide-vue-next';
 import VisualCronEditor from './VisualCronEditor.vue';
 
-// Recebe o Payload mutável do Draft Reativo (inspectorStore)
-const props = defineProps<{ draft: any }>();
+// 🔥 CORREÇÃO (ARQ-013): Uso do defineModel para garantir Two-Way Binding
+// Isso permite que o filho edite o rascunho sem quebrar a reatividade do UniversalEntityInspector
+const draft = defineModel<any>('draft', { required: true });
+
 const emit = defineEmits<{ (e: 'update'): void }>();
 
-// Auxiliar para disparar o emit em eventos de tecla/mudança
+// Auxiliar para disparar o emit em eventos de tecla/mudança para o Auto-Save
 const triggerSave = () => emit('update');
 </script>
 
@@ -71,7 +73,6 @@ const triggerSave = () => emit('update');
           type="text" placeholder="Sem projeto (avulso)"
           class="w-full pl-9 pr-3 py-2 bg-app border border-borderbase rounded-tactic text-sm text-content focus:border-borderfocus focus:outline-none"
         />
-        <!-- NOTA: Na etapa de componentização do TrieIndex, este input será transformado no dropdown de autocomplete -->
       </div>
     </div>
 

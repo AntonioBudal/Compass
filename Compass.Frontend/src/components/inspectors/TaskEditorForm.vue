@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Clock, Folder } from 'lucide-vue-next';
 
-// Recebe o Payload do Draft Reativo da Etapa 2
-defineProps<{ draft: any }>();
-const emit = defineEmits<{ (e: 'update'): void }>();
 
-// Auxiliar para disparar o emit em eventos de tecla/mudança
+// Isso legaliza a mutação bidirecional (v-model) sem gerar warnings no Vue.
+const draft = defineModel<any>('draft', { required: true });
+
+// o @update apenas para avisar o Pai que ele deve iniciar o timer de 1 segundo do Auto-Save
+const emit = defineEmits<{ (e: 'update'): void }>();
 const triggerSave = () => emit('update');
 </script>
 

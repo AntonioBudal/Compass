@@ -2,8 +2,8 @@
 import { ref, watch, onMounted } from 'vue';
 import { Calendar } from 'lucide-vue-next';
 
-const props = defineProps<{ modelValue: string }>();
-const emit = defineEmits<{ (e: 'update:modelValue', value: string): void }>();
+// Permite que inicie nulo ou indefinido vindo do banco
+const modelValue = defineModel<string | null>({ required: false, default: null });
 
 const preset = ref<'DAILY' | 'WEEKDAYS' | 'WEEKENDS' | 'CUSTOM'>('DAILY');
 const time = ref('08:00');
@@ -18,7 +18,7 @@ const daysOfWeek = [
 const parseCron = (cron: string) => {
   if (!cron) return;
   const parts = cron.split(' ');
-  if (parts.length !== 5) return; // Fallback silencioso se for inválido
+  if (parts.length !== 5) return; 
 
   time.value = `${parts[1].padStart(2, '0')}:${parts[0].padStart(2, '0')}`;
   const dayPart = parts[4];
@@ -38,7 +38,16 @@ const parseCron = (cron: string) => {
   }
 };
 
-onMounted(() => parseCron(props.modelValue));
+onMounted(() => {
+  if (!modelValue.value) {
+    // Inicializa um CRON padrão "Diário às 08:00" na tela, sem salvar no banco ainda
+    time.value = '08:00';
+    preset.value = 'DAILY';
+    selectedDays.value = [0, 1, 2, 3, 4, 5, 6];
+  } else {
+    parseCron(modelValue.value);
+  }
+});
 
 // Builder Direto (Serialização: UI -> CRON)
 const buildCronAndEmit = () => {
@@ -52,11 +61,21 @@ const buildCronAndEmit = () => {
   }
 
   const cronString = `${parseInt(mm, 10)} ${parseInt(hh, 10)} * * ${dayPart}`;
-  emit('update:modelValue', cronString);
+  modelValue.value = cronString; // 🔥 ARQ-013: Utilizando defineModel limpo sem emit manual redundante
 };
 
 const applyPreset = (p: typeof preset.value) => {
   preset.value = p;
+  
+  // 🔥 CORREÇÃO (BUG-011): Sincroniza a memória explicitamente ao aplicar um preset
+  if (p === 'DAILY') {
+    selectedDays.value = [0, 1, 2, 3, 4, 5, 6];
+  } else if (p === 'WEEKDAYS') {
+    selectedDays.value = [1, 2, 3, 4, 5];
+  } else if (p === 'WEEKENDS') {
+    selectedDays.value = [0, 6];
+  }
+
   buildCronAndEmit();
 };
 
@@ -70,7 +89,6 @@ const toggleDay = (d: number) => {
   buildCronAndEmit();
 };
 
-// Se o usuário mudar a hora pelo input de time, recalcula.
 watch(time, buildCronAndEmit);
 </script>
 
@@ -100,7 +118,7 @@ watch(time, buildCronAndEmit);
         <button 
           v-for="day in daysOfWeek" :key="day.val" type="button"
           @click="toggleDay(day.val)"
-          :class="(preset === 'CUSTOM' && selectedDays.includes(day.val)) || preset !== 'CUSTOM' && (preset === 'DAILY' || (preset === 'WEEKDAYS' && day.val >= 1 && day.val <= 5) || (preset === 'WEEKENDS' && (day.val === 0 || day.val === 6))) ? 'bg-content-accent text-white border-content-accent' : 'bg-app border-borderbase text-content-muted hover:border-borderfocus'"
+          :class="selectedDays.includes(day.val) ? 'bg-content-accent text-white border-content-accent' : 'bg-app border-borderbase text-content-muted hover:border-borderfocus'"
           class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold border transition-colors cursor-pointer"
         >
           {{ day.label }}

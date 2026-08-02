@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Compass.Domain\Compass.Domain.csproj" />
+    <ProjectReference Include="..\Compass.Tests.Shared\Compass.Tests.Shared.csproj" />
   </ItemGroup>
 
 </Project>

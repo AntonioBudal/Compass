@@ -6,7 +6,7 @@ export const DraftCommitmentSchema = z.object({
   title: z.string().trim().min(1, 'O título não pode ficar em branco.'),
   type: z.enum(['TASK', 'HABIT', 'EVENT', 'NOTE']),
   estimatedDurationMinutes: z.number().int().nonnegative().optional(),
-  energyRequired: z.number().int().min(1).max(3).optional(),
+  energyRequired: z.number().int().min(0).max(3).optional(), // min(0) permite o estado inicial do banco
   projectId: z.string().uuid().nullable().optional(),
   // Validações específicas por tipo
   cronExpression: z.string().nullable().optional(),

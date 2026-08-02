@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import axios from 'axios';
+import { ref, computed, watch } from 'vue';
 import { CompassApi } from '@/services/api';
 import { useToastStore } from '@/stores/toastStore';
+import { GlobalHistoryProvider } from '@/utils/autocomplete/providers/HistoryProvider';
 import type { 
   CommitmentDto, 
   CreateCommitmentDto, 
@@ -15,11 +17,34 @@ export type CommitmentItem = CommitmentDto & {
   _lastCompletedDate?: string | null;
 };
 
+
+
+const databaseItems = ref<CommitmentItem[]>([]);
+  const databaseTotal = ref<number>(0);
+  const isDatabaseLoading = ref<boolean>(false);
+
+  export interface DatabaseFilters {
+    search?: string;
+    type?: 'TASK' | 'EVENT' | 'HABIT' | 'NOTE' | '';
+    status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED' | '';
+    projectId?: string;
+  }
+
 export const useCommitmentsStore = defineStore('commitments', () => {
   const toastStore = useToastStore();
   const items = ref<CommitmentItem[]>([]);
   const isLoading = ref<boolean>(false);
   const globalError = ref<string | null>(null);
+  const isLoaded = ref<boolean>(false);
+
+  
+
+  watch(() => items.value, (newItems) => {
+    if (newItems) {
+      // O HistoryProvider fará a deduplicação e calculará os pesos matemáticos
+      GlobalHistoryProvider.syncData(newItems);
+    }
+  }, { deep: true, immediate: true });
 
   const activeCandidates = computed(() => 
     items.value.filter(i => 
@@ -48,17 +73,65 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     return Array.from(map.values());
   });
 
-  const fetchAllActive = async () => {
+  const fetchAllActive = async (force: boolean = false) => {
+    // Se já carregou uma vez na sessão e não estamos forçando, preserva a memória local!
+    if (isLoaded.value && !force) return; 
+
     isLoading.value = true;
     globalError.value = null;
     try {
       const data = await CompassApi.getActiveCommitments();
       items.value = data;
+      isLoaded.value = true; // Marca como hidratado
     } catch (err: any) {
       globalError.value = 'Falha ao sincronizar compromissos locais com o servidor.';
       console.error('Erro em fetchAllActive:', err);
     } finally {
       isLoading.value = false;
+    }
+  };
+
+  const fetchDatabase = async (page = 1, limit = 50, filters?: DatabaseFilters) => {
+    isDatabaseLoading.value = true;
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      
+      // Monta os parâmetros da URL
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.type) params.append('type', filters.type);
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.projectId) params.append('projectId', filters.projectId);
+
+      // Assumindo que o Backend criará esta rota no futuro
+      const res = await axios.get(`${baseUrl}/commitments/all?${params.toString()}`, {
+        headers: { 'X-User-Id': '11111111-1111-1111-1111-111111111111' }
+      });
+      
+      // Suporta tanto o retorno paginado { items: [], total: x } quanto o array direto []
+      databaseItems.value = res.data.items || res.data || [];
+      databaseTotal.value = res.data.total || databaseItems.value.length;
+
+    } catch (err: any) {
+      console.warn('[CommitmentsStore] Endpoint de Database não encontrado ou falhou. Usando Mock de RAM.', err);
+      
+      // Mock Temporário: Simula o banco filtrando os dados que já temos na RAM
+      let mockList = [...items.value];
+      if (filters?.search) {
+        const q = filters.search.toLowerCase();
+        mockList = mockList.filter(i => i.title.toLowerCase().includes(q));
+      }
+      if (filters?.type) mockList = mockList.filter(i => i.type === filters.type);
+      if (filters?.status) mockList = mockList.filter(i => i.status === filters.status);
+      if (filters?.projectId) mockList = mockList.filter(i => i.projectId === filters.projectId);
+      
+      databaseItems.value = mockList;
+      databaseTotal.value = mockList.length;
+    } finally {
+      isDatabaseLoading.value = false;
     }
   };
 
@@ -161,20 +234,32 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     }
   };
 
-  const updateCommitment = async (id: string, payload: UpdateCommitmentDto) => {
+  const updateCommitment = async (id: string, payload: UpdateCommitmentDto, isSilent: boolean = false) => {
+    
+    const dbIndex = databaseItems.value.findIndex(i => i.id === id);
+    if (dbIndex !== -1) {
+      Object.assign(databaseItems.value[dbIndex], payload, { _isSyncing: true });
+    }
+    
     const index = items.value.findIndex(i => i.id === id);
     if (index === -1) return;
 
     const originalItem = { ...items.value[index] };
+    
+    // Mutação Otimista
     Object.assign(items.value[index], payload, { _isSyncing: true });
 
     try {
       const updated = await CompassApi.updateCommitment(id, payload);
-      items.value[index] = updated;
-      toastStore.showToast('Compromisso atualizado.', 'neutral');
+      
+      
+      Object.assign(items.value[index], updated, { _isSyncing: false });
+      
+      if (!isSilent) toastStore.showToast('Compromisso atualizado.', 'neutral');
     } catch (err: any) {
-      items.value[index] = originalItem;
-      toastStore.showToast('Falha na edição. Alterações revertidas.', 'error');
+      // Reverte mantendo a mesma referência
+      Object.assign(items.value[index], originalItem, { _isSyncing: false });
+      if (!isSilent) toastStore.showToast('Falha na edição. Alterações revertidas.', 'error');
       throw err;
     }
   };
@@ -248,6 +333,12 @@ export const useCommitmentsStore = defineStore('commitments', () => {
   };
 
   const deleteCommitment = async (id: string) => {
+
+    const dbIndex = databaseItems.value.findIndex(i => i.id === id);
+    if (dbIndex !== -1) {
+      databaseItems.value.splice(dbIndex, 1);
+      databaseTotal.value = Math.max(0, databaseTotal.value - 1);
+    }
     const index = items.value.findIndex(i => i.id === id);
     if (index === -1) return;
 
@@ -292,6 +383,10 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     createCommitment,
     updateCommitment,
     updateStatus,
-    deleteCommitment
+    deleteCommitment,
+    databaseItems,
+    databaseTotal,
+    isDatabaseLoading,
+    fetchDatabase
   };
 });

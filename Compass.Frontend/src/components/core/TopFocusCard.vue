@@ -1,6 +1,7 @@
 ﻿<script setup lang="ts">
 import { computed } from 'vue';
 import { useDecisionStore, type ScoredActionDto } from '@/stores/decisionStore';
+import { useCommitmentsStore } from '@/stores/commitmentsStore'; // 🔥 Injetado
 import ScoreBreakdownPanel from '@/components/core/ScoreBreakdownPanel.vue';
 import { Zap, Clock, Terminal, ShieldAlert, CheckCircle2, CornerDownRight } from 'lucide-vue-next';
 
@@ -12,12 +13,42 @@ const props = withDefaults(defineProps<{
 });
 
 const decisionStore = useDecisionStore();
+const commitmentsStore = useCommitmentsStore(); // 🔥 Injetado
 const profile = computed(() => decisionStore.adaptiveProfile);
 
 const emit = defineEmits<{
   (e: 'complete', id: string): void;
   (e: 'postpone', id: string): void;
 }>();
+
+// 🔥 CORREÇÃO (BUG-007): Componente Autônomo para Conclusão
+const handleComplete = async (id: string) => {
+  // 1. Marca como concluído no banco local/API
+  await commitmentsStore.updateStatus(id, 'COMPLETED');
+  
+  // 2. Gira o motor de decisão para puxar a próxima melhor tarefa!
+  await decisionStore.fetchNow();
+  
+  emit('complete', id); // Mantido por retrocompatibilidade
+};
+
+// 🔥 CORREÇÃO (BUG-007): Componente Autônomo para Adiar (+15m)
+const handlePostpone = async (id: string) => {
+  // 1. Busca a tarefa real no cache
+  const target = commitmentsStore.items.find(i => i.id === id);
+  if (target) {
+    // 2. Adiciona 15 minutos ao tempo estimado
+    const newTime = (target.estimatedDurationMinutes || 30) + 15;
+    
+    // 3. Salva a alteração (passando 'true' no final para ser silencioso sem toast)
+    await commitmentsStore.updateCommitment(id, { estimatedDurationMinutes: newTime }, true);
+    
+    // 4. Gira o motor para recalcular a pontuação com o novo tempo
+    await decisionStore.fetchNow();
+  }
+  
+  emit('postpone', id); // Mantido por retrocompatibilidade
+};
 </script>
 
 <template>
@@ -26,7 +57,7 @@ const emit = defineEmits<{
     :class="density === 'compact' ? 'p-3.5' : 'p-5'"
   >
     
-    <!-- Linha Superior: Arquétipo & Status (Ocultada no Modo Compacto) -->
+    <!-- Linha Superior: Arquétipo & Status -->
     <div v-if="density === 'detailed'" class="flex items-center justify-between text-xs text-content-muted pb-3 border-b border-borderbase/60">
       <div class="flex items-center gap-2">
         <Terminal class="w-4 h-4 text-content" />
@@ -54,12 +85,13 @@ const emit = defineEmits<{
         </h2>
       </div>
 
-      <!-- No Modo Compacto, as Ações Rápidas sobem para o lado do título -->
+      <!-- Ações Rápidas (Compacto) -->
       <div v-if="density === 'compact'" class="flex items-center gap-2 flex-shrink-0">
-        <button @click="emit('postpone', item.commitmentId)" class="px-3 py-1.5 text-[11px] font-bold rounded bg-surface-hover hover:bg-surface-active text-content border border-borderbase transition-colors cursor-pointer">
+        <!-- 🔥 Binds de Eventos Corrigidos -->
+        <button @click.stop="handlePostpone(item.commitmentId)" class="px-3 py-1.5 text-[11px] font-bold rounded bg-surface-hover hover:bg-surface-active text-content border border-borderbase transition-colors cursor-pointer">
           Adiar
         </button>
-        <button @click="emit('complete', item.commitmentId)" class="px-3 py-1.5 text-[11px] font-bold rounded bg-content text-content-invert hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer shadow-sm">
+        <button @click.stop="handleComplete(item.commitmentId)" class="px-3 py-1.5 text-[11px] font-bold rounded bg-content text-content-invert hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer shadow-sm">
           <CheckCircle2 class="w-3.5 h-3.5" />
           <span>Concluir</span>
         </button>
@@ -70,7 +102,7 @@ const emit = defineEmits<{
       <p class="text-sm font-sans">Nenhuma ação compatível encontrada para sua janela de {{ decisionStore.availableWindow }}m.</p>
     </div>
 
-    <!-- Métrica Tática & Ações Rápidas (Base) -->
+    <!-- Métrica Tática & Ações Rápidas (Detalhado) -->
     <div v-if="item" class="flex flex-wrap items-center justify-between gap-4" :class="density === 'compact' ? 'pt-2 border-t border-borderbase/60' : 'pt-3 border-t border-borderbase/60'">
       <div class="flex items-center gap-4 text-xs">
         <div class="flex items-center gap-1.5">
@@ -86,19 +118,20 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <!-- No Modo Detalhado, as Ações Rápidas ficam embaixo -->
+      <!-- Ações Rápidas (Detalhado) -->
       <div v-if="density === 'detailed'" class="flex items-center gap-2">
-        <button @click="emit('postpone', item.commitmentId)" class="px-3 py-1.5 text-xs font-bold rounded bg-surface-hover hover:bg-surface-active text-content border border-borderbase transition-colors cursor-pointer">
+        <!-- 🔥 Binds de Eventos Corrigidos -->
+        <button @click.stop="handlePostpone(item.commitmentId)" class="px-3 py-1.5 text-xs font-bold rounded bg-surface-hover hover:bg-surface-active text-content border border-borderbase transition-colors cursor-pointer">
           Adiar (+15m)
         </button>
-        <button @click="emit('complete', item.commitmentId)" class="px-4 py-1.5 text-xs font-bold rounded bg-content text-content-invert hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer shadow-sm">
+        <button @click.stop="handleComplete(item.commitmentId)" class="px-4 py-1.5 text-xs font-bold rounded bg-content text-content-invert hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer shadow-sm">
           <CheckCircle2 class="w-3.5 h-3.5" />
           <span>Concluir</span>
         </button>
       </div>
     </div>
 
-    <!-- BADGE DE TRANSPARÊNCIA E EXPLICABILIDADE (Ocultada no Modo Compacto) -->
+    <!-- BADGE DE TRANSPARÊNCIA E EXPLICABILIDADE -->
     <template v-if="density === 'detailed'">
       <div class="mt-4 pt-2.5 border-t border-borderbase/40 min-h-[32px] flex items-center">
         <div v-if="item?.wasTimeAdjustedByEai" class="w-full flex items-center justify-between text-[11px] bg-surface-hover border border-borderfocus/60 px-3 py-1 rounded text-content">

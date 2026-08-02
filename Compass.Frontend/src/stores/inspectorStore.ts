@@ -4,6 +4,8 @@ import { useCommitmentsStore, type CommitmentItem } from './commitmentsStore';
 import { useToastStore } from './toastStore';
 import cloneDeep from 'lodash/cloneDeep';
 import { DraftCommitmentSchema } from '@/schemas/draftSchema';
+import { useGoalsStore } from './goalsStore';
+import { useProjectsStore } from './projectsStore';
 
 export type InspectableType = 'COMMITMENT' | 'PROJECT' | 'GOAL';
 
@@ -19,6 +21,8 @@ export type SyncStatus = 'IDLE' | 'EDITING' | 'SYNCING' | 'SAVED' | 'ERROR' | 'P
 export const useInspectorStore = defineStore('inspector', () => {
   const commitmentsStore = useCommitmentsStore();
   const toastStore = useToastStore();
+  const goalsStore = useGoalsStore();
+  const projectsStore = useProjectsStore();
 
   const isOpen = ref(false);
   const syncStatus = ref<SyncStatus>('IDLE');
@@ -159,8 +163,9 @@ export const useInspectorStore = defineStore('inspector', () => {
       const validation = DraftCommitmentSchema.safeParse(targetPayload);
       if (!validation.success) {
         syncStatus.value = 'ERROR';
-        // CORRIGIDO: Acesso correto ao array de mensagens de erro do Zod
-        toastStore.showToast('Erro ao salvar', 'error');
+        // LOGA EXATAMENTE O QUAL CAMPO FALHOU
+        console.error('[Zod Validation Failed]', validation.error.format()); 
+        toastStore.showToast('Erro de validação local. Verifique os campos.', 'error');
         return; 
       }
     }
@@ -208,6 +213,10 @@ export const useInspectorStore = defineStore('inspector', () => {
     try {
       if (type === 'COMMITMENT') {
         await commitmentsStore.updateCommitment(id, payload);
+      } else if (type === 'GOAL') {
+        await goalsStore.updateGoal(id, payload);
+      } else if (type === 'PROJECT') { // 🔥 A ROTA DO PROJETO ESTÁ LIGADA
+        await projectsStore.updateProject(id, payload);
       }
       
       syncStatus.value = 'SAVED';
@@ -230,7 +239,8 @@ export const useInspectorStore = defineStore('inspector', () => {
   const executeRollback = async (type: InspectableType, id: string, snapshot: any) => {
     try {
       if (type === 'COMMITMENT') await commitmentsStore.updateCommitment(id, snapshot);
-      toastStore.showToast('Alteração desfeita.', 'success');
+      else if (type === 'GOAL') await goalsStore.updateGoal(id, snapshot);
+      else if (type === 'PROJECT') await projectsStore.updateProject(id, snapshot);
       
       if (isOpen.value && draft.value?.entityId === id) {
         draft.value.originalPayload = cloneDeep(snapshot);

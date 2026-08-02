@@ -31,7 +31,15 @@ public class CompassDbContext : DbContext
     {
         base.OnConfiguring(optionsBuilder);
         
-        // Mapeamento nativo dos Enums no Npgsql (PostgreSQL 16+)
+        // 🚨 O DISJUNTOR DOS TESTES 🚨
+        // Verifica se a Factory do xUnit já injetou o provedor InMemory.
+        // Se sim, abortamos a injeção do Npgsql para não causar a colisão de provedores.
+        if (optionsBuilder.Options.Extensions.Any(e => e.GetType().Name.Contains("InMemory")))
+        {
+            return;
+        }
+        
+        // Mapeamento nativo dos Enums no Npgsql (Rodará apenas em Produção/Dev)
         optionsBuilder.UseNpgsql(npgsqlBuilder =>
         {
             npgsqlBuilder.MapEnum<CommitmentType>("commitment_type");

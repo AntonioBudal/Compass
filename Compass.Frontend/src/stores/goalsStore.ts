@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useToastStore } from './toastStore';
+import { GoalProvider } from '@/utils/autocomplete/AutocompleteEngine';
 
 export interface GoalChildItem {
   id: string;
@@ -25,6 +26,17 @@ export const useGoalsStore = defineStore('goals', () => {
   const toastStore = useToastStore();
   const goals = ref<GoalItem[]>([]);
   const isLoaded = ref(false);
+
+    watch(() => goals.value, (newGoals) => {
+    if (newGoals) {
+      GoalProvider.syncData(
+        newGoals.map(g => ({
+          id: g.id,
+          name: g.title
+        }))
+      );
+    }
+  }, { deep: true, immediate: true });
 
   // Carrega do disco local
   const loadFromDisk = () => {
@@ -110,6 +122,27 @@ export const useGoalsStore = defineStore('goals', () => {
     }
   };
 
+  const updateGoal = async (id: string, payload: any, isSilent: boolean = false) => {
+    const index = goals.value.findIndex(g => g.id === id);
+    if (index === -1) return;
+
+    // Mutação Otimista na Memória
+    const originalItem = { ...goals.value[index] };
+    Object.assign(goals.value[index], payload);
+
+    try {
+      // Futuro: const updated = await CompassApi.updateGoal(id, payload);
+      // Object.assign(goals.value[index], updated);
+      
+      saveToDisk(); // Enquanto não temos API, salva localmente
+      if (!isSilent) toastStore.showToast('Meta atualizada com sucesso.', 'neutral');
+    } catch (err: any) {
+      Object.assign(goals.value[index], originalItem);
+      if (!isSilent) toastStore.showToast('Falha na edição. Alterações revertidas.', 'error');
+      throw err;
+    }
+  };
+
   const addChildModule = (goalId: string, name: string) => {
     const goal = goals.value.find(g => g.id === goalId);
     if (goal && name.trim()) {
@@ -146,6 +179,7 @@ export const useGoalsStore = defineStore('goals', () => {
     updateGoalTitle,
     updateGoalStatus,
     addChildModule,
-    updateChildProgress
+    updateChildProgress,
+    updateGoal
   };
 });

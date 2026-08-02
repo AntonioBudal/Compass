@@ -1,29 +1,34 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useCommitmentsStore } from '@/stores/commitmentsStore';
+import { useProjectsStore } from '@/stores/projectsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useInspectorStore } from '@/stores/inspectorStore'; // 🔥 ARQ-00
 import { isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
-import { Folder, PlusCircle, Zap } from 'lucide-vue-next';
+import { Folder, PlusCircle, Zap, CheckCircle2 } from 'lucide-vue-next';
 import DefensiveEmptyState from '@/components/core/DefensiveEmptyState.vue';
 import PageHeader from '@/components/layout/PageHeader.vue';
 
-const store = useCommitmentsStore();
+const commitmentsStore = useCommitmentsStore();
+const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
+const inspectorStore = useInspectorStore(); // 🔥 ARQ-00
 
 const currentTab = ref<'ACTIVE' | 'COMPLETED'>('ACTIVE');
-
-// Reatividade de Densidade (Compacto vs Detalhado)
 const viewDensity = computed(() => settingsStore.getViewDensity('projects'));
 
-onMounted(() => {
-  store.fetchAllActive();
+onMounted(async () => {
+  await Promise.all([
+    commitmentsStore.fetchAllActive(),
+    projectsStore.fetchCatalog()
+  ]);
 });
 
 interface ProjectSummary {
   id: string;
   name: string;
-  linkedGoal: string;
-  deadline: string;
+  linkedGoal: string | null;
+  deadline: string | null;
   completedMinutes: number;
   totalMinutes: number;
   progressPercentage: number;
@@ -31,39 +36,45 @@ interface ProjectSummary {
 }
 
 const allProjects = computed<ProjectSummary[]>(() => {
-  const map = new Map<string, ProjectSummary>();
+  // Blindagem defensiva contra falhas de rede/inicialização nula
+  if (!Array.isArray(projectsStore.catalog)) return [];
 
-  store.items.forEach(item => {
-    if (item.projectName) {
-      const key = item.projectName;
-      const existing = map.get(key) || {
-        id: `proj-${key}`,
-        name: key,
-        linkedGoal: '🎯 Q3 Launch MVP',
-        deadline: item.deadline ? new Date(item.deadline).toLocaleDateString() : '30/08/2026',
-        completedMinutes: 0,
-        totalMinutes: 0,
-        progressPercentage: 0,
-        status: 'IN_PROGRESS'
-      };
+  return projectsStore.catalog.map(project => {
+    const relatedTasks = commitmentsStore.items.filter(item => item.projectId === project.id);
+    
+    let totalMinutes = 0;
+    let completedMinutes = 0;
 
-      const duration = item.estimatedDurationMinutes || 30;
-      existing.totalMinutes += duration;
-      if (item.status === 'COMPLETED') existing.completedMinutes += duration;
+    relatedTasks.forEach(task => {
+      const duration = task.estimatedDurationMinutes || 30;
+      totalMinutes += duration;
+      if (task.status === 'COMPLETED') {
+        completedMinutes += duration;
+      }
+    });
 
-      existing.progressPercentage = existing.totalMinutes > 0 
-        ? Math.round((existing.completedMinutes / existing.totalMinutes) * 100) 
-        : 0;
+    const progressPercentage = totalMinutes > 0 
+      ? Math.round((completedMinutes / totalMinutes) * 100) 
+      : 0;
 
-      if (existing.progressPercentage === 100) existing.status = 'COMPLETED';
-      else if (existing.completedMinutes === 0) existing.status = 'PENDING';
-      else existing.status = 'IN_PROGRESS';
-
-      map.set(key, existing);
+    let status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' = 'PENDING';
+    if (totalMinutes > 0 && progressPercentage === 100) {
+      status = 'COMPLETED';
+    } else if (completedMinutes > 0) {
+      status = 'IN_PROGRESS';
     }
-  });
 
-  return Array.from(map.values());
+    return {
+      id: project.id,
+      name: project.name,
+      linkedGoal: project.description || null, // Hack temporário de UX
+      deadline: null, 
+      completedMinutes,
+      totalMinutes,
+      progressPercentage,
+      status
+    };
+  });
 });
 
 const displayedProjects = computed(() => {
@@ -80,12 +91,19 @@ const injectInShift = (projectName: string) => {
   window.dispatchEvent(new CustomEvent('compass:inject-project', { detail: projectName }));
   isQuickCaptureOpen.value = true;
 };
+
+// 🔥 ARQ-00: Função para buscar a Entidade Real no catálogo e enviá-la ao Inspetor
+const openProjectInspector = (projectId: string) => {
+  const realProject = projectsStore.catalog.find(p => p.id === projectId);
+  if (realProject) {
+    inspectorStore.openInspector(realProject, 'PROJECT');
+  }
+};
 </script>
 
 <template>
   <div class="max-w-5xl mx-auto space-y-6 select-none">
     
-    <!-- 1. CABEÇALHO UNIVERSAL COM DENSITY TOGGLE -->
     <PageHeader 
       title="Projetos & Módulos"
       :badgeCount="allProjects.length"
@@ -98,7 +116,6 @@ const injectInShift = (projectName: string) => {
       :showDensityToggle="true"
     />
 
-    <!-- 2. SELETOR TÁTICO DE ABAS -->
     <div class="flex items-center gap-2 font-mono text-xs border-b border-borderbase pb-2">
       <button
         @click="currentTab = 'ACTIVE'"
@@ -116,7 +133,6 @@ const injectInShift = (projectName: string) => {
       </button>
     </div>
 
-    <!-- 3. EMPTY STATE DEFENSIVO -->
     <DefensiveEmptyState
       v-if="displayedProjects.length === 0"
       :icon="Folder"
@@ -128,7 +144,6 @@ const injectInShift = (projectName: string) => {
       @action="openNewProjectModal"
     />
 
-    <!-- 4. GRADE DE PROJETOS REATIVA (Densidade) -->
     <div v-else class="border border-borderbase rounded-xl overflow-hidden bg-app transition-all">
       <div 
         class="grid gap-4 bg-surface border-b border-borderbase font-mono font-semibold text-content-muted uppercase tracking-wider"
@@ -140,30 +155,31 @@ const injectInShift = (projectName: string) => {
         <div :class="viewDensity === 'compact' ? 'col-span-3 text-right' : 'col-span-7 sm:col-span-3 text-right'">Progresso</div>
       </div>
 
-      <div class="divide-y divide-borderbase">
+      <transition-group name="list" tag="div" class="divide-y divide-borderbase relative">
         <div 
           v-for="proj in displayedProjects" 
           :key="proj.id"
-          class="grid gap-4 items-center hover:bg-surface-hover transition-colors group"
-          :class="viewDensity === 'compact' ? 'grid-cols-8 py-1.5 px-3' : 'grid-cols-12 py-3.5 px-4'"
+          @click="openProjectInspector(proj.id)"
+          class="grid gap-4 items-center hover:bg-surface-hover transition-colors group relative cursor-pointer"
+          :class="[
+            viewDensity === 'compact' ? 'grid-cols-8 py-1.5 px-3' : 'grid-cols-12 py-3.5 px-4',
+            proj.progressPercentage === 100 ? 'bg-status-success-bg/10' : ''
+          ]"
         >
-          <!-- Nome -->
           <div class="flex items-center gap-2.5 min-w-0" :class="viewDensity === 'compact' ? 'col-span-5' : 'col-span-5 sm:col-span-4'">
-            <Folder class="text-content-muted flex-shrink-0 group-hover:text-content transition-colors" :class="viewDensity === 'compact' ? 'w-3 h-3' : 'w-4 h-4'" />
+            <CheckCircle2 v-if="proj.progressPercentage === 100" class="text-status-success-text flex-shrink-0" :class="viewDensity === 'compact' ? 'w-3 h-3' : 'w-4 h-4'" />
+            <Folder v-else class="text-content-muted flex-shrink-0 group-hover:text-content transition-colors" :class="viewDensity === 'compact' ? 'w-3 h-3' : 'w-4 h-4'" />
             <span class="font-medium text-content truncate" :class="viewDensity === 'compact' ? 'text-xs' : 'text-sm'">{{ proj.name }}</span>
           </div>
 
-          <!-- Meta (Somente Detalhado) -->
           <div v-if="viewDensity === 'detailed'" class="col-span-3 hidden sm:flex items-center text-xs text-content-muted truncate font-sans">
-            <span>{{ proj.linkedGoal }}</span>
+            <span :class="{'italic opacity-50': !proj.linkedGoal}">{{ proj.linkedGoal || 'Sem meta' }}</span>
           </div>
 
-          <!-- Prazo (Somente Detalhado) -->
           <div v-if="viewDensity === 'detailed'" class="col-span-2 hidden md:flex items-center text-xs font-mono text-content-muted">
-            <span>{{ proj.deadline }}</span>
+            <span :class="{'italic opacity-50': !proj.deadline}">{{ proj.deadline || 'S/ Prazo' }}</span>
           </div>
 
-          <!-- Progresso + Botão -->
           <div class="flex items-center justify-end gap-3" :class="viewDensity === 'compact' ? 'col-span-3' : 'col-span-7 sm:col-span-3'">
             
             <div v-if="viewDensity === 'detailed'" class="flex flex-col items-end gap-1">
@@ -178,8 +194,8 @@ const injectInShift = (projectName: string) => {
               {{ proj.progressPercentage }}%
             </div>
 
-            <!-- Botão Tático -->
             <button
+              v-if="proj.progressPercentage < 100"
               @click.stop="injectInShift(proj.name)"
               class="rounded bg-surface hover:bg-surface-active border border-borderbase hover:border-borderfocus font-mono text-content transition-all flex items-center justify-center cursor-pointer shadow-sm"
               :class="viewDensity === 'compact' ? 'w-6 h-6' : 'px-2 py-1 gap-1 text-xs'"
@@ -190,7 +206,22 @@ const injectInShift = (projectName: string) => {
             </button>
           </div>
         </div>
-      </div>
+      </transition-group>
     </div>
   </div>
 </template>
+
+<style scoped>
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.list-enter-from {
+  opacity: 0;
+  transform: translateY(15px);
+}
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+</style>

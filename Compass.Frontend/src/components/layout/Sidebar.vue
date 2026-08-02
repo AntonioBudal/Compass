@@ -7,7 +7,7 @@ import { isCommandBarOpen } from '@/composables/useKeyboardShortcuts';
 import { 
   Zap, Calendar, Folder, Target, RefreshCw, 
   FileText, Sliders, PanelLeftClose, PanelLeftOpen, 
-  Search, Power, Terminal 
+  Search, Power, Terminal, BookOpen // 🔥 ARQ-00: BookOpen importado para a Library
 } from 'lucide-vue-next';
 
 const isCollapsed = ref(false);
@@ -125,7 +125,7 @@ const handleSandboxClick = () => {
             <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G G</span>
           </router-link>
 
-          <!-- 1. Botão Reativo do Simulador em RAM (Ecossistema Rico) -->
+          <!-- Botões do Sandbox/Tutorial Mantidos... -->
           <button 
             @click="handleSandboxClick" 
             type="button"
@@ -146,22 +146,6 @@ const handleSandboxClick = () => {
               </span>
             </div>
           </button>
-
-          <!-- 2. Botão do Tutorial Pedagógico Passo a Passo -->
-          <router-link 
-            to="/sandbox" 
-            class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all group cursor-pointer"
-            :class="route.path === '/sandbox' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
-            :title="isCollapsed ? 'Abrir Tutorial Interativo' : ''"
-          >
-            <span class="p-0.5 rounded bg-app border border-borderbase group-hover:border-borderfocus text-content-accent flex-shrink-0">
-              <BookOpen class="w-3 h-3" />
-            </span>
-            <div v-if="!isCollapsed" class="flex flex-col truncate flex-1">
-              <span class="truncate leading-tight">[TUTORIAL]</span>
-              <span class="text-[9px] font-mono text-content-muted">Guia Interativo</span>
-            </div>
-          </router-link>
         </div>
       </div>
 
@@ -180,6 +164,18 @@ const handleSandboxClick = () => {
             <span v-if="!isCollapsed" class="truncate flex-1">Auditoria</span>
             <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G J</span>
           </router-link>
+          
+
+          <!-- 🔥 A NOVA TELA DE BIBLIOTECA (Documentation Hub) -->
+          <router-link 
+            to="/library" 
+            class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"
+            :class="route.path === '/library' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+          >
+            <BookOpen class="w-4 h-4 flex-shrink-0" :class="route.path === '/library' ? 'text-content' : 'text-content-muted'" />
+            <span v-if="!isCollapsed" class="truncate flex-1">Biblioteca</span>
+            <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G B</span>
+          </router-link>
 
           <router-link 
             to="/settings" 
@@ -190,6 +186,17 @@ const handleSandboxClick = () => {
             <span v-if="!isCollapsed" class="truncate flex-1">Configurações</span>
             <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G S</span>
           </router-link>
+
+          <router-link 
+            to="/database" 
+            class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"
+            :class="route.path === '/database' ? 'bg-surface-active text-content border-l-2 border-borderhighlight shadow-sm font-bold' : 'text-content-muted hover:text-content hover:bg-surface-hover'"
+          >
+            <Database class="w-4 h-4 flex-shrink-0" :class="route.path === '/database' ? 'text-content' : 'text-content-muted'" />
+            <span v-if="!isCollapsed" class="truncate flex-1">Database</span>
+            <span v-if="!isCollapsed" class="text-[10px] font-mono text-content-muted bg-surface px-1.5 py-0.5 rounded border border-borderbase">G D</span>
+          </router-link>
+          
         </div>
       </div>
     </nav>

@@ -1,7 +1,8 @@
 ﻿<script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useGoalsStore } from '@/stores/goalsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useInspectorStore } from '@/stores/inspectorStore'; // 🔥 ARQ-00
 import { Target, PlusCircle, ChevronRight, Plus } from 'lucide-vue-next';
 import { isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
 import DefensiveEmptyState from '@/components/core/DefensiveEmptyState.vue';
@@ -10,14 +11,17 @@ import InspectableCard from '@/components/core/InspectableCard.vue';
 
 const goalsStore = useGoalsStore();
 const settingsStore = useSettingsStore();
+const inspectorStore = useInspectorStore(); // 🔥 ARQ-00
 
-const expandedGoalIds = ref<string[]>(['goal-1']);
-const editingGoalId = ref<string | null>(null);
-const editingTitleText = ref('');
+const expandedGoalIds = ref<string[]>(JSON.parse(sessionStorage.getItem('compass_expanded_goals') || '[]'));
+
+watch(expandedGoalIds, (newVal) => {
+  sessionStorage.setItem('compass_expanded_goals', JSON.stringify(newVal));
+}, { deep: true });
+
 const newModuleName = ref('');
 const addingModuleGoalId = ref<string | null>(null);
 
-// Reatividade de Densidade (Compacto vs Detalhado)
 const viewDensity = computed(() => settingsStore.getViewDensity('goals'));
 
 onMounted(() => {
@@ -28,19 +32,6 @@ const toggleGoal = (id: string) => {
   const index = expandedGoalIds.value.indexOf(id);
   if (index === -1) expandedGoalIds.value.push(id);
   else expandedGoalIds.value.splice(index, 1);
-};
-
-const startEditingTitle = (id: string, currentTitle: string, e: Event) => {
-  e.stopPropagation();
-  editingGoalId.value = id;
-  editingTitleText.value = currentTitle;
-};
-
-const saveEditedTitle = (id: string) => {
-  if (editingGoalId.value === id) {
-    goalsStore.updateGoalTitle(id, editingTitleText.value);
-    editingGoalId.value = null;
-  }
 };
 
 const handleAddModule = (goalId: string) => {
@@ -55,7 +46,6 @@ const handleAddModule = (goalId: string) => {
 <template>
   <div class="max-w-4xl mx-auto space-y-6 select-none">
     
-    <!-- CABEÇALHO UNIVERSAL COM DENSITY TOGGLE -->
     <PageHeader 
       title="Metas Estratégicas"
       :badgeCount="goalsStore.activeGoals.length"
@@ -68,7 +58,6 @@ const handleAddModule = (goalId: string) => {
       :showDensityToggle="true"
     />
 
-    <!-- EMPTY STATE -->
     <DefensiveEmptyState
       v-if="goalsStore.goals.length === 0"
       :icon="Target"
@@ -78,9 +67,7 @@ const handleAddModule = (goalId: string) => {
       @action="isQuickCaptureOpen = true"
     />
 
-    <!-- STRATEGIC TREE ACCORDION -->
     <div v-else class="space-y-3">
-      <!-- 🚀 Injetando o InspectableCard ao redor da Meta para permitir o Lápis/Duplo clique -->
       <InspectableCard
         v-for="goal in goalsStore.goals" 
         :key="goal.id"
@@ -91,7 +78,6 @@ const handleAddModule = (goalId: string) => {
           class="rounded-xl border border-borderbase bg-surface overflow-hidden transition-all duration-200 w-full"
           :class="{ 'border-borderfocus bg-surface-active shadow-md': expandedGoalIds.includes(goal.id) }"
         >
-          <!-- Título Expansível -->
           <div 
             @click="toggleGoal(goal.id)"
             class="w-full flex items-center justify-between gap-4 text-left hover:bg-surface-hover transition-colors cursor-pointer"
@@ -104,25 +90,15 @@ const handleAddModule = (goalId: string) => {
               />
               
               <div class="truncate space-y-0.5 flex-1 min-w-0">
-                <input
-                  v-if="editingGoalId === goal.id"
-                  v-model="editingTitleText"
-                  type="text"
-                  @click.stop
-                  @keydown.enter="saveEditedTitle(goal.id)"
-                  @blur="saveEditedTitle(goal.id)"
-                  class="w-full bg-surface px-2 py-0.5 rounded border border-borderfocus font-semibold text-content focus:outline-none"
-                  :class="viewDensity === 'compact' ? 'text-sm' : 'text-base'"
-                  autofocus
-                />
+                <!-- 🔥 ARQ-00: Duplo clique agora abre a infraestrutura oficial unificada -->
                 <h2 
-                  v-else 
-                  @dblclick="startEditingTitle(goal.id, goal.title, $event)"
+                  @dblclick.stop="inspectorStore.openInspector(goal, 'GOAL')"
                   class="font-semibold text-content truncate flex items-center gap-2 group"
                   :class="viewDensity === 'compact' ? 'text-sm' : 'text-base'"
+                  title="Duplo clique para editar"
                 >
                   <span>{{ goal.title }}</span>
-                  <span class="text-[9px] font-mono opacity-0 group-hover:opacity-100 text-content-muted" v-if="viewDensity === 'detailed'">[Inline Edit]</span>
+                  <span class="text-[9px] font-mono opacity-0 group-hover:opacity-100 text-content-muted" v-if="viewDensity === 'detailed'">[Editar no Inspetor]</span>
                 </h2>
 
                 <p v-if="viewDensity === 'detailed'" class="text-[11px] text-content-muted truncate font-mono">
@@ -131,8 +107,7 @@ const handleAddModule = (goalId: string) => {
               </div>
             </div>
 
-            <!-- Medidor de Progresso da Meta -->
-            <div class="flex items-center gap-4 flex-shrink-0 pr-6"> <!-- pr-6 para não colar no botão de Lápis do wrapper -->
+            <div class="flex items-center gap-4 flex-shrink-0 pr-6">
               <div class="flex flex-col items-end gap-1">
                 <span class="font-mono text-content-muted" :class="viewDensity === 'compact' ? 'text-[10px]' : 'text-xs'">Progresso: <strong class="text-content">{{ goal.progressPercentage }}%</strong></span>
                 <div v-if="viewDensity === 'detailed'" class="h-1.5 w-24 bg-app rounded-full overflow-hidden">
@@ -140,7 +115,6 @@ const handleAddModule = (goalId: string) => {
                 </div>
               </div>
 
-              <!-- Seletor Rápido de Estado da Meta -->
               <select
                 :value="goal.status"
                 @change="(e) => goalsStore.updateGoalStatus(goal.id, (e.target as HTMLSelectElement).value as any)"
@@ -155,10 +129,8 @@ const handleAddModule = (goalId: string) => {
             </div>
           </div>
 
-          <!-- ÁRVORE DE MÓDULOS FILHOS -->
           <div v-if="expandedGoalIds.includes(goal.id)" class="border-t border-borderbase bg-app/60" :class="viewDensity === 'compact' ? 'px-3 pb-3 pt-2 space-y-2' : 'px-5 pb-5 pt-3 space-y-4'">
             
-            <!-- Propósito (Oculto no compacto para economizar tela) -->
             <div v-if="viewDensity === 'detailed'" class="p-3 rounded bg-surface/80 border border-borderbase text-xs text-content-muted font-sans">
               <strong class="text-content font-mono uppercase">Propósito Estratégico:</strong> {{ goal.why }}
             </div>
@@ -192,10 +164,10 @@ const handleAddModule = (goalId: string) => {
                       v-if="viewDensity === 'detailed'"
                       type="range" min="0" max="100" step="10"
                       :value="child.progress"
-                      @input="(e) => goalsStore.updateChildProgress(goal.id, child.id, Number((e.target as HTMLInputElement).value))"
+                      @change="(e) => goalsStore.updateChildProgress(goal.id, child.id, Number((e.target as HTMLInputElement).value))"
                       class="w-16 accent-content cursor-pointer"
                     />
-                    <!-- Controle numérico no modo compacto -->
+                    
                     <button v-else @click="goalsStore.updateChildProgress(goal.id, child.id, child.progress === 100 ? 0 : 100)" class="text-[10px] underline cursor-pointer">
                       Alternar
                     </button>
@@ -203,7 +175,6 @@ const handleAddModule = (goalId: string) => {
                   </div>
                 </div>
 
-                <!-- Input Rápido -->
                 <div v-if="addingModuleGoalId === goal.id" class="flex items-center gap-2 pt-1">
                   <input
                     v-model="newModuleName" type="text" placeholder="Novo módulo..."

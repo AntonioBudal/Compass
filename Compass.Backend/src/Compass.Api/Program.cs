@@ -17,34 +17,30 @@ var builder = WebApplication.CreateBuilder(args);
 
 
 // 1. Conexão com o PostgreSQL
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não encontrada.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
+// 1. Conexão com o Banco de Dados
 builder.Services.AddDbContext<CompassDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    
-    options.UseNpgsql(connectionString, npgsqlOptions =>
+    // Só injeta o motor do PostgreSQL se NÃO for o ambiente de testes
+    if (!builder.Environment.IsEnvironment("Testing"))
     {
-        // 1. BLINDAGEM DE CONEXÃO: Tenta reconectar até 3 vezes em caso de falha transitória (Ex: rede piscou)
-        npgsqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 3,
-            maxRetryDelay: TimeSpan.FromSeconds(5),
-            errorCodesToAdd: null
-        );
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não encontrada.");
 
-        // 2. TIMEOUT DE COMANDO: Evita que queries travadas segurem threads do Kestrel por muito tempo
-        npgsqlOptions.CommandTimeout(30);
-    });
+        options.UseNpgsql(connectionString, npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorCodesToAdd: null);
+            npgsqlOptions.CommandTimeout(30);
+        });
+    }
 
-    // Em modo de desenvolvimento, exibe os valores das variáveis nos logs de SQL para facilitar o debug
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
         options.EnableDetailedErrors();
     }
 });
-
 // 2. Registro do Tratamento Global de Erros (RFC 7807)
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -105,12 +101,15 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<Compass.Infrastructure.Persistence.CompassDbContext>();
     
-    // Insere o usuário direto via SQL ignorando as entidades do C#!
-    db.Database.ExecuteSqlRaw(@"
-        INSERT INTO users (id, name, email, password_hash) 
-        VALUES ('11111111-1111-1111-1111-111111111111', 'Operador Local', 'local@compass.dev', 'hash') 
-        ON CONFLICT (id) DO NOTHING;
-    ");
+    // O script SQL roda APENAS se NÃO estivermos no ambiente de testes
+    if (!app.Environment.IsEnvironment("Testing"))
+    {
+        db.Database.ExecuteSqlRaw(@"
+            INSERT INTO users (id, name, email, password_hash) 
+            VALUES ('11111111-1111-1111-1111-111111111111', 'Operador Local', 'local@compass.dev', 'hash') 
+            ON CONFLICT (id) DO NOTHING;
+        ");
+    }
 }
 
 app.MapHealthChecks("/api/v1/healthz", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
@@ -138,3 +137,5 @@ app.MapHealthChecks("/api/v1/healthz", new Microsoft.AspNetCore.Diagnostics.Heal
 });
 
 app.Run();
+
+public partial class Program { }
