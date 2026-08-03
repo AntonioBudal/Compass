@@ -35,9 +35,11 @@ export const useDevStore = defineStore('devConsole', () => {
   const isConsoleOpen = ref(false);
   const activeTab = ref<'http' | 'pinia' | 'events' | 'metrics'>('http');
   
+  // Buffers de Log (Arrays são ideais aqui: FIFO / Ring Buffer)
   const httpLogs = ref<HttpLogEntry[]>([]);
   const domainEvents = ref<DomainEventLogEntry[]>([]);
   const metrics = ref<PerformanceMetricEntry[]>([]);
+  
   const backendHealth = ref<{ status: string; latencyMs: number; lastCheck: string } | null>(null);
 
   const logHttp = (entry: HttpLogEntry) => {
@@ -62,9 +64,12 @@ export const useDevStore = defineStore('devConsole', () => {
     if (metrics.value.length > 50) metrics.value.pop();
   };
 
-  // Sondagem assíncrona da saúde do ASP.NET Core 10
+  // Sondagem assíncrona da saúde do ASP.NET Core
   const pingBackendHealth = async () => {
-    const url = (import.meta.env.VITE_API_URL || 'http://localhost:5163/api/v1').replace('/api/v1', '') + '/api/v1/health';
+    //  ARQ: Porta padronizada para 5000 acompanhando o ecossistema Compass
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+    const url = baseUrl.replace('/api/v1', '') + '/api/v1/health';
+    
     const start = performance.now();
     try {
       const res = await axios.get(url, { timeout: 3000 });

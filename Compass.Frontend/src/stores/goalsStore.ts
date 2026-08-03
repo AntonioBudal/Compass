@@ -24,11 +24,19 @@ const STORAGE_KEY = 'compass_goals_cache_v1';
 
 export const useGoalsStore = defineStore('goals', () => {
   const toastStore = useToastStore();
-  const goals = ref<GoalItem[]>([]);
+  
+  //  ARQUITETURA NORMALIZADA: Single Source of Truth
+  const entities = ref<Record<string, GoalItem>>({});
+  const goalIds = ref<string[]>([]);
+  
   const isLoaded = ref(false);
 
-    watch(() => goals.value, (newGoals) => {
-    if (newGoals) {
+  //  COMPUTED BRIDGES: As Views consomem esses getters como se fossem arrays normais
+  const goals = computed(() => goalIds.value.map(id => entities.value[id]).filter(Boolean));
+  const activeGoals = computed(() => goals.value.filter(g => g.status !== 'ARCHIVED'));
+
+  watch(() => goals.value, (newGoals) => {
+    if (newGoals && newGoals.length > 0) {
       GoalProvider.syncData(
         newGoals.map(g => ({
           id: g.id,
@@ -38,12 +46,34 @@ export const useGoalsStore = defineStore('goals', () => {
     }
   }, { deep: true, immediate: true });
 
-  // Carrega do disco local
+  // --- MOTOR DE CACHE (Disco Local) ---
+
+  const saveToDisk = () => {
+    try {
+      // Salva o array projetado para manter compatibilidade com o formato antigo no disco
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(goals.value));
+    } catch (e) {
+      console.warn('[GoalsStore] Falha ao persistir metas.', e);
+    }
+  };
+
   const loadFromDisk = () => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        goals.value = JSON.parse(raw);
+        const parsed: GoalItem[] = JSON.parse(raw);
+        
+        // Hidrata o Dicionário e a Lista de Ponteiros
+        const newEntities: Record<string, GoalItem> = {};
+        const newIds: string[] = [];
+        
+        parsed.forEach(g => {
+          newEntities[g.id] = g;
+          newIds.push(g.id);
+        });
+
+        entities.value = newEntities;
+        goalIds.value = newIds;
         isLoaded.value = true;
         return;
       }
@@ -51,8 +81,8 @@ export const useGoalsStore = defineStore('goals', () => {
       console.warn('[GoalsStore] Erro ao carregar metas do localStorage', e);
     }
 
-    // Dados iniciais padrão se o disco estiver vazio
-    goals.value = [
+    // Dados iniciais padrão se o disco estiver vazio (Mock de Sobrevivência)
+    const mockGoals: GoalItem[] = [
       {
         id: 'goal-1',
         title: 'Lançamento do Compass MVP (Q3 2026)',
@@ -79,19 +109,24 @@ export const useGoalsStore = defineStore('goals', () => {
         ]
       }
     ];
+
+    const newEntities: Record<string, GoalItem> = {};
+    const newIds: string[] = [];
+    
+    mockGoals.forEach(g => {
+      newEntities[g.id] = g;
+      newIds.push(g.id);
+    });
+
+    entities.value = newEntities;
+    goalIds.value = newIds;
+
     saveToDisk();
     isLoaded.value = true;
   };
 
-  const saveToDisk = () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(goals.value));
-    } catch (e) {
-      console.warn('[GoalsStore] Falha ao persistir metas.', e);
-    }
-  };
-
-  // Mutações interativas e cálculo automático de progresso
+  // --- MUTAÇÕES NORMALIZADAS O(1) ---
+  
   const recalculateProgress = (goal: GoalItem) => {
     if (!goal.children || goal.children.length === 0) {
       goal.progressPercentage = 0;
@@ -105,7 +140,7 @@ export const useGoalsStore = defineStore('goals', () => {
   };
 
   const updateGoalTitle = (id: string, newTitle: string) => {
-    const goal = goals.value.find(g => g.id === id);
+    const goal = entities.value[id]; //  Acesso direto O(1)
     if (goal && newTitle.trim()) {
       goal.title = newTitle.trim();
       saveToDisk();
@@ -114,7 +149,7 @@ export const useGoalsStore = defineStore('goals', () => {
   };
 
   const updateGoalStatus = (id: string, newStatus: GoalItem['status']) => {
-    const goal = goals.value.find(g => g.id === id);
+    const goal = entities.value[id];
     if (goal) {
       goal.status = newStatus;
       saveToDisk();
@@ -123,28 +158,27 @@ export const useGoalsStore = defineStore('goals', () => {
   };
 
   const updateGoal = async (id: string, payload: any, isSilent: boolean = false) => {
-    const index = goals.value.findIndex(g => g.id === id);
-    if (index === -1) return;
+    if (!entities.value[id]) return;
 
     // Mutação Otimista na Memória
-    const originalItem = { ...goals.value[index] };
-    Object.assign(goals.value[index], payload);
+    const originalItem = { ...entities.value[id] };
+    Object.assign(entities.value[id], payload);
 
     try {
       // Futuro: const updated = await CompassApi.updateGoal(id, payload);
-      // Object.assign(goals.value[index], updated);
+      // Object.assign(entities.value[id], updated);
       
-      saveToDisk(); // Enquanto não temos API, salva localmente
+      saveToDisk();
       if (!isSilent) toastStore.showToast('Meta atualizada com sucesso.', 'neutral');
     } catch (err: any) {
-      Object.assign(goals.value[index], originalItem);
+      Object.assign(entities.value[id], originalItem);
       if (!isSilent) toastStore.showToast('Falha na edição. Alterações revertidas.', 'error');
       throw err;
     }
   };
 
   const addChildModule = (goalId: string, name: string) => {
-    const goal = goals.value.find(g => g.id === goalId);
+    const goal = entities.value[goalId];
     if (goal && name.trim()) {
       goal.children.push({
         id: `child-${Date.now()}`,
@@ -159,8 +193,10 @@ export const useGoalsStore = defineStore('goals', () => {
   };
 
   const updateChildProgress = (goalId: string, childId: string, progress: number) => {
-    const goal = goals.value.find(g => g.id === goalId);
+    const goal = entities.value[goalId];
     if (!goal) return;
+    
+    // O find aqui é aceitável pois itera apenas sobre os filhos específicos de 1 meta
     const child = goal.children.find(c => c.id === childId);
     if (child) {
       child.progress = Math.min(100, Math.max(0, progress));
@@ -170,9 +206,8 @@ export const useGoalsStore = defineStore('goals', () => {
     }
   };
 
-  const activeGoals = computed(() => goals.value.filter(g => g.status !== 'ARCHIVED'));
-
   return {
+    entities,
     goals,
     activeGoals,
     loadFromDisk,

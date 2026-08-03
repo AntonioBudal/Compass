@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useCommitmentsStore, type CommitmentItem } from '@/stores/commitmentsStore';
 import { useDecisionStore } from '@/stores/decisionStore';
-import { useInspectorStore } from '@/stores/inspectorStore'; // 🔥 ARQ-00: Injeção do Inspetor
+import { useInspectorStore } from '@/stores/inspectorStore'; //  ARQ-00: Injeção do Inspetor
 import TacticalHorizonBar, { type HorizonOption } from '@/components/core/TacticalHorizonBar.vue';
 import { isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
 import { 
@@ -15,7 +15,7 @@ const isAllocationModalOpen = ref(false);
 
 const commitmentsStore = useCommitmentsStore();
 const decisionStore = useDecisionStore();
-const inspectorStore = useInspectorStore(); // 🔥 ARQ-00: Instância ativada
+const inspectorStore = useInspectorStore(); //  ARQ-00: Instância ativada
 
 const currentHorizon = ref<HorizonOption>('today');
 const currentTime = ref(new Date());
@@ -160,7 +160,7 @@ const availableMinutes = computed(() => decisionStore.availableMinutes || decisi
         <AlertCircle class="w-4 h-4" /> <span>Eventos Sem Horário Definido</span>
       </div>
       <div class="space-y-2">
-        <!-- 🔥 ARQ-00: Eventos órfãos agora são clicáveis -->
+        <!--  ARQ-00: Eventos órfãos agora são clicáveis -->
         <div 
           v-for="orphan in agendaBuckets.unscheduled" :key="orphan.id" 
           @click="inspectorStore.openInspector(orphan, 'COMMITMENT')"
@@ -212,7 +212,7 @@ const availableMinutes = computed(() => decisionStore.availableMinutes || decisi
           </button>
         </div>
 
-        <!-- 🔥 ARQ-00: Abertura do Inspetor Universal via Click no TimelineNode -->
+        <!--  ARQ-00: Abertura do Inspetor Universal via Click no TimelineNode -->
         <div 
           v-else-if="node.type === 'COMMITMENT' && node.data" 
           @click="inspectorStore.openInspector(node.data, 'COMMITMENT')"

@@ -638,3 +638,27 @@
 - Implementação da `DatabaseView.vue`, exibindo todos os registros persistidos em uma tabela de alta densidade.
 
 - Adição de filtros por tipo, status e projeto, além de ações para abrir o Inspector e excluir registros.
+
+# 2026-08-03
+
+# Gerenciamento de Estado
+
+- Refatoração das Stores para utilizar um modelo baseado em **Single Source of Truth (SSOT)**, adotando dicionários em memória para acesso O(1).
+
+- Atualização das principais Views (`NowEngineView`, `DatabaseView`, `HabitsView` e `SettingsView`) para consumirem diretamente o estado global, eliminando cópias locais e reduzindo problemas de sincronização.
+
+- Remoção de watchers profundos desnecessários no Pinia, reduzindo processamento reativo e melhorando a performance da interface.
+
+# Persistência e Sincronização
+
+- Refatoração da fila de operações offline, movendo a lógica de **Undo** para a `offlineStore` utilizando o padrão **Command Pattern**, garantindo persistência mesmo após recarregar a aplicação.
+
+- Ajuste do interceptor do Axios para diferenciar corretamente falhas reais de rede de erros retornados pelo Backend, evitando falsos sucessos.
+
+- Implementação de tratamento idempotente para operações de exclusão, considerando respostas `404 Not Found` como sucesso quando o recurso já não existe.
+
+# Backend
+
+- Implementação do método `DeleteAsync` no `CommitmentService`, centralizando a lógica de remoção com validações de domínio.
+
+- Adição do endpoint `DELETE /api/v1/commitments/{id}` no `CommitmentsController`, integrando o fluxo de exclusão ao repositório e ao `SaveChangesAsync`.

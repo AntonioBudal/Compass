@@ -2,7 +2,7 @@
 import { Clock, Folder } from 'lucide-vue-next';
 import VisualCronEditor from './VisualCronEditor.vue';
 
-// 🔥 CORREÇÃO (ARQ-013): Uso do defineModel para garantir Two-Way Binding
+//  CORREÇÃO (ARQ-013): Uso do defineModel para garantir Two-Way Binding
 // Isso permite que o filho edite o rascunho sem quebrar a reatividade do UniversalEntityInspector
 const draft = defineModel<any>('draft', { required: true });
 

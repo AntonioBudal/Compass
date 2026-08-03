@@ -2,7 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useGoalsStore } from '@/stores/goalsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { useInspectorStore } from '@/stores/inspectorStore'; // 🔥 ARQ-00
+import { useInspectorStore } from '@/stores/inspectorStore'; //  ARQ-00
 import { Target, PlusCircle, ChevronRight, Plus } from 'lucide-vue-next';
 import { isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
 import DefensiveEmptyState from '@/components/core/DefensiveEmptyState.vue';
@@ -11,7 +11,7 @@ import InspectableCard from '@/components/core/InspectableCard.vue';
 
 const goalsStore = useGoalsStore();
 const settingsStore = useSettingsStore();
-const inspectorStore = useInspectorStore(); // 🔥 ARQ-00
+const inspectorStore = useInspectorStore(); //  ARQ-00
 
 const expandedGoalIds = ref<string[]>(JSON.parse(sessionStorage.getItem('compass_expanded_goals') || '[]'));
 
@@ -90,7 +90,7 @@ const handleAddModule = (goalId: string) => {
               />
               
               <div class="truncate space-y-0.5 flex-1 min-w-0">
-                <!-- 🔥 ARQ-00: Duplo clique agora abre a infraestrutura oficial unificada -->
+                <!--  ARQ-00: Duplo clique agora abre a infraestrutura oficial unificada -->
                 <h2 
                   @dblclick.stop="inspectorStore.openInspector(goal, 'GOAL')"
                   class="font-semibold text-content truncate flex items-center gap-2 group"

@@ -47,7 +47,7 @@ const handleSubmit = async (forceSchedule = false, overrideDateIso: string | nul
   try {
     let matchedProjectId: string | null = null;
     
-    // 🔥 CORREÇÃO (ARQ-028 & BUG-027): CRIAÇÃO CASCADA (Projeto -> Tarefa)
+    //  CORREÇÃO (ARQ-028 & BUG-027): CRIAÇÃO CASCADA (Projeto -> Tarefa)
     if (parsed.projectQuery) {
       const match = projectsStore.catalog.find(p => p.name.toLowerCase() === parsed.projectQuery?.toLowerCase());
       

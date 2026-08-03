@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref } from 'vue';
 import axios from 'axios';
 import { useToastStore } from '@/stores/toastStore';
 
@@ -9,6 +9,7 @@ export interface QueuedRequest {
   method: string;
   payload: any;
   timestamp: number;
+  executeAfter?: number; //  ARQ: Permite programar a execução no futuro
 }
 
 export const useOfflineStore = defineStore('offline', () => {
@@ -16,7 +17,6 @@ export const useOfflineStore = defineStore('offline', () => {
   const isSyncingQueue = ref(false);
   const queue = ref<QueuedRequest[]>([]);
 
-  // Carrega fila persistida de sessões anteriores
   const loadQueueFromStorage = () => {
     try {
       const saved = localStorage.getItem('compass_offline_queue');
@@ -36,38 +36,54 @@ export const useOfflineStore = defineStore('offline', () => {
     }
   };
 
-  const addToQueue = (req: Omit<QueuedRequest, 'id' | 'timestamp'>) => {
+  //  ARQ: Agora retorna o ID para que a UI possa cancelar o comando
+  const addToQueue = (req: Omit<QueuedRequest, 'id' | 'timestamp'>): string => {
+    const operationId = 'queue-' + Math.random().toString(36).substring(2, 9);
+    
     const newEntry: QueuedRequest = {
       ...req,
-      id: 'queue-' + Math.random().toString(36).substring(2, 9),
+      id: operationId,
       timestamp: Date.now()
     };
+    
     queue.value.push(newEntry);
     saveQueueToStorage();
 
-    if (import.meta.env.DEV) {
-      import('@/stores/devStore').then(({ useDevStore }) => {
-        try {
-          const devStore = useDevStore();
-          devStore.logDomainEvent({
-            eventType: 'Offline Queue',
-            entityId: 'Network_Layer',
-            message: `Transação [${req.method}] enfileirada localmente.`,
-            payload: newEntry
-          });
-        } catch (e) { /* Silenciamento seguro */ }
-      });
+    // Se estiver online e o comando não tiver delay, tenta processar a fila imediatamente
+    if (isOnline.value && !req.executeAfter) {
+      setTimeout(processQueue, 100);
+    }
+
+    return operationId;
+  };
+
+  //  ARQ: Cancelamento de Comando (Undo)
+  const cancelRequest = (operationId: string) => {
+    const initialLength = queue.value.length;
+    queue.value = queue.value.filter(q => q.id !== operationId);
+    
+    if (queue.value.length < initialLength) {
+      saveQueueToStorage();
     }
   };
 
-  // Processa a fila silenciosamente quando a conexão retorna
   const processQueue = async () => {
     if (queue.value.length === 0 || isSyncingQueue.value || !isOnline.value) return;
 
     isSyncingQueue.value = true;
     const toastStore = useToastStore();
-    const pending = [...queue.value];
+    
+    const now = Date.now();
+    //  ARQ: Só processa itens que não têm delay ou cujo tempo de espera já acabou
+    const pending = queue.value.filter(req => !req.executeAfter || now >= req.executeAfter);
+    
+    if (pending.length === 0) {
+      isSyncingQueue.value = false;
+      return; 
+    }
+
     let successCount = 0;
+    const unresolvedIds = new Set(queue.value.map(p => p.id));
 
     for (const item of pending) {
       try {
@@ -82,24 +98,43 @@ export const useOfflineStore = defineStore('offline', () => {
           }
         });
         
-        // Remove da fila ao sincronizar com sucesso
-        queue.value = queue.value.filter(q => q.id !== item.id);
-        saveQueueToStorage();
+        unresolvedIds.delete(item.id);
         successCount++;
       } catch (err) {
-        // Se falhar por erro de validação (400/422), descarta para não bloquear a fila.
-        // Se for erro de rede/5xx, mantém na fila para tentar mais tarde.
-        if (axios.isAxiosError(err) && err.response && err.response.status < 500) {
-          queue.value = queue.value.filter(q => q.id !== item.id);
-          saveQueueToStorage();
+        if (axios.isAxiosError(err) && err.response && err.response.status >= 400 && err.response.status < 500) {
+          
+
+          if (item.method.toUpperCase() === 'DELETE' && err.response.status === 404) {
+            unresolvedIds.delete(item.id);
+          } 
+          // Erros 400 (Bad Request) ou 422 descarta da fila para não criar loop infinito.
+          else {
+            unresolvedIds.delete(item.id);
+            console.error(`[Offline Sync] Descartando requisição corrompida (HTTP ${err.response.status}):`, item.url);
+          }
+        } else {
+          // Erro 5xx ou Falha de Rede -> Interrompe o processamento e tenta depois
+          break; 
         }
-        break;
       }
     }
 
+    queue.value = queue.value.filter(q => unresolvedIds.has(q.id));
+    saveQueueToStorage();
+
     isSyncingQueue.value = false;
+    
     if (successCount > 0) {
-      toastStore.showToast(`${successCount} transações offline foram sincronizadas com o servidor.`, 'success');
+      toastStore.showToast(`${successCount} transações pendentes sincronizadas.`, 'neutral');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('compass:offline-sync-complete'));
+      }
+    }
+    
+    //  Loop de Autocorreção: Se sobraram itens com delay, agenda uma nova verificação
+    const hasDelayedItems = queue.value.some(req => req.executeAfter && req.executeAfter > now);
+    if (hasDelayedItems && isOnline.value) {
+      setTimeout(processQueue, 2000); 
     }
   };
 
@@ -117,7 +152,6 @@ export const useOfflineStore = defineStore('offline', () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // Tenta processar a fila ao inicializar o app
     if (isOnline.value && queue.value.length > 0) {
       setTimeout(processQueue, 2000);
     }
@@ -133,6 +167,7 @@ export const useOfflineStore = defineStore('offline', () => {
     isSyncingQueue,
     queue,
     addToQueue,
+    cancelRequest,
     processQueue,
     initNetworkListeners,
     removeListeners

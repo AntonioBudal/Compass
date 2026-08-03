@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useCommitmentsStore } from '@/stores/commitmentsStore';
 import { useProjectsStore } from '@/stores/projectsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { useInspectorStore } from '@/stores/inspectorStore'; // 🔥 ARQ-00
+import { useInspectorStore } from '@/stores/inspectorStore'; //  ARQ-00
 import { isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
 import { Folder, PlusCircle, Zap, CheckCircle2 } from 'lucide-vue-next';
 import DefensiveEmptyState from '@/components/core/DefensiveEmptyState.vue';
@@ -12,7 +12,7 @@ import PageHeader from '@/components/layout/PageHeader.vue';
 const commitmentsStore = useCommitmentsStore();
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
-const inspectorStore = useInspectorStore(); // 🔥 ARQ-00
+const inspectorStore = useInspectorStore(); //  ARQ-00
 
 const currentTab = ref<'ACTIVE' | 'COMPLETED'>('ACTIVE');
 const viewDensity = computed(() => settingsStore.getViewDensity('projects'));
@@ -92,7 +92,7 @@ const injectInShift = (projectName: string) => {
   isQuickCaptureOpen.value = true;
 };
 
-// 🔥 ARQ-00: Função para buscar a Entidade Real no catálogo e enviá-la ao Inspetor
+//  ARQ-00: Função para buscar a Entidade Real no catálogo e enviá-la ao Inspetor
 const openProjectInspector = (projectId: string) => {
   const realProject = projectsStore.catalog.find(p => p.id === projectId);
   if (realProject) {

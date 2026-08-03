@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref } from 'vue';
 import axios from 'axios';
 import { useToastStore } from './toastStore';
 
 export interface MorningBriefing {
-  date: string;
+  date: string; // Esperado formato YYYY-MM-DD
   pendingTasksCount: number;
   overdueTasksCount: number;
   habitsToCheckCount: number;
@@ -26,6 +26,7 @@ export const useDailyCycleStore = defineStore('dailyCycle', () => {
 
   const briefing = ref<MorningBriefing | null>(null);
   const isLoading = ref(false);
+  const lastFetchDate = ref<string | null>(null); //  NOVO: Rastreio da data do cache
   
   // TRAVA ANTI-DUPLICAÇÃO: Bloqueia chamadas redundantes ao backend
   const isSubmitting = ref(false);
@@ -47,7 +48,13 @@ export const useDailyCycleStore = defineStore('dailyCycle', () => {
   }
 
   const fetchMorningBriefing = async (force = false) => {
-    if (briefing.value && !force) return;
+    const todayIso = new Date().toISOString().slice(0, 10);
+    
+    //  CORREÇÃO: O Cache é invalidado automaticamente se o dia virou (Meia-noite)
+    const isCacheStale = lastFetchDate.value !== todayIso;
+    
+    if (briefing.value && !force && !isCacheStale) return;
+    
     isLoading.value = true;
     
     try {
@@ -58,7 +65,10 @@ export const useDailyCycleStore = defineStore('dailyCycle', () => {
         `${baseUrl}/daily-cycle/morning-briefing?timeZoneId=America/Sao_Paulo`, 
         { headers }
       );
+      
       briefing.value = res.data;
+      lastFetchDate.value = todayIso; //  Marca a data do cache
+      
     } catch (e) {
       console.warn('[DailyCycleStore] Falha ao carregar briefing matinal.', e);
     } finally {

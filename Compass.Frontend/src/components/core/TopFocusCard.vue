@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 import { computed } from 'vue';
 import { useDecisionStore, type ScoredActionDto } from '@/stores/decisionStore';
-import { useCommitmentsStore } from '@/stores/commitmentsStore'; // 🔥 Injetado
+import { useCommitmentsStore } from '@/stores/commitmentsStore'; //  Injetado
 import ScoreBreakdownPanel from '@/components/core/ScoreBreakdownPanel.vue';
 import { Zap, Clock, Terminal, ShieldAlert, CheckCircle2, CornerDownRight } from 'lucide-vue-next';
 
@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<{
 });
 
 const decisionStore = useDecisionStore();
-const commitmentsStore = useCommitmentsStore(); // 🔥 Injetado
+const commitmentsStore = useCommitmentsStore(); //  Injetado
 const profile = computed(() => decisionStore.adaptiveProfile);
 
 const emit = defineEmits<{
@@ -21,7 +21,7 @@ const emit = defineEmits<{
   (e: 'postpone', id: string): void;
 }>();
 
-// 🔥 CORREÇÃO (BUG-007): Componente Autônomo para Conclusão
+//  CORREÇÃO (BUG-007): Componente Autônomo para Conclusão
 const handleComplete = async (id: string) => {
   // 1. Marca como concluído no banco local/API
   await commitmentsStore.updateStatus(id, 'COMPLETED');
@@ -32,7 +32,7 @@ const handleComplete = async (id: string) => {
   emit('complete', id); // Mantido por retrocompatibilidade
 };
 
-// 🔥 CORREÇÃO (BUG-007): Componente Autônomo para Adiar (+15m)
+//  CORREÇÃO (BUG-007): Componente Autônomo para Adiar (+15m)
 const handlePostpone = async (id: string) => {
   // 1. Busca a tarefa real no cache
   const target = commitmentsStore.items.find(i => i.id === id);
@@ -87,7 +87,7 @@ const handlePostpone = async (id: string) => {
 
       <!-- Ações Rápidas (Compacto) -->
       <div v-if="density === 'compact'" class="flex items-center gap-2 flex-shrink-0">
-        <!-- 🔥 Binds de Eventos Corrigidos -->
+        <!--  Binds de Eventos Corrigidos -->
         <button @click.stop="handlePostpone(item.commitmentId)" class="px-3 py-1.5 text-[11px] font-bold rounded bg-surface-hover hover:bg-surface-active text-content border border-borderbase transition-colors cursor-pointer">
           Adiar
         </button>
@@ -120,7 +120,7 @@ const handlePostpone = async (id: string) => {
 
       <!-- Ações Rápidas (Detalhado) -->
       <div v-if="density === 'detailed'" class="flex items-center gap-2">
-        <!-- 🔥 Binds de Eventos Corrigidos -->
+        <!--  Binds de Eventos Corrigidos -->
         <button @click.stop="handlePostpone(item.commitmentId)" class="px-3 py-1.5 text-xs font-bold rounded bg-surface-hover hover:bg-surface-active text-content border border-borderbase transition-colors cursor-pointer">
           Adiar (+15m)
         </button>

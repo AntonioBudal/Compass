@@ -109,4 +109,18 @@ public class CommitmentsController : ControllerBase
         }
         return Guid.Parse("11111111-1111-1111-1111-111111111111");
     }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Delete(
+        Guid id, 
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetUserId();
+        await _commitmentService.DeleteAsync(userId, id, cancellationToken);
+        
+        // Retorna 204 No Content (Padrão REST para deleções bem-sucedidas)
+        return NoContent(); 
+    }
 }

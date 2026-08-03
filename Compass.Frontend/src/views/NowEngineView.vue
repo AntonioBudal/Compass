@@ -9,7 +9,7 @@ import TacticalHorizonBar, { type HorizonOption } from '@/components/core/Tactic
 import PageHeader from '@/components/layout/PageHeader.vue';
 import InspectableCard from '@/components/core/InspectableCard.vue';
 import { isQuickCaptureOpen } from '@/composables/useKeyboardShortcuts';
-import { RefreshCw, Sparkles, PlusCircle, Sunrise } from 'lucide-vue-next';
+import { RefreshCw, Sparkles, PlusCircle, Sunrise, ListTodo } from 'lucide-vue-next';
 
 const decisionStore = useDecisionStore();
 const commitmentsStore = useCommitmentsStore();
@@ -21,17 +21,18 @@ const isForceRefreshing = ref(false);
 const viewDensity = computed(() => settingsStore.getViewDensity('now'));
 
 onMounted(async () => {
-  await Promise.all([
-    commitmentsStore.fetchAllActive(),
-    decisionStore.fetchNow()
-  ]);
+  //  SOLUÇÃO 3: FIM DA CONDIÇÃO DE CORRIDA (Pipeline Sequencial)
+  // 1. Primeiro trazemos a base de dados real para a memória
+  await commitmentsStore.fetchAllActive(); 
+  
+  // 2. Só então o motor roda, calculando em cima dos dados que já estão lá
+  await decisionStore.fetchNow(); 
 });
 
-// 🔥 CORREÇÃO (UX-005): Recálculo agora busca os dados frescos (Single Source of Truth)
 const handleRefresh = async () => {
   isForceRefreshing.value = true;
-  await commitmentsStore.fetchAllActive(); // Traz edições/novas tarefas
-  await decisionStore.fetchNow(); // Roda o motor em cima dos dados frescos
+  await commitmentsStore.fetchAllActive();
+  await decisionStore.fetchNow();
   isForceRefreshing.value = false;
 };
 
@@ -39,16 +40,12 @@ const openCreateModal = () => {
   isQuickCaptureOpen.value = true;
 };
 
-// 🔥 CORREÇÃO (PERF-001): Dicionário O(1) para a View renderizar instantaneamente
-const itemsMap = computed(() => {
-  const map = new Map();
-  commitmentsStore.items.forEach(item => map.set(item.id, item));
-  return map;
-});
-
-// 🔥 CORREÇÃO (PERF-004): Loop único que resolve a contagem e as listas
+//  SOLUÇÃO 2: SEPARAÇÃO DOMÍNIO VS MOTOR (Fim das atividades ocultas)
 const horizonBuckets = computed(() => {
-  const allPending = commitmentsStore.items.filter(i => 
+  const allKnownEntities = Object.values(commitmentsStore.entities);
+  
+  // Busca a realidade absoluta de TUDO o que está pendente
+  const allPending = allKnownEntities.filter(i => 
     i.type === 'TASK' && (i.status === 'PENDING' || i.status === 'IN_PROGRESS')
   );
 
@@ -61,29 +58,31 @@ const horizonBuckets = computed(() => {
   const weekEnd = todayEnd + MS_IN_A_DAY * 7;
 
   const buckets = {
-    today: (decisionStore.topFocus ? 1 : 0) + decisionStore.alternatives.length,
+    today: [] as any[],
     tomorrow: [] as any[],
     '3days': [] as any[],
     week: [] as any[]
   };
 
   allPending.forEach(item => {
-    // Tarefas sem deadline (Backlog) caem na próxima semana
-    const targetTime = item.deadline ? new Date(item.deadline).getTime() : todayEnd + MS_IN_A_DAY * 5;
+    // Aloca cada tarefa na sua caixa cronológica correta
+    const targetTime = item.deadline ? new Date(item.deadline).getTime() : todayEnd + (MS_IN_A_DAY * 5);
 
-    if (targetTime > todayEnd && targetTime <= tomorrowEnd) buckets.tomorrow.push(item);
-    else if (targetTime > todayEnd && targetTime <= threeDaysEnd) buckets['3days'].push(item);
-    else if (targetTime > todayEnd && targetTime <= weekEnd) buckets.week.push(item);
+    if (targetTime <= todayEnd) buckets.today.push(item);
+    else if (targetTime <= tomorrowEnd) buckets.tomorrow.push(item);
+    else if (targetTime <= threeDaysEnd) buckets['3days'].push(item);
+    else buckets.week.push(item);
   });
 
   return {
     counts: {
-      today: buckets.today,
+      today: buckets.today.length, // Agora mostra TUDO que está vencendo hoje
       tomorrow: buckets.tomorrow.length,
       '3days': buckets['3days'].length,
       week: buckets.week.length
     },
     lists: {
+      today: buckets.today,
       tomorrow: buckets.tomorrow,
       '3days': buckets['3days'],
       week: buckets.week
@@ -91,17 +90,24 @@ const horizonBuckets = computed(() => {
   };
 });
 
+// Resgata o restante das tarefas de hoje que o motor "escondeu"
+const remainingTodayTasks = computed(() => {
+  // Coleta os IDs que o motor de decisão já separou
+  const suggestedIds = new Set(decisionStore.topActions.map(a => a.commitmentId));
+  
+  // Filtra as tarefas de hoje que NÃO estão no motor de decisão
+  return horizonBuckets.value.lists.today.filter((task: any) => !suggestedIds.has(task.id));
+});
+
 const activeFutureList = computed(() => {
   if (currentHorizon.value === 'today') return [];
   return horizonBuckets.value.lists[currentHorizon.value as 'tomorrow' | '3days' | 'week'];
 });
-
 </script>
 
 <template>
   <div class="max-w-4xl mx-auto space-y-6 select-none">
     
-    <!-- CABEÇALHO COM O TOGGLE DE DENSIDADE -->
     <PageHeader 
       title="Motor de Decisão"
       description="O algoritmo filtrou suas opções e selecionou a ação com maior retorno tático para o seu momento."
@@ -121,9 +127,10 @@ const activeFutureList = computed(() => {
       </template>
     </PageHeader>
 
+    <!-- A barra agora reflete a totalidade da base (Fonte de Verdade) -->
     <TacticalHorizonBar v-model="currentHorizon" :counts="horizonBuckets.counts" />
 
-    <!-- ABA: TURNOS FUTUROS -->
+    <!-- ABA: TURNOS FUTUROS (Intacta) -->
     <template v-if="currentHorizon !== 'today'">
       <div v-if="activeFutureList.length === 0" class="p-10 rounded-xl border border-dashed border-borderbase bg-app/40 text-center space-y-4 my-6">
         <div class="w-12 h-12 rounded-full bg-surface border border-borderfocus flex items-center justify-center mx-auto text-content">
@@ -149,7 +156,6 @@ const activeFutureList = computed(() => {
         </div>
         
         <transition-group name="fade-list" tag="div" class="space-y-2">
-          <!-- 🔥 CORREÇÃO (ARQ-003): Removido o falso objeto "DecisionAction" com dados vazios -->
           <InspectableCard 
             v-for="task in activeFutureList" 
             :key="task.id"
@@ -184,12 +190,12 @@ const activeFutureList = computed(() => {
         </div>
       </div>
 
-      <div v-else-if="!decisionStore.topFocus" class="p-8 rounded-xl border border-dashed border-borderbase bg-app/60 text-center space-y-6 my-8">
+      <div v-else-if="horizonBuckets.counts.today === 0" class="p-8 rounded-xl border border-dashed border-borderbase bg-app/60 text-center space-y-6 my-8">
         <div class="w-12 h-12 rounded-full bg-surface-active border border-borderfocus flex items-center justify-center mx-auto text-content">
           <Sparkles class="w-6 h-6" />
         </div>
         <div class="max-w-md mx-auto space-y-2">
-          <h3 class="text-lg font-semibold text-content">Nenhuma ação acionável para hoje</h3>
+          <h3 class="text-lg font-semibold text-content">Nenhuma ação pendente para hoje</h3>
           <p class="text-sm text-content-muted leading-relaxed">Sua lista está limpa. Aproveite o descanso ou planeje o amanhã.</p>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
@@ -200,33 +206,71 @@ const activeFutureList = computed(() => {
       </div>
 
       <template v-else>
-        <section aria-label="Ação Prioritária Recomendada">
-          <!-- 🔥 CORREÇÃO (PERF-001): View lendo do Map O(1) em vez do .find() em loop! -->
+        <!-- SEÇÃO 1: MOTOR DE DECISÃO (Foco Prioritário) -->
+        <section v-if="decisionStore.topFocus" aria-label="Ação Prioritária Recomendada">
+          <!-- Acesso Direto O(1) com Proteção -->
           <InspectableCard 
-            :entity="itemsMap.get(decisionStore.topFocus?.commitmentId)"
+            v-if="commitmentsStore.entities[decisionStore.topFocus.commitmentId]"
+            :entity="commitmentsStore.entities[decisionStore.topFocus.commitmentId]"
             type="COMMITMENT"
           >
             <TopFocusCard :item="decisionStore.topFocus" :density="viewDensity" />
           </InspectableCard>
         </section>
 
+        <!-- SEÇÃO 2: MOTOR DE DECISÃO (Alternativas Secundárias) -->
         <section v-if="decisionStore.alternatives.length > 0" aria-label="Alternativas" class="space-y-3 pt-4">
           <div class="flex items-center justify-between text-xs font-semibold text-content-muted uppercase tracking-wider px-1">
             <span>Alternativas</span>
-            <span class="font-mono">{{ decisionStore.alternatives.length }} disponíveis</span>
+            <span class="font-mono">{{ decisionStore.alternatives.length }} sugeridas</span>
           </div>
 
           <transition-group name="fade-list" tag="div" class="space-y-2">
-            <InspectableCard
-              v-for="alt in decisionStore.alternatives" 
-              :key="alt.commitmentId"
-              :entity="itemsMap.get(alt.commitmentId)"
+            <template v-for="alt in decisionStore.alternatives" :key="alt.commitmentId">
+              <InspectableCard
+                v-if="commitmentsStore.entities[alt.commitmentId]"
+                :entity="commitmentsStore.entities[alt.commitmentId]"
+                type="COMMITMENT"
+              >
+                <CommitmentCard :action="alt" :density="viewDensity" />
+              </InspectableCard>
+            </template>
+          </transition-group>
+        </section>
+
+        <!-- SEÇÃO 3: BACKLOG (O que o motor escondeu mas precisa ser feito hoje) -->
+        <section v-if="remainingTodayTasks.length > 0" aria-label="Restante do Turno" class="space-y-3 pt-8 pb-4">
+          <div class="flex items-center gap-2 text-xs font-semibold text-content-muted uppercase tracking-wider px-1 border-b border-borderbase pb-2">
+            <ListTodo class="w-4 h-4" />
+            <span>Restante do Turno de Hoje</span>
+            <span class="ml-auto font-mono bg-surface-active px-2 py-0.5 rounded">{{ remainingTodayTasks.length }} itens</span>
+          </div>
+
+          <transition-group name="fade-list" tag="div" class="space-y-2">
+            <InspectableCard 
+              v-for="task in remainingTodayTasks" 
+              :key="task.id"
+              :entity="task"
               type="COMMITMENT"
             >
-              <CommitmentCard :action="alt" :density="viewDensity" />
+              <CommitmentCard 
+                :density="viewDensity"
+                :action="{
+                  commitmentId: task.id, title: task.title, type: task.type,
+                  nominalDurationMinutes: task.estimatedDurationMinutes || 30,
+                  effectiveDurationMinutes: task.estimatedDurationMinutes || 30,
+                  energyRequired: task.energyRequired || 2,
+                  projectName: task.projectName || null,
+                  scorePercentage: 0,
+                  reason: 'Aguardando capacidade operacional.',
+                  wasTimeAdjustedByEai: false
+                }"
+                :isMockedAction="true" 
+              />
             </InspectableCard>
           </transition-group>
         </section>
+
       </template>
     </template>
   </div>

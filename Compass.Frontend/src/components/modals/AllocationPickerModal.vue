@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { useCommitmentsStore, type CommitmentItem } from '@/stores/commitmentsStore';
 import { useFocusTrap } from '@/composables/useFocusTrap';
-import { useToastStore } from '@/stores/toastStore'; // 🔥 ARQ-00: Injetado Toast para feedback
+import { useToastStore } from '@/stores/toastStore'; //  ARQ-00: Injetado Toast para feedback
 import { 
   Search, Calendar, Clock, Folder, 
   CircleDashed, RefreshCw, ArrowRight, CalendarPlus 
@@ -60,7 +60,7 @@ watch(searchQuery, () => {
   selectedIndex.value = 0;
 });
 
-// 🔥 CORREÇÃO DEFINITIVA: Auto-Alocação Direta na Agenda (Enviando o DTO completo)
+//  CORREÇÃO DEFINITIVA: Auto-Alocação Direta na Agenda (Enviando o DTO completo)
 const selectItem = async (item: CommitmentItem) => {
   emit('close'); // Oculta o modal instantaneamente para UX fluida
   

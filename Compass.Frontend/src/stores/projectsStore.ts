@@ -16,13 +16,20 @@ const STORAGE_KEY = 'compass_projects_catalog_cache';
 export const useProjectsStore = defineStore('projects', () => {
   const toastStore = useToastStore();
 
-  const catalog = ref<ProjectCatalogItemDto[]>([]);
+  //  ARQUITETURA NORMALIZADA
+  // O Dicionário (Single Source of Truth) e a Lista de Ponteiros
+  const entities = ref<Record<string, ProjectCatalogItemDto>>({});
+  const catalogIds = ref<string[]>([]);
+
   const isLoading = ref<boolean>(false);
   const isServingFromCache = ref<boolean>(false);
   const lastSyncedAt = ref<Date | null>(null);
 
+  //  COMPUTED BRIDGE: A View continua acessando `.catalog` como se fosse um array!
+  const catalog = computed(() => catalogIds.value.map(id => entities.value[id]).filter(Boolean));
+
   watch(() => catalog.value, (newCatalog) => {
-    if (newCatalog && Array.isArray(newCatalog)) {
+    if (newCatalog && newCatalog.length > 0) {
       ProjectProvider.syncData(
         newCatalog.map(p => ({
           id: p.id,
@@ -33,8 +40,11 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }, { deep: true, immediate: true });
 
+  // --- MOTOR DE CACHE LOCAL (PURIFICADO) ---
+  
   function saveToDisk() {
     try {
+      // Salvamos a projeção em array para manter compatibilidade reversa caso exista cache velho
       const payload = { timestamp: new Date().toISOString(), items: catalog.value };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
@@ -47,17 +57,34 @@ export const useProjectsStore = defineStore('projects', () => {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        catalog.value = parsed.items || [];
+        const cachedItems: ProjectCatalogItemDto[] = parsed.items || [];
+        
+        // Normaliza os dados lidos do disco
+        const newEntities: Record<string, ProjectCatalogItemDto> = {};
+        const newIds: string[] = [];
+        
+        cachedItems.forEach(p => {
+          newEntities[p.id] = p;
+          newIds.push(p.id);
+        });
+
+        entities.value = newEntities;
+        catalogIds.value = newIds;
+        
         lastSyncedAt.value = parsed.timestamp ? new Date(parsed.timestamp) : null;
         isServingFromCache.value = true;
-        return catalog.value.length > 0;
+        return catalogIds.value.length > 0;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[ProjectsStore] Cache corrompido. Ignorando...', e);
+    }
     return false;
   }
 
+  // --- SINCRONIZAÇÃO COM O BACKEND ---
+
   const fetchCatalog = async (forceRefresh = false) => {
-    if (catalog.value.length === 0 && !forceRefresh) loadFromDisk();
+    if (catalogIds.value.length === 0 && !forceRefresh) loadFromDisk();
 
     isLoading.value = true;
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
@@ -69,20 +96,32 @@ export const useProjectsStore = defineStore('projects', () => {
       });
 
       if (res.status === 200) {
-        catalog.value = res.data;
+        //  ANIQUILAÇÃO DE ZUMBIS: Substituímos o estado local 100% pelo que o servidor mandou.
+        // Projetos apagados no server deixarão de existir aqui automaticamente.
+        const newEntities: Record<string, ProjectCatalogItemDto> = {};
+        const newIds: string[] = [];
+        
+        res.data.forEach(p => {
+          newEntities[p.id] = p;
+          newIds.push(p.id);
+        });
+
+        entities.value = newEntities;
+        catalogIds.value = newIds;
+        
         isServingFromCache.value = false;
         lastSyncedAt.value = new Date();
-        saveToDisk();
+        saveToDisk(); // Atualiza o disco com a verdade absoluta
       }
     } catch (err: any) {
       console.warn('[ProjectsStore] Backend indisponível. Ativando modo local...');
       const hasOfflineData = loadFromDisk();
       
-      // 🔥 CORREÇÃO: Mock de Sobrevivência para a UI não ficar em branco
-      if (!hasOfflineData && catalog.value.length === 0) {
-        catalog.value = [
-          { id: 'proj-demo-1', name: 'Refatoração da Arquitetura', description: 'Migrar UI e Stores', lastUsedAtUtc: new Date().toISOString() }
-        ];
+      // Mock de Sobrevivência (Se for a primeira vez rodando sem backend)
+      if (!hasOfflineData && catalogIds.value.length === 0) {
+        const demoId = 'proj-demo-1';
+        entities.value[demoId] = { id: demoId, name: 'Refatoração da Arquitetura', description: 'Migrar UI e Stores', lastUsedAtUtc: new Date().toISOString() };
+        catalogIds.value.push(demoId);
         saveToDisk();
       }
       toastStore.showToast('[OFFLINE] Projetos servidos localmente.', 'neutral');
@@ -91,41 +130,56 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   };
 
-  // 🔥 NOVO MÉTODO (O Conector Universal para o Inspetor)
-  const updateProject = async (id: string, payload: any, isSilent: boolean = false) => {
-    const index = catalog.value.findIndex(p => p.id === id);
-    if (index === -1) return;
+  // --- MUTAÇÕES OTIMISTAS O(1) ---
 
-    const originalItem = { ...catalog.value[index] };
-    Object.assign(catalog.value[index], payload); // Mutação na memória
+  const updateProject = async (id: string, payload: any, isSilent: boolean = false) => {
+    if (!entities.value[id]) return;
+
+    const originalItem = { ...entities.value[id] };
+    
+    //  Mutação direta no Dicionário O(1)
+    Object.assign(entities.value[id], payload); 
 
     try {
-      // Futuro: Chamada Axios PUT aqui
-      saveToDisk(); // Salva local por enquanto
+      // Futuro: await CompassApi.updateProject(id, payload);
+      saveToDisk(); 
       if (!isSilent) toastStore.showToast('Projeto atualizado.', 'neutral');
     } catch (err: any) {
-      Object.assign(catalog.value[index], originalItem);
+      Object.assign(entities.value[id], originalItem);
       if (!isSilent) toastStore.showToast('Falha na edição. Revertido.', 'error');
       throw err;
     }
   };
 
   const promoteUsage = (projectId: string) => {
-    const idx = catalog.value.findIndex(p => p.id === projectId);
-    if (idx !== -1) {
-      const item = catalog.value[idx];
-      item.lastUsedAtUtc = new Date().toISOString();
-      catalog.value.splice(idx, 1);
-      catalog.value.unshift(item);
-      saveToDisk();
-    }
-  };
-
-  const addOptimisticProject = (newProject: ProjectCatalogItemDto) => {
-    catalog.value.unshift(newProject);
+    if (!entities.value[projectId]) return;
+    
+    entities.value[projectId].lastUsedAtUtc = new Date().toISOString();
+    
+    // Move o ponteiro para o topo (LRU) sem mexer no objeto em si
+    catalogIds.value = catalogIds.value.filter(id => id !== projectId);
+    catalogIds.value.unshift(projectId);
+    
     saveToDisk();
   };
 
+  const addOptimisticProject = (newProject: ProjectCatalogItemDto) => {
+    entities.value[newProject.id] = newProject;
+    catalogIds.value.unshift(newProject.id);
+    saveToDisk();
+  };
+
+  const createProject = async (projectName: string): Promise<ProjectCatalogItemDto> => {
+    const tempId = `temp-${Date.now()}`;
+    const optimisticProject: ProjectCatalogItemDto = {
+      id: tempId, name: projectName, description: null, lastUsedAtUtc: new Date().toISOString()
+    };
+    
+    addOptimisticProject(optimisticProject);
+    return optimisticProject; // Mock temporário até termos o endpoint C#
+  };
+
+  // Getter de ordenação para o dropdown (mantém a lógica original intacta)
   const lruProjects = computed(() => {
     return [...catalog.value].sort((a, b) => {
       const timeA = a.lastUsedAtUtc ? new Date(a.lastUsedAtUtc).getTime() : 0;
@@ -134,18 +188,17 @@ export const useProjectsStore = defineStore('projects', () => {
     });
   });
 
-  const createProject = async (projectName: string): Promise<ProjectCatalogItemDto> => {
-    const tempId = `temp-${Date.now()}`;
-    const optimisticProject: ProjectCatalogItemDto = {
-      id: tempId, name: projectName, description: null, lastUsedAtUtc: new Date().toISOString()
-    };
-    addOptimisticProject(optimisticProject);
-    return optimisticProject; // Retorna mock direto para não quebrar a UI
-  };
-
   return {
-    catalog, isLoading, isServingFromCache, lastSyncedAt, lruProjects,
-    fetchCatalog, promoteUsage, addOptimisticProject, createProject,
+    entities,
+    catalog, 
+    isLoading, 
+    isServingFromCache, 
+    lastSyncedAt, 
+    lruProjects,
+    fetchCatalog, 
+    promoteUsage, 
+    addOptimisticProject, 
+    createProject,
     updateProject 
   };
 });

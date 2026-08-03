@@ -9,4 +9,5 @@ public interface ICommitmentService
     Task<CommitmentDto> CreateAsync(Guid userId, CreateCommitmentDto dto, CancellationToken cancellationToken = default);
     Task<StatusTransitionResponseDto> UpdateStatusAsync(Guid userId, Guid commitmentId, UpdateStatusDto dto, CancellationToken cancellationToken = default);
     Task<CommitmentDto> UpdateAsync(Guid userId, Guid commitmentId, UpdateCommitmentDto dto, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Guid userId, Guid commitmentId, CancellationToken cancellationToken = default);
 }

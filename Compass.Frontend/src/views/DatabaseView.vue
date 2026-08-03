@@ -38,6 +38,14 @@ watch(() => filters.value, (newFilters) => {
   }, 300);
 }, { deep: true });
 
+//  ARQ (Solução do Fantasma): A View só exibe itens que AINDA EXISTEM no Dicionário.
+// Se a Store der 'delete entities[id]', esse computed esconde a linha no mesmo milissegundo.
+const safeDatabaseItems = computed(() => {
+  return commitmentsStore.databaseItems.filter(item => {
+    return item && commitmentsStore.entities[item.id] !== undefined;
+  });
+});
+
 // --- Auxiliares Visuais ---
 
 const getTypeIcon = (type: string) => {
@@ -49,7 +57,9 @@ const getTypeIcon = (type: string) => {
 
 const getProjectName = (projectId: string | null) => {
   if (!projectId) return 'Avulso';
-  const proj = projectsStore.catalog.find(p => p.id === projectId);
+  
+  //  ARQ: Lendo do dicionário de projetos em vez do array catalog
+  const proj = projectsStore.entities[projectId];
   return proj ? proj.name : 'Desconhecido';
 };
 
@@ -63,6 +73,7 @@ const formatDate = (dateString: string | null) => {
 const confirmDelete = async (id: string, title: string) => {
   if (confirm(`Tem certeza que deseja excluir permanentemente o registro "${title}"?`)) {
     try {
+      //  A Store deletará da Fonte de Verdade O(1).
       await commitmentsStore.deleteCommitment(id);
       toastStore.showToast('Registro destruído.', 'success');
     } catch {
@@ -80,7 +91,7 @@ const confirmDelete = async (id: string, title: string) => {
       description="Visão administrativa de alta densidade (All Issues). Gerencie todos os registros do banco local."
       :actionIcon="Database"
       viewName="database"
-      :badgeCount="commitmentsStore.databaseTotal"
+      :badgeCount="safeDatabaseItems.length"
       badgeLabel="Registros"
     />
 
@@ -119,6 +130,7 @@ const confirmDelete = async (id: string, title: string) => {
       <!-- Filtro: Projeto -->
       <select v-model="filters.projectId" class="px-3 py-2 bg-app border border-borderbase rounded-tactic text-xs font-mono text-content-muted focus:border-borderfocus outline-none cursor-pointer max-w-[200px]">
         <option value="">[Projeto: Todos]</option>
+        <!--  ARQ: O loop continua usando catalogIds, mas via computed da store (lruProjects ou catalog) -->
         <option v-for="proj in projectsStore.catalog" :key="proj.id" :value="proj.id">
           {{ proj.name }}
         </option>
@@ -150,7 +162,7 @@ const confirmDelete = async (id: string, title: string) => {
       </div>
 
       <!-- Estado Vazio -->
-      <div v-else-if="commitmentsStore.databaseItems.length === 0" class="py-16 text-center text-xs font-mono text-content-muted flex flex-col items-center gap-2 bg-app">
+      <div v-else-if="safeDatabaseItems.length === 0" class="py-16 text-center text-xs font-mono text-content-muted flex flex-col items-center gap-2 bg-app">
         <Database class="w-6 h-6 text-content-muted opacity-50" />
         <span>Nenhum registro corresponde aos filtros atuais.</span>
       </div>
@@ -158,7 +170,7 @@ const confirmDelete = async (id: string, title: string) => {
       <!-- Linhas da Tabela -->
       <div v-else class="divide-y divide-borderbase">
         <div 
-          v-for="item in commitmentsStore.databaseItems" 
+          v-for="item in safeDatabaseItems" 
           :key="item.id"
           class="grid grid-cols-12 gap-4 px-4 py-3.5 items-center hover:bg-surface-hover transition-colors group"
         >

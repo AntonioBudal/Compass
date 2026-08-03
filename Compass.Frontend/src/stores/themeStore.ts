@@ -42,7 +42,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
   {
     id: 'slate',
     name: 'Ardósia Técnica',
-    description: 'Conjunto cromático edificado sobre matizes Slate, destinado a preservar a distinção hierárquica dos elementos visuais mediante equilíbrio tonal e clareza estrutural.',
+    description: 'Conjunto cromático edificado sobre matizes Slate, destinado a preservar a preservar a distinção hierárquica dos elementos visuais mediante equilíbrio tonal e clareza estrutural.',
     preview: { bg: '#0f172a', surface: '#1e293b', accent: '#38bdf8' }
   },
   {
@@ -64,6 +64,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
     preview: { bg: '#030704', surface: '#08120a', accent: '#22c55e' }
   }
 ];
+
 export const useThemeStore = defineStore('theme', () => {
   const currentTheme = ref<ThemeId>('dark');
 
@@ -78,6 +79,8 @@ export const useThemeStore = defineStore('theme', () => {
   };
 
   const setTheme = (themeId: ThemeId) => {
+    if (currentTheme.value === themeId) return; // Evita loop de eventos
+
     currentTheme.value = themeId;
     applyThemeToDOM(themeId);
 
@@ -100,6 +103,19 @@ export const useThemeStore = defineStore('theme', () => {
       }
     } catch {
       applyThemeToDOM('dark');
+    }
+
+    //  ARQ: Sincronização Multi-Aba (Cross-Tab Reactivity)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (event) => {
+        if (event.key === 'compass_theme' && event.newValue) {
+          const newTheme = event.newValue as ThemeId;
+          if (THEME_OPTIONS.some(t => t.id === newTheme)) {
+            currentTheme.value = newTheme;
+            applyThemeToDOM(newTheme);
+          }
+        }
+      });
     }
   };
 

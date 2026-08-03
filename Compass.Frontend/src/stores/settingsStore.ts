@@ -88,17 +88,22 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // --- Ações de Comunicação API ---
   const fetchSettings = async (force = false) => {
-    if (!force && loadFromDisk()) return;
+    //  ARQ (Stale-While-Revalidate): Carrega da RAM/Disco para renderizar a UI sem "piscar"
+    loadFromDisk();
+    
+    // E então vai ao servidor para garantir que as alterações de outros dispositivos sejam refletidas
     isLoading.value = true;
     try {
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
       const headers = { 'X-User-Id': '11111111-1111-1111-1111-111111111111' };
-      const res = await axios.get<UserSettingsDto>(`${baseUrl}/settings`, { headers });
+      const res = await axios.get<UserSettingsDto>(`${baseUrl}/settings`, { headers, timeout: 5000 });
+      
       if (res.status === 200 && res.data) {
         Object.assign(settings.value, res.data);
-        saveToDisk();
+        saveToDisk(); // Atualiza o disco com a Verdade Absoluta
       }
     } catch (e) {
+      console.warn('[SettingsStore] Backend indisponível, servindo do cache local.', e);
     } finally {
       isLoading.value = false;
     }
@@ -109,6 +114,8 @@ export const useSettingsStore = defineStore('settings', () => {
     isSubmitting.value = true;
 
     const previous = { ...settings.value };
+    
+    // Mutação Otimista
     Object.assign(settings.value, newSettings);
     saveToDisk();
 
@@ -120,6 +127,7 @@ export const useSettingsStore = defineStore('settings', () => {
       };
       await axios.put(`${baseUrl}/settings`, settings.value, { headers });
     } catch (e) {
+      // Reverte em caso de falha
       Object.assign(settings.value, previous);
       saveToDisk();
       toastStore.showToast('Erro ao sincronizar configurações.', 'error');

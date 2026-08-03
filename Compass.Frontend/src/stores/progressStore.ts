@@ -167,8 +167,12 @@ export const useProgressStore = defineStore('progress', () => {
   // 1. Cálculo do Delta Operacional de HOJE em Memória RAM
   const todayDelta = computed(() => {
     const todayIso = getLocalIsoDate();
-    const completedToday = commitmentsStore.items.filter(i => i.status === 'COMPLETED');
-    const pendingToday = commitmentsStore.items.filter(i => i.status === 'PENDING' || i.status === 'IN_PROGRESS');
+    
+    //  ARQ: O Progress lê da Verdade Absoluta do Domínio, não apenas do que está visível na tela
+    const allKnownEntities = Object.values(commitmentsStore.entities);
+
+    const completedToday = allKnownEntities.filter(i => i.status === 'COMPLETED');
+    const pendingToday = allKnownEntities.filter(i => i.status === 'PENDING' || i.status === 'IN_PROGRESS');
 
     const completedCount = completedToday.length;
     const plannedCount = completedCount + pendingToday.length;
@@ -178,7 +182,7 @@ export const useProgressStore = defineStore('progress', () => {
       .filter(i => i.energyRequired === 3)
       .reduce((acc, curr) => acc + (curr.estimatedDurationMinutes || 30), 0);
 
-    const postponements = commitmentsStore.items.reduce((acc, curr) => acc + (curr.postponedCount || 0), 0);
+    const postponements = allKnownEntities.reduce((acc, curr) => acc + (curr.postponedCount || 0), 0);
 
     return {
       dateIso: todayIso,

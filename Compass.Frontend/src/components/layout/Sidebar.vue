@@ -7,7 +7,7 @@ import { isCommandBarOpen } from '@/composables/useKeyboardShortcuts';
 import { 
   Zap, Calendar, Folder, Target, RefreshCw, 
   FileText, Sliders, PanelLeftClose, PanelLeftOpen, 
-  Search, Power, Terminal, BookOpen // 🔥 ARQ-00: BookOpen importado para a Library
+  Search, Power, Terminal, BookOpen //  ARQ-00: BookOpen importado para a Library
 } from 'lucide-vue-next';
 
 const isCollapsed = ref(false);
@@ -166,7 +166,7 @@ const handleSandboxClick = () => {
           </router-link>
           
 
-          <!-- 🔥 A NOVA TELA DE BIBLIOTECA (Documentation Hub) -->
+          <!--  A NOVA TELA DE BIBLIOTECA (Documentation Hub) -->
           <router-link 
             to="/library" 
             class="flex items-center gap-3 px-2.5 py-2 text-sm font-medium rounded-tactic transition-all"

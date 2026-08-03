@@ -61,13 +61,13 @@ const buildCronAndEmit = () => {
   }
 
   const cronString = `${parseInt(mm, 10)} ${parseInt(hh, 10)} * * ${dayPart}`;
-  modelValue.value = cronString; // 🔥 ARQ-013: Utilizando defineModel limpo sem emit manual redundante
+  modelValue.value = cronString; //  ARQ-013: Utilizando defineModel limpo sem emit manual redundante
 };
 
 const applyPreset = (p: typeof preset.value) => {
   preset.value = p;
   
-  // 🔥 CORREÇÃO (BUG-011): Sincroniza a memória explicitamente ao aplicar um preset
+  //  CORREÇÃO (BUG-011): Sincroniza a memória explicitamente ao aplicar um preset
   if (p === 'DAILY') {
     selectedDays.value = [0, 1, 2, 3, 4, 5, 6];
   } else if (p === 'WEEKDAYS') {

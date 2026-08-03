@@ -38,7 +38,7 @@ const syncIndicator = computed(() => {
   }
 });
 
-// 🔥 CORREÇÃO (ARQ-013): Delegação total de responsabilidade. 
+//  CORREÇÃO (ARQ-013): Delegação total de responsabilidade. 
 // O Componente não lida mais com debounces locais. A Store assume o controle.
 const handleFormUpdate = () => {
   inspectorStore.markAsEditing();
@@ -121,7 +121,7 @@ const resolveSubForm = computed(() => {
         <div class="flex-1 overflow-y-auto p-6">
           <div v-if="inspectorStore.draft" class="h-full">
             
-            <!-- 🔥 CORREÇÃO (HIDRATAÇÃO E MUTAÇÃO): Uso do v-model:draft conectando a via bidirecional -->
+            <!--  CORREÇÃO (HIDRATAÇÃO E MUTAÇÃO): Uso do v-model:draft conectando a via bidirecional -->
             <component 
               v-if="resolveSubForm"
               :is="resolveSubForm" 

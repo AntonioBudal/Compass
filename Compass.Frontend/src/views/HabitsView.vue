@@ -20,61 +20,55 @@ onMounted(() => {
   store.fetchAllActive();
 });
 
-// 🔥 CORREÇÃO (BUG-023): Motor real de interpretação CRON para Frontend
 const isHabitScheduledForDate = (cron: string | null, date: Date) => {
-  if (!cron) return true; // Se não tem CRON, assume diário (fallback)
+  if (!cron) return true; 
   const parts = cron.split(' ');
   if (parts.length !== 5) return true;
   
   const dayOfWeekPart = parts[4];
-  if (dayOfWeekPart === '*') return true; // Diário
+  if (dayOfWeekPart === '*') return true; 
 
-  const currentDayOfWeek = date.getDay(); // 0 (Dom) a 6 (Sáb)
+  const currentDayOfWeek = date.getDay(); 
   
-  // Tratamento de range (ex: 1-5 para Dias Úteis)
   if (dayOfWeekPart.includes('-')) {
     const [start, end] = dayOfWeekPart.split('-').map(Number);
     return currentDayOfWeek >= start && currentDayOfWeek <= end;
   }
-  // Tratamento de lista (ex: 0,6 para Fim de Semana)
   if (dayOfWeekPart.includes(',')) {
     const validDays = dayOfWeekPart.split(',').map(Number);
     return validDays.includes(currentDayOfWeek);
   }
-  // Tratamento de dia único (ex: 1 para Segunda)
   return parseInt(dayOfWeekPart, 10) === currentDayOfWeek;
 };
 
-// 🔥 CORREÇÃO (BUG-024): Única Fonte de Verdade para Filtragem
+//  ARQ: O Getter agora lê do Dicionário (Verdade Absoluta), eliminando fantasmas e dados ocultos.
+const allKnownHabits = computed(() => {
+  return Object.values(store.entities).filter(i => i.type === 'HABIT' && i.status !== 'ARCHIVED');
+});
+
 const habits = computed(() => {
-  const allHabits = store.items.filter(i => i.type === 'HABIT' && i.status !== 'ARCHIVED');
-  
   const targetDate = new Date();
   if (currentHorizon.value === 'today') {
-    return allHabits.filter(i => isHabitScheduledForDate(i.cronExpression, targetDate));
+    return allKnownHabits.value.filter(i => isHabitScheduledForDate(i.cronExpression, targetDate));
   }
   if (currentHorizon.value === 'tomorrow') {
     targetDate.setDate(targetDate.getDate() + 1);
-    return allHabits.filter(i => isHabitScheduledForDate(i.cronExpression, targetDate));
+    return allKnownHabits.value.filter(i => isHabitScheduledForDate(i.cronExpression, targetDate));
   }
   
-  // Para 3 Dias e Semana, mostramos todos os ativos, já que a visualização é macro
-  return allHabits;
+  return allKnownHabits.value;
 });
 
-// 🔥 CORREÇÃO (UX-026): Contagens agora são 100% fieis à lista renderizada
 const horizonCounts = computed(() => {
-  const allHabits = store.items.filter(i => i.type === 'HABIT' && i.status !== 'ARCHIVED');
-  
   const today = new Date();
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   return {
-    today: allHabits.filter(i => isHabitScheduledForDate(i.cronExpression, today)).length,
-    tomorrow: allHabits.filter(i => isHabitScheduledForDate(i.cronExpression, tomorrow)).length,
-    '3days': allHabits.length,
-    week: allHabits.length
+    today: allKnownHabits.value.filter(i => isHabitScheduledForDate(i.cronExpression, today)).length,
+    tomorrow: allKnownHabits.value.filter(i => isHabitScheduledForDate(i.cronExpression, tomorrow)).length,
+    '3days': allKnownHabits.value.length,
+    week: allKnownHabits.value.length
   };
 });
 
@@ -82,7 +76,6 @@ const openNewHabitModal = () => {
   isQuickCaptureOpen.value = true;
 };
 
-// 🔥 CORREÇÃO (ARQ-025): Hábito agora pode ser desmarcado (Toggle) se marcado acidentalmente
 const handleToggleHabit = (item: CommitmentItem) => {
   pulsingHabitId.value = item.id;
   const newStatus = item.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
@@ -169,7 +162,6 @@ const getStreakVariant = (streak: number) => {
             ]"
           >
             <div class="flex items-start gap-3 min-w-0 flex-1">
-              <!-- 🔥 CORREÇÃO (ARQ-025): Removido o :disabled, permitindo Uncheck -->
               <button 
                 type="button"
                 @click.stop="handleToggleHabit(item)"
@@ -183,7 +175,6 @@ const getStreakVariant = (streak: number) => {
                 <Check v-if="item.status === 'COMPLETED'" class="stroke-[3]" :class="viewDensity === 'compact' ? 'w-3 h-3' : 'w-3.5 h-3.5'" />
               </button>
 
-              <!-- Título e Dados -->
               <div class="min-w-0 flex-1" :class="viewDensity === 'compact' ? 'flex items-center justify-between gap-4' : 'space-y-1.5'">
                 <p 
                   class="font-medium text-content transition-colors truncate"
@@ -195,7 +186,6 @@ const getStreakVariant = (streak: number) => {
                   {{ item.title }}
                 </p>
 
-                <!-- Metadados Táticos -->
                 <div v-if="viewDensity === 'detailed'" class="flex flex-wrap items-center gap-3 text-xs font-mono text-content-muted">
                   <span class="text-content-muted">{{ item.energyRequired === 3 ? 'Alta' : item.energyRequired === 1 ? 'Baixa' : 'Média' }}</span>
                   <span>•</span>
@@ -208,7 +198,6 @@ const getStreakVariant = (streak: number) => {
               </div>
             </div>
 
-            <!-- Flame Badge Rastreio de Calor -->
             <div class="flex items-center gap-3 flex-shrink-0">
               <span 
                 class="inline-flex items-center gap-1.5 rounded-md font-mono border transition-transform duration-tactic"

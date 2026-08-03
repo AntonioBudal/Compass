@@ -15,27 +15,23 @@ export interface SandboxCommitment {
   estimatedDurationMinutes: number;
   energyRequired: number;
   timeLabel?: string;
-
-  
 }
 
 export const useOnboardingStore = defineStore('onboarding', () => {
   const router = useRouter();
   const toastStore = useToastStore();
-
   
   const isSandboxActive = ref(false);
   const commitments = ref<SandboxCommitment[]>([]);
 
   const startTutorialMode = () => {
-    // Se o sandbox rico estiver ativo, desliga momentaneamente para o tutorial
     isSandboxActive.value = false;
-    commitments.value = []; // Limpa a RAM para o usuário testar passo a passo
+    commitments.value = []; 
   };
 
   // --- MOTOR DE INJEÇÃO GLOBAL: ECOSSISTEMA DEMO EM RAM (< 5ms) ---
   const activateRichSandbox = () => {
-    // Instancia as stores globais em tempo de execução para evitar ciclos de dependência
+    // Instancia as stores globais em tempo de execução
     const projectsStore = useProjectsStore();
     const commitmentsStore = useCommitmentsStore();
     const progressStore = useProgressStore();
@@ -44,21 +40,16 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     isSandboxActive.value = true;
     sessionStorage.setItem('compass_sandbox_mode', 'true');
 
-    // 1. Injeção de Projetos e Metas (LRU Catalog)
-    projectsStore.catalog = [
-      {
-        id: 'proj-core-101',
-        name: 'compass-core',
-        description: 'Migração do Motor Tático para .NET 10 & Vue 3',
-        lastUsedAtUtc: new Date().toISOString()
-      },
-      {
-        id: 'proj-arch-202',
-        name: 'local-first-book',
-        description: 'Pesquisa e escrita sobre arquiteturas resilientes offline',
-        lastUsedAtUtc: new Date(Date.now() - 86400000 * 2).toISOString()
-      }
-    ];
+    // 1. Injeção de Projetos e Metas (Normalizada)
+    const p1 = { id: 'proj-core-101', name: 'compass-core', description: 'Migração do Motor Tático', lastUsedAtUtc: new Date().toISOString() };
+    const p2 = { id: 'proj-arch-202', name: 'local-first-book', description: 'Arquiteturas resilientes', lastUsedAtUtc: new Date(Date.now() - 86400000 * 2).toISOString() };
+    
+    //  ARQ: Injeção Segura na Fonte de Verdade
+    projectsStore.entities[p1.id] = p1;
+    projectsStore.entities[p2.id] = p2;
+    // Precisamos de bypass no TS porque as refs de ID e Catalog são internas na arquitetura do setup store
+    // Como é apenas Sandbox de memória, podemos usar assign forçado.
+    (projectsStore as any).catalogIds = [p1.id, p2.id];
     projectsStore.isServingFromCache = true;
 
     // 2. Injeção da Teia de Compromissos (Tasks, Habits, Events)
@@ -82,7 +73,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
         cronExpression: null,
         currentStreak: 0,
         bestStreak: 0,
-        content: 'Otimizar o LINQ com proteções de Winsorização para evitar distorções no EAI.',
+        content: 'Otimizar o LINQ.',
         projectId: 'proj-core-101',
         projectName: 'compass-core',
         _isSyncing: false
@@ -94,8 +85,8 @@ export const useOnboardingStore = defineStore('onboarding', () => {
         status: 'PENDING',
         estimatedDurationMinutes: 60,
         energyRequired: 2,
-        postponedCount: 3, // Aciona alerta de procrastinação na UI
-        deadline: new Date(Date.now() - 3600000).toISOString(), // Atrasada
+        postponedCount: 3, 
+        deadline: new Date(Date.now() - 3600000).toISOString(), 
         startTime: null,
         endTime: null,
         locationOrLink: null,
@@ -120,9 +111,9 @@ export const useOnboardingStore = defineStore('onboarding', () => {
         endTime: null,
         locationOrLink: null,
         cronExpression: '0 8 * * *',
-        currentStreak: 12, // Sequência ativa visual 🔥
+        currentStreak: 12, 
         bestStreak: 21,
-        content: 'Verificar Hard Blockers e calibrar a energia do dia.',
+        content: 'Verificar Hard Blockers e calibrar a energia.',
         projectId: null,
         projectName: null,
         _isSyncing: false
@@ -142,56 +133,67 @@ export const useOnboardingStore = defineStore('onboarding', () => {
         cronExpression: null,
         currentStreak: 0,
         bestStreak: 0,
-        content: 'Discutir concorrência multi-aba com BroadcastChannel.',
+        content: 'Discutir concorrência multi-aba.',
         projectId: 'proj-core-101',
         projectName: 'compass-core',
         _isSyncing: false
       }
     ];
 
-    commitmentsStore.items = mockCommitments;
+    //  ARQ: Injeção Normalizada
+    const activeIds: string[] = [];
+    mockCommitments.forEach(c => {
+      commitmentsStore.entities[c.id] = c;
+      activeIds.push(c.id);
+    });
+    // O mesmo bypass seguro para RAM Sandbox
+    (commitmentsStore as any).activeIds = activeIds;
 
-    // 3. Injeção de Telemetria e Perfil Adaptativo (EAI = 1.4x)
-    progressStore.rawOverview = {
-      totalCompleted: 42,
-      totalPlanned: 50,
-      completionRatePercentage: 84.0,
-      estimationAccuracyIndex: 1.4, // EAI Calibrado: Tarefas levam 40% mais tempo!
-      hasImputedAccuracyData: true,
-      totalDeepWorkMinutes: 320,
-      totalUsefulMinutes: 580,
-      totalPostponements: 6,
-      periodStartDateUtc: new Date(Date.now() - 86400000 * 30).toISOString(),
-      periodEndDateUtc: new Date().toISOString()
-    };
-    progressStore.isServingFromCache = true;
+    // 3. Injeção de Telemetria e Perfil Adaptativo
+    if ((progressStore as any).rawOverview !== undefined) {
+      (progressStore as any).rawOverview = {
+        totalCompleted: 42,
+        totalPlanned: 50,
+        completionRatePercentage: 84.0,
+        estimationAccuracyIndex: 1.4, 
+        hasImputedAccuracyData: true,
+        totalDeepWorkMinutes: 320,
+        totalUsefulMinutes: 580,
+        totalPostponements: 6,
+        periodStartDateUtc: new Date(Date.now() - 86400000 * 30).toISOString(),
+        periodEndDateUtc: new Date().toISOString()
+      };
+      (progressStore as any).isServingFromCache = true;
+    }
 
-    // 4. Calibração do Now Engine (Refletindo na tela Agora)
-    decisionStore.adaptiveProfile = {
-      isCalibrated: true,
-      sampleCount: 18,
-      eaiMultiplier: 1.4,
-      morningEnergyBias: 1.25, // Pico de energia matinal
-      afternoonEnergyBias: 0.85,
-      eveningEnergyBias: 0.70
-    };
-    
-    // Projeta o Top Focus aplicando o EAI de 1.4x sobre os 45m nominais (45 * 1.4 = 63m)
-    decisionStore.topActions = [
-      {
-        commitmentId: 'task-top-1',
-        title: mockCommitments[0].title,
-        type: 'TASK',
-        nominalDurationMinutes: 45,
-        effectiveDurationMinutes: 63, // Tempo calibrado pelo EAI
-        energyRequired: 3,
-        scorePercentage: 96.5,
-        reason: 'Alta compatibilidade com seu pico cronobiológico matinal (1.25x) e projeto prioritário.',
-        wasTimeAdjustedByEai: true,
-        projectName: 'compass-core'
-      }
-    ];
-    decisionStore.isServingFromCache = true;
+    // 4. Calibração do Now Engine
+    if ((decisionStore as any).adaptiveProfile !== undefined) {
+      (decisionStore as any).adaptiveProfile = {
+        isCalibrated: true,
+        sampleCount: 18,
+        eaiMultiplier: 1.4,
+        morningEnergyBias: 1.25, 
+        afternoonEnergyBias: 0.85,
+        eveningEnergyBias: 0.70
+      };
+      
+      // Projeta o Top Focus aplicando o EAI de 1.4x sobre os 45m nominais
+      (decisionStore as any).rawTopActions = [
+        {
+          commitmentId: 'task-top-1',
+          title: mockCommitments[0].title,
+          type: 'TASK',
+          nominalDurationMinutes: 45,
+          effectiveDurationMinutes: 63, 
+          energyRequired: 3,
+          scorePercentage: 96.5,
+          reason: 'Alta compatibilidade com seu pico cronobiológico matinal e projeto prioritário.',
+          wasTimeAdjustedByEai: true,
+          projectName: 'compass-core'
+        }
+      ];
+      (decisionStore as any).isServingFromCache = true;
+    }
 
     toastStore.showToast('[RAM SANDBOX] Ecossistema analítico carregado na memória!', 'success');
     router.push('/now');
@@ -199,26 +201,24 @@ export const useOnboardingStore = defineStore('onboarding', () => {
 
   // --- ENCERRAMENTO DO SANDBOX E RESTAURAÇÃO DE REDE ---
   const finishOnboarding = () => {
-  isSandboxActive.value = false;
-  commitments.value = [];
-  sessionStorage.removeItem('compass_sandbox_mode');
-  
-  try {
-    localStorage.setItem('compass_onboarded', 'true');
-  } catch (e) {
-    console.warn('[SandboxStore]: Falha ao persistir flag de onboarding.', e);
-  }
+    isSandboxActive.value = false;
+    commitments.value = [];
+    sessionStorage.removeItem('compass_sandbox_mode');
+    
+    try {
+      localStorage.setItem('compass_onboarded', 'true');
+    } catch (e) {
+      console.warn('[SandboxStore]: Falha ao persistir flag de onboarding.', e);
+    }
 
-  // NOVA ABORDAGEM: Aciona o Boot Cinematográfico e manda para a tela /now
-  window.dispatchEvent(new Event('compass:boot-sequence'));
-  router.push('/now');
-
-  toastStore.showToast('Inicialização Completa. Banco de dados local ativado!', 'success');
-};
+    window.dispatchEvent(new Event('compass:boot-sequence'));
+    router.push('/now');
+    toastStore.showToast('Inicialização Completa. Banco de dados local ativado!', 'success');
+  };
 
   const skipOnboarding = () => finishOnboarding();
 
-  // Mutações isoladas da etapa inicial do tutorial (Intactas)
+  // Mutações isoladas da etapa inicial do tutorial
   const seedSandboxData = () => {
     commitments.value = [
       { id: 'box-1', title: 'Explorar a interface monocromática do Compass', type: 'TASK', status: 'pending', estimatedDurationMinutes: 15, energyRequired: 1 },
@@ -261,6 +261,4 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     skipOnboarding,
     startTutorialMode
   };
-
-  
 });

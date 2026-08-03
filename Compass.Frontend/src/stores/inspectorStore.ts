@@ -83,7 +83,10 @@ export const useInspectorStore = defineStore('inspector', () => {
 
     // Avaliação de Exclusão de Projeto
     if (entityType === 'PROJECT') {
-      const linkedTasks = commitmentsStore.items.filter(i => i.projectId === entityId);
+      //  ARQ: Consulta a Fonte de Verdade Absoluta (Dicionário) em vez da view filtrada 'items'
+      const allKnownCommitments = Object.values(commitmentsStore.entities);
+      const linkedTasks = allKnownCommitments.filter(i => i.projectId === entityId);
+      
       if (linkedTasks.length > 0) {
         syncStatus.value = 'PAUSED_FOR_CONFIRMATION';
         toastStore.showIntervention({
@@ -94,7 +97,7 @@ export const useInspectorStore = defineStore('inspector', () => {
           actions: [
             { label: 'Cancelar', isPrimary: true, handler: () => { syncStatus.value = 'IDLE'; } },
             { label: 'Arquivar Projeto (Recomendado)', handler: async () => { 
-                // Futuro: projectsStore.updateStatus(entityId, 'ARCHIVED');
+                // Futuro: await projectsStore.updateStatus(entityId, 'ARCHIVED');
                 closeInspector(); 
               } 
             },
@@ -136,15 +139,15 @@ export const useInspectorStore = defineStore('inspector', () => {
   const executeDelete = async (type: InspectableType, id: string) => {
     closeInspector(); // Otimismo visual: Fecha o modal imediatamente
     if (type === 'COMMITMENT') {
-      // O método de delete na store já tem um Toast com função "Undo"
       await commitmentsStore.deleteCommitment(id);
     } else if (type === 'PROJECT') {
-      // Futuro: await projectsStore.deleteProject(id);
+      //  Quando adicionarmos o deleteProject na store de Projetos, será chamado aqui
+      // await projectsStore.deleteProject(id); 
     } else if (type === 'GOAL') {
-      // Futuro: await goalsStore.deleteGoal(id);
+      //  Quando adicionarmos o deleteGoal na store de Metas, será chamado aqui
+      // await goalsStore.deleteGoal(id);
     }
   };
-
 
   // --- 2. MOTOR DE UX DEFENSIVA: AUTO-SAVE ---
   const executeAutoSave = async () => {
@@ -163,7 +166,6 @@ export const useInspectorStore = defineStore('inspector', () => {
       const validation = DraftCommitmentSchema.safeParse(targetPayload);
       if (!validation.success) {
         syncStatus.value = 'ERROR';
-        // LOGA EXATAMENTE O QUAL CAMPO FALHOU
         console.error('[Zod Validation Failed]', validation.error.format()); 
         toastStore.showToast('Erro de validação local. Verifique os campos.', 'error');
         return; 
@@ -215,7 +217,7 @@ export const useInspectorStore = defineStore('inspector', () => {
         await commitmentsStore.updateCommitment(id, payload);
       } else if (type === 'GOAL') {
         await goalsStore.updateGoal(id, payload);
-      } else if (type === 'PROJECT') { // 🔥 A ROTA DO PROJETO ESTÁ LIGADA
+      } else if (type === 'PROJECT') { 
         await projectsStore.updateProject(id, payload);
       }
       

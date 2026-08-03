@@ -83,7 +83,8 @@ api.interceptors.response.use(
           payload: config.data ? JSON.parse(config.data) : null
         });
 
-        // Retorna uma resposta simulada de sucesso (202 Accepted) para evitar o Rollback na UI!
+        //  ARQ: Retornamos 202 Accepted apenas para rede caída.
+        // A UI mantém a mutação otimista até a internet voltar.
         return Promise.resolve({
           data: { id: 'offline-pending', status: 'PENDING', title: 'Salvo localmente' },
           status: 202,
@@ -95,7 +96,7 @@ api.interceptors.response.use(
         console.warn('[OfflinePiping]: Falha ao enfileirar requisição offline.', e);
       }
     }
-    // ------------------------------------------------------------
+   
 
     // Identifica se a resposta obedece rigorosamente ao contrato RFC 7807 Problem Details
     const contentType = error.response?.headers['content-type'];

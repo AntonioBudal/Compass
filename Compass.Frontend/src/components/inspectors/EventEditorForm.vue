@@ -2,13 +2,13 @@
 import { computed } from 'vue';
 import { Calendar, Link2 } from 'lucide-vue-next';
 
-// 🔥 CORREÇÃO (ARQ-013): Uso seguro do defineModel
+//  CORREÇÃO (ARQ-013): Uso seguro do defineModel
 const draft = defineModel<any>('draft', { required: true });
 
 const emit = defineEmits<{ (e: 'update'): void }>();
 const triggerSave = () => emit('update');
 
-// 🔥 CORREÇÃO (BUG-015): Tratamento de Fuso Horário sem falha matemática (Extração direta)
+//  CORREÇÃO (BUG-015): Tratamento de Fuso Horário sem falha matemática (Extração direta)
 const toLocalInputFormat = (isoString: string | null) => {
   if (!isoString) return '';
   const date = new Date(isoString);
@@ -30,7 +30,7 @@ const getDiffInMinutes = (startIso: string | null, endIso: string | null) => {
   return (new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000;
 };
 
-// 🔥 CORREÇÃO (UX-014): Setters Reativos com Validação Cruzada (Cross-Validation)
+//  CORREÇÃO (UX-014): Setters Reativos com Validação Cruzada (Cross-Validation)
 const localStartTime = computed({
   get: () => toLocalInputFormat(draft.value.startTime),
   set: (val) => {

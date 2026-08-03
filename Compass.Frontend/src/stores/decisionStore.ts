@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import axios from 'axios';
 import { useToastStore } from './toastStore';
+import { useCommitmentsStore } from './commitmentsStore'; 
 
 export interface AdaptiveProfileDto {
   isCalibrated: boolean;
@@ -39,8 +40,7 @@ const STORAGE_KEY = 'compass_now_engine_cache_v3';
 export const useDecisionStore = defineStore('decision', () => {
   const toastStore = useToastStore();
 
-  // --- Estado Reativo ---
-  const topActions = ref<ScoredActionDto[]>([]);
+  const rawTopActions = ref<ScoredActionDto[]>([]);
   const adaptiveProfile = ref<AdaptiveProfileDto>({
     isCalibrated: false,
     sampleCount: 0,
@@ -55,20 +55,17 @@ export const useDecisionStore = defineStore('decision', () => {
   const isServingFromCache = ref<boolean>(false);
   const lastSyncedAt = ref<Date | null>(null);
 
-  // --- Persistência em Disco (Resiliência Offline) ---
   function saveToDisk() {
     try {
       const payload = {
         timestamp: new Date().toISOString(),
         profile: adaptiveProfile.value,
-        actions: topActions.value,
+        actions: rawTopActions.value, 
         window: availableWindow.value,
         energy: currentEnergy.value
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.warn('[DecisionStore] Falha ao gravar perfil adaptativo no localStorage.', e);
-    }
+    } catch (e) {}
   }
 
   function loadFromDisk(): boolean {
@@ -77,25 +74,22 @@ export const useDecisionStore = defineStore('decision', () => {
       if (raw) {
         const parsed = JSON.parse(raw);
         adaptiveProfile.value = parsed.profile || adaptiveProfile.value;
-        topActions.value = parsed.actions || [];
+        rawTopActions.value = parsed.actions || [];
         availableWindow.value = parsed.window || 60;
         currentEnergy.value = parsed.energy || 2;
         lastSyncedAt.value = parsed.timestamp ? new Date(parsed.timestamp) : null;
         isServingFromCache.value = true;
         return true;
       }
-    } catch (e) {
-      console.warn('[DecisionStore] Cache local corrompido. Reiniciando com perfil basal.', e);
-    }
+    } catch (e) {}
     return false;
   }
 
-  // --- Sincronização Principal com o Backend ---
   const fetchDecisions = async (windowMinutes = 60, energy = 2, forceRefresh = false) => {
     availableWindow.value = windowMinutes;
     currentEnergy.value = energy;
 
-    if (topActions.value.length === 0 && !forceRefresh) {
+    if (rawTopActions.value.length === 0 && !forceRefresh) {
       loadFromDisk();
     }
 
@@ -110,19 +104,15 @@ export const useDecisionStore = defineStore('decision', () => {
       );
 
       if (res.status === 200) {
-        topActions.value = res.data.topActions;
+        rawTopActions.value = res.data.topActions;
         adaptiveProfile.value = res.data.adaptiveProfile;
         isServingFromCache.value = false;
         lastSyncedAt.value = new Date();
         saveToDisk();
       }
     } catch (err: any) {
-      console.warn('[DecisionStore] Falha na API do Now Engine. Ativando fallback analítico offline...', err);
-      
-      const hasOfflineData = topActions.value.length > 0 || loadFromDisk();
-      if (hasOfflineData) {
-        toastStore.showToast('[OFFLINE] Recomendações servidas do cache comportamental.', 'neutral');
-      } else {
+      const hasOfflineData = rawTopActions.value.length > 0 || loadFromDisk();
+      if (!hasOfflineData) {
         toastStore.showToast('Sem conexão para calcular o Now Engine.', 'error');
       }
     } finally {
@@ -130,19 +120,46 @@ export const useDecisionStore = defineStore('decision', () => {
     }
   };
 
-  // --- Getters Computados Compatíveis ---
+  //  SOLUÇÃO 1: EXTERMÍNIO DE FANTASMAS (JOIN BLINDADO)
+  const validTopActions = computed<ScoredActionDto[]>(() => {
+    const commitmentsStore = useCommitmentsStore();
+    
+    return rawTopActions.value
+      .filter(action => {
+        const sourceEntity = commitmentsStore.entities[action.commitmentId];
+        
+        // Se a tarefa sumiu da Fonte de Verdade (Excluída), aborta a sugestão!
+        if (!sourceEntity) return false; 
+        
+        // Se foi concluída ou arquivada, aborta a sugestão!
+        if (sourceEntity.status === 'COMPLETED' || sourceEntity.status === 'ARCHIVED') return false;
+        
+        return true; 
+      })
+      .map(action => {
+        // Hidratação segura (se chegou aqui, a entidade existe 100%)
+        const sourceEntity = commitmentsStore.entities[action.commitmentId];
+        return {
+          ...action,
+          title: sourceEntity.title,
+          projectName: sourceEntity.projectName,
+          type: sourceEntity.type
+        };
+      });
+  });
+
   const primaryFocus = computed<ScoredActionDto | null>(() => {
-    return topActions.value.length > 0 ? topActions.value[0] : null;
+    return validTopActions.value.length > 0 ? validTopActions.value[0] : null;
   });
 
   const secondaryActions = computed<ScoredActionDto[]>(() => {
-    return topActions.value.length > 1 ? topActions.value.slice(1) : [];
+    return validTopActions.value.length > 1 ? validTopActions.value.slice(1) : [];
   });
 
   const availableMinutes = computed<number>(() => availableWindow.value);
 
   return {
-    topActions,
+    topActions: validTopActions,
     adaptiveProfile,
     availableWindow,
     availableMinutes,
@@ -152,8 +169,8 @@ export const useDecisionStore = defineStore('decision', () => {
     lastSyncedAt,
     primaryFocus,
     secondaryActions,
-    topFocus: primaryFocus,          // Alias reativo para compatibilidade visual
-    alternatives: secondaryActions,  // Alias reativo para compatibilidade visual
+    topFocus: primaryFocus,
+    alternatives: secondaryActions,
     fetchDecisions,
     fetchNow: fetchDecisions,
     loadFromDisk

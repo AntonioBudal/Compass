@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Calendar, Target } from 'lucide-vue-next';
 
-// 🔥 CORREÇÃO (ARQ-013): Substituído defineProps por defineModel para manter o padrão universal
+//  CORREÇÃO (ARQ-013): Substituído defineProps por defineModel para manter o padrão universal
 const draft = defineModel<any>('draft', { required: true });
 const emit = defineEmits<{ (e: 'update'): void }>();
 

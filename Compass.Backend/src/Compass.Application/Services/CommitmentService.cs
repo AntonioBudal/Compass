@@ -114,7 +114,7 @@ public class CommitmentService : ICommitmentService
             cascadedEvents.Add(new CascadedDomainEventDto(
                 "HabitStreakIncremented",
                 habit.Id,
-                $"🔥 Hábito concluído! Seu streak atual subiu para {habit.CurrentStreak} dias contínuos."
+                $" Hábito concluído! Seu streak atual subiu para {habit.CurrentStreak} dias contínuos."
             ));
         }
 
@@ -196,4 +196,19 @@ public class CommitmentService : ICommitmentService
 
         return MapToDto(commitment, projectName);
     }
+
+    public async Task DeleteAsync(Guid userId, Guid commitmentId, CancellationToken cancellationToken = default)
+    {
+        var commitment = await _commitmentRepo.GetByIdAsync(commitmentId, cancellationToken);
+        
+        // Idempotência: Se já não existe, o objetivo de exclusão já foi alcançado.
+        if (commitment == null) return; 
+
+        if (commitment.UserId != userId)
+            throw new DomainException("Acesso negado a este compromisso.");
+
+        _commitmentRepo.Remove(commitment);
+        await _commitmentRepo.SaveChangesAsync(cancellationToken);
+    }
 }
+

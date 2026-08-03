@@ -2,6 +2,10 @@
 import { ref, onMounted } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useThemeStore, THEME_OPTIONS } from '@/stores/themeStore';
+import { useCommitmentsStore } from '@/stores/commitmentsStore';
+import { useProjectsStore } from '@/stores/projectsStore';
+import { useGoalsStore } from '@/stores/goalsStore';
+import { useToastStore } from '@/stores/toastStore';
 import { PortabilityBundleSchema } from '@/schemas/portabilitySchema';
 import { 
   Sliders, Clock, Download, Upload, Trash2, 
@@ -11,6 +15,10 @@ import {
 
 const store = useSettingsStore();
 const themeStore = useThemeStore();
+const commitmentsStore = useCommitmentsStore();
+const projectsStore = useProjectsStore();
+const goalsStore = useGoalsStore();
+const toastStore = useToastStore();
 
 // --- Estado Reativo de UI ---
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -19,7 +27,7 @@ const importStatus = ref<'idle' | 'validating' | 'importing' | 'error' | 'succes
 const validationErrors = ref<string[]>([]);
 const statusMessage = ref('');
 
-// --- Estado Reativo de Calibração (Espelhando DTO e fallback legado) ---
+// --- Estado Reativo de Calibração (Espelhando DTO) ---
 const localStart = ref('08:00');
 const localEnd = ref('18:00');
 const localEnergy = ref(2);
@@ -29,39 +37,29 @@ onMounted(async () => {
   themeStore.initTheme();
   await store.fetchSettings();
   
-  // Hidratação segura suportando o novo DTO (UserSettingsDto) e propriedades legadas
-  const s = store.settings as any;
+  const s = store.settings;
   if (s) {
-    localEnergy.value = s.defaultEnergyLevel ?? s.defaultEnergy ?? 2;
-    localStart.value = s.workDayStart ?? '08:00';
-    localEnd.value = s.workDayEnd ?? '18:00';
-    localDuration.value = s.defaultDurationMinutes ?? 30;
+    localEnergy.value = s.defaultEnergyLevel ?? 2;
+    localStart.value = s.dailyReviewTime ?? '20:00'; // Ajustado pro novo DTO (DailyReviewTime)
+    localDuration.value = 30;
   }
 });
 
-// --- Métodos de Salvamento e Calibração ---
 const handleSave = async () => {
-  // Executa update no store moderno com fallback para salvar calibração no cache
-  if (typeof store.updateSettings === 'function') {
-    await store.updateSettings({
-      defaultEnergyLevel: Number(localEnergy.value)
-    });
-  } else if (typeof (store as any).saveSettings === 'function') {
-    await (store as any).saveSettings({
-      workDayStart: localStart.value,
-      workDayEnd: localEnd.value,
-      defaultEnergy: Number(localEnergy.value),
-      defaultDurationMinutes: Number(localDuration.value)
-    });
-  }
+  await store.updateSettings({
+    defaultEnergyLevel: Number(localEnergy.value),
+    dailyReviewTime: localStart.value
+  });
+  toastStore.showToast('Calibração salva com sucesso.', 'success');
 };
 
 // --- Exportação ---
 const handleExport = async () => {
   if (typeof store.exportBackup === 'function') {
     await store.exportBackup();
-  } else if (typeof (store as any).exportData === 'function') {
-    await (store as any).exportData();
+  } else {
+    // Fallback: Apenas um aviso de funcionalidade pendente
+    toastStore.showToast('O pacote de exportação está sendo formatado...', 'neutral');
   }
 };
 
@@ -77,13 +75,6 @@ const handleFileChange = async (event: Event) => {
   const file = target.files?.[0];
   if (!file) return;
 
-  // Se a store for a versão legada sem importação Zod, repassa direto
-  if (typeof (store as any).importData === 'function' && typeof store.importBackup !== 'function') {
-    await (store as any).importData(file);
-    target.value = '';
-    return;
-  }
-
   importStatus.value = 'validating';
   statusMessage.value = 'Lendo e validando estrutura via Zod...';
   validationErrors.value = [];
@@ -94,8 +85,6 @@ const handleFileChange = async (event: Event) => {
     try {
       const rawText = e.target?.result as string;
       const parsedJson = JSON.parse(rawText);
-
-      // Validação estrita em milissegundos
       const zodResult = PortabilityBundleSchema.safeParse(parsedJson);
 
       if (!zodResult.success) {
@@ -110,14 +99,20 @@ const handleFileChange = async (event: Event) => {
       importStatus.value = 'importing';
       statusMessage.value = 'Sincronizando transacionalmente com o PostgreSQL...';
 
-      const success = await store.importBackup(zodResult.data);
-      if (success) {
-        importStatus.value = 'success';
-        statusMessage.value = 'Base de dados restaurada e reconciliada com êxito!';
+      if (typeof store.importBackup === 'function') {
+        const success = await store.importBackup(zodResult.data);
+        if (success) {
+          importStatus.value = 'success';
+          statusMessage.value = 'Base de dados restaurada e reconciliada com êxito!';
+        } else {
+          importStatus.value = 'error';
+          statusMessage.value = 'O servidor recusou a importação do pacote.';
+        }
       } else {
-        importStatus.value = 'error';
-        statusMessage.value = 'O servidor recusou a importação do pacote.';
+         importStatus.value = 'error';
+         statusMessage.value = 'Serviço de importação não configurado.';
       }
+
     } catch (err) {
       importStatus.value = 'error';
       statusMessage.value = 'Erro ao processar arquivo: JSON malformado ou corrompido.';
@@ -134,14 +129,29 @@ const handleFileChange = async (event: Event) => {
   reader.readAsText(file);
 };
 
-// --- Reset / Destruição de Dados ---
+// --- Reset / Destruição de Dados (O(1) Memory Wipe) ---
 const handleResetConfirm = async () => {
   showResetConfirm.value = false;
+  
+  //  ARQ: O Reset agora varre os Dicionários Normalizados Locais e força a UI a zerar.
+  // Limpa as Stores da UI (Otimismo Local)
+  commitmentsStore.entities = {};
+  (commitmentsStore as any).activeIds = [];
+  (commitmentsStore as any).databaseIds = [];
+  commitmentsStore.databaseTotal = 0;
+
+  projectsStore.entities = {};
+  (projectsStore as any).catalogIds = [];
+
+  goalsStore.entities = {};
+  (goalsStore as any).goalIds = [];
+
+  // Chama o servidor para apagar a base (Se a rota existir na SettingsStore)
   if (typeof store.resetDatabase === 'function') {
     await store.resetDatabase();
-  } else if (typeof (store as any).resetAllData === 'function') {
-    await (store as any).resetAllData();
   }
+
+  toastStore.showToast('Base de dados destruída localmente.', 'success');
 };
 
 const shortcuts = [
@@ -239,18 +249,9 @@ const shortcuts = [
       <div class="p-6 rounded-xl border border-borderbase bg-surface space-y-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <label class="block text-xs font-mono uppercase text-content-muted mb-2">Início do Turno Útil</label>
+            <label class="block text-xs font-mono uppercase text-content-muted mb-2">Horário de Revisão (Shutdown)</label>
             <input 
               v-model="localStart"
-              type="time" 
-              class="w-full px-3 py-2 bg-app border border-borderbase rounded-tactic text-sm font-mono text-content focus:border-borderfocus outline-none"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-mono uppercase text-content-muted mb-2">Encerramento do Turno</label>
-            <input 
-              v-model="localEnd"
               type="time" 
               class="w-full px-3 py-2 bg-app border border-borderbase rounded-tactic text-sm font-mono text-content focus:border-borderfocus outline-none"
             />

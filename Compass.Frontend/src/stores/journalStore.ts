@@ -11,9 +11,12 @@ export const useJournalStore = defineStore('journal', () => {
   const isShutdownOpen = ref(false);
   const shutdownStep = ref<number>(1); // 1 = Tarefas Pendentes | 2 = Hábitos | 3 = Resumo
 
+  //  ARQ: Helper que extrai todas as entidades conhecidas (Fonte de Verdade)
+  const allKnownEntities = computed(() => Object.values(commitmentsStore.entities));
+
   // Filtragem cronológica limpa sem gráficos (High SNR)
   const completedItems = computed(() => {
-    return commitmentsStore.items
+    return allKnownEntities.value
       .filter(i => i.status === 'COMPLETED')
       .sort((a, b) => {
         // Ordenação decrescente por ID temporário ou timestamp de conclusão
@@ -27,13 +30,13 @@ export const useJournalStore = defineStore('journal', () => {
   });
 
   const pendingForShutdown = computed(() => {
-    return commitmentsStore.items.filter(
+    return allKnownEntities.value.filter(
       i => (i.status === 'PENDING' || i.status === 'IN_PROGRESS') && i.type === 'TASK'
     );
   });
 
   const pendingHabitsForShutdown = computed(() => {
-    return commitmentsStore.items.filter(
+    return allKnownEntities.value.filter(
       i => i.type === 'HABIT' && i.status !== 'COMPLETED' && i.status !== 'ARCHIVED'
     );
   });
@@ -71,6 +74,8 @@ export const useJournalStore = defineStore('journal', () => {
   };
 
   const archiveItem = async (item: CommitmentItem) => {
+    // Nota de Arquitetura: Mantido o Delete como comportamento original, 
+    // mas se no futuro quiser apenas mudar o status: await commitmentsStore.updateStatus(item.id, 'ARCHIVED');
     await commitmentsStore.deleteCommitment(item.id);
   };
 
