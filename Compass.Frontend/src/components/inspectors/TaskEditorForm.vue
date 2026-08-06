@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { Clock, Folder } from 'lucide-vue-next';
+import { useProjectsStore } from '@/stores/projectsStore';
 
+//  ARQ: Injeção do Catálogo de Projetos para Vínculo Dinâmico
+const projectsStore = useProjectsStore();
 
 // Isso legaliza a mutação bidirecional (v-model) sem gerar warnings no Vue.
 const draft = defineModel<any>('draft', { required: true });
 
-// o @update apenas para avisar o Pai que ele deve iniciar o timer de 1 segundo do Auto-Save
+// O @update avisa o Pai que ele deve iniciar o timer do Auto-Save
 const emit = defineEmits<{ (e: 'update'): void }>();
 const triggerSave = () => emit('update');
 </script>
@@ -40,7 +43,7 @@ const triggerSave = () => emit('update');
         <select 
           v-model.number="draft.energyRequired" 
           @change="triggerSave"
-          class="w-full px-3 py-2 bg-app border border-borderbase rounded-tactic text-sm font-mono text-content focus:border-borderfocus focus:outline-none cursor-pointer"
+          class="w-full px-3 py-2 bg-app border border-borderbase rounded-tactic text-sm font-mono text-content focus:border-borderfocus focus:outline-none cursor-pointer appearance-none"
         >
           <option :value="1">■□□ MAINT (1)</option>
           <option :value="2">■■□ OPER (2)</option>
@@ -50,16 +53,23 @@ const triggerSave = () => emit('update');
     </div>
 
     <div>
-      <label class="block text-[10px] font-mono uppercase text-content-muted mb-1.5 tracking-wider">Projeto Vinculado</label>
+      <label class="block text-[10px] font-mono uppercase text-content-muted mb-1.5 tracking-wider">Veículo (Projeto Vinculado)</label>
       <div class="relative flex items-center">
-        <Folder class="w-4 h-4 text-content-muted absolute left-3" />
-        <input 
-          v-model="draft.projectName" 
-          @input="triggerSave"
-          type="text" placeholder="Sem projeto (avulso)"
-          class="w-full pl-9 pr-3 py-2 bg-app border border-borderbase rounded-tactic text-sm text-content focus:border-borderfocus focus:outline-none"
-        />
-        <!-- NOTA: Na Etapa de Componentização do TrieIndex, este input receberá o dropdown de autocomplete -->
+        <Folder class="w-4 h-4 text-content-muted absolute left-3 pointer-events-none" />
+        
+        <!--  ARQ: O Select que garante a Integridade Referencial no Frontend -->
+        <select 
+          v-model="draft.projectId" 
+          @change="triggerSave"
+          class="w-full pl-9 pr-8 py-2 bg-app border border-borderbase rounded-tactic text-sm text-content focus:border-borderfocus focus:outline-none transition-colors cursor-pointer appearance-none"
+        >
+          <option :value="null" class="italic">Nenhum (Tarefa Avulsa)</option>
+          <option v-for="proj in projectsStore.lruProjects" :key="proj.id" :value="proj.id">
+            {{ proj.name }}
+          </option>
+        </select>
+        
+        <div class="absolute right-3 pointer-events-none text-[10px] text-content-muted font-mono">▼</div>
       </div>
     </div>
   </div>

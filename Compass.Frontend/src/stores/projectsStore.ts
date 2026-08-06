@@ -2,12 +2,16 @@ import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import axios from 'axios';
 import { useToastStore } from './toastStore';
+import { useCommitmentsStore } from './commitmentsStore'; //  ARQ: Integração Bottom-Up
 import { ProjectProvider } from '@/utils/autocomplete/AutocompleteEngine';
+import { CompassApi } from '@/services/api';
 
+//  NOVO DTO: Agora possui GoalId
 export interface ProjectCatalogItemDto {
   id: string;
   name: string;
   description: string | null;
+  goalId: string | null; 
   lastUsedAtUtc: string | null;
 }
 
@@ -15,9 +19,9 @@ const STORAGE_KEY = 'compass_projects_catalog_cache';
 
 export const useProjectsStore = defineStore('projects', () => {
   const toastStore = useToastStore();
+  const commitmentsStore = useCommitmentsStore();
 
-  //  ARQUITETURA NORMALIZADA
-  // O Dicionário (Single Source of Truth) e a Lista de Ponteiros
+  // 📁 ARQUITETURA NORMALIZADA O(1)
   const entities = ref<Record<string, ProjectCatalogItemDto>>({});
   const catalogIds = ref<string[]>([]);
 
@@ -25,8 +29,43 @@ export const useProjectsStore = defineStore('projects', () => {
   const isServingFromCache = ref<boolean>(false);
   const lastSyncedAt = ref<Date | null>(null);
 
-  //  COMPUTED BRIDGE: A View continua acessando `.catalog` como se fosse um array!
+  // Getter bruto
   const catalog = computed(() => catalogIds.value.map(id => entities.value[id]).filter(Boolean));
+
+  //  MÁGICA BOTTOM-UP: Este computed funde Projetos + Tarefas em tempo real
+  const enrichedProjects = computed(() => {
+    const allTasks = Object.values(commitmentsStore.entities).filter(t => t.type === 'TASK');
+    
+    return catalog.value.map(project => {
+      const projTasks = allTasks.filter(t => t.projectId === project.id);
+      
+      let totalMinutes = 0;
+      let completedMinutes = 0;
+
+      projTasks.forEach(task => {
+        const duration = task.estimatedDurationMinutes || 30;
+        totalMinutes += duration;
+        if (task.status === 'COMPLETED') {
+          completedMinutes += duration;
+        }
+      });
+
+      const progressPercentage = totalMinutes > 0 ? Math.round((completedMinutes / totalMinutes) * 100) : 0;
+      let status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' = 'PENDING';
+      
+      if (totalMinutes > 0 && progressPercentage === 100) status = 'COMPLETED';
+      else if (completedMinutes > 0) status = 'IN_PROGRESS';
+
+      return {
+        ...project,
+        totalMinutes,
+        completedMinutes,
+        progressPercentage,
+        status,
+        taskCount: projTasks.length
+      };
+    });
+  });
 
   watch(() => catalog.value, (newCatalog) => {
     if (newCatalog && newCatalog.length > 0) {
@@ -40,16 +79,12 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }, { deep: true, immediate: true });
 
-  // --- MOTOR DE CACHE LOCAL (PURIFICADO) ---
-  
+  // --- MOTOR DE CACHE ---
   function saveToDisk() {
     try {
-      // Salvamos a projeção em array para manter compatibilidade reversa caso exista cache velho
       const payload = { timestamp: new Date().toISOString(), items: catalog.value };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.warn('[ProjectsStore] Falha ao persistir no disco local.', e);
-    }
+    } catch (e) {}
   }
 
   function loadFromDisk(): boolean {
@@ -59,7 +94,6 @@ export const useProjectsStore = defineStore('projects', () => {
         const parsed = JSON.parse(raw);
         const cachedItems: ProjectCatalogItemDto[] = parsed.items || [];
         
-        // Normaliza os dados lidos do disco
         const newEntities: Record<string, ProjectCatalogItemDto> = {};
         const newIds: string[] = [];
         
@@ -70,18 +104,12 @@ export const useProjectsStore = defineStore('projects', () => {
 
         entities.value = newEntities;
         catalogIds.value = newIds;
-        
-        lastSyncedAt.value = parsed.timestamp ? new Date(parsed.timestamp) : null;
         isServingFromCache.value = true;
         return catalogIds.value.length > 0;
       }
-    } catch (e) {
-      console.warn('[ProjectsStore] Cache corrompido. Ignorando...', e);
-    }
+    } catch (e) {}
     return false;
   }
-
-  // --- SINCRONIZAÇÃO COM O BACKEND ---
 
   const fetchCatalog = async (forceRefresh = false) => {
     if (catalogIds.value.length === 0 && !forceRefresh) loadFromDisk();
@@ -96,8 +124,6 @@ export const useProjectsStore = defineStore('projects', () => {
       });
 
       if (res.status === 200) {
-        //  ANIQUILAÇÃO DE ZUMBIS: Substituímos o estado local 100% pelo que o servidor mandou.
-        // Projetos apagados no server deixarão de existir aqui automaticamente.
         const newEntities: Record<string, ProjectCatalogItemDto> = {};
         const newIds: string[] = [];
         
@@ -108,42 +134,34 @@ export const useProjectsStore = defineStore('projects', () => {
 
         entities.value = newEntities;
         catalogIds.value = newIds;
-        
         isServingFromCache.value = false;
         lastSyncedAt.value = new Date();
-        saveToDisk(); // Atualiza o disco com a verdade absoluta
+        saveToDisk();
       }
     } catch (err: any) {
-      console.warn('[ProjectsStore] Backend indisponível. Ativando modo local...');
       const hasOfflineData = loadFromDisk();
-      
-      // Mock de Sobrevivência (Se for a primeira vez rodando sem backend)
       if (!hasOfflineData && catalogIds.value.length === 0) {
         const demoId = 'proj-demo-1';
-        entities.value[demoId] = { id: demoId, name: 'Refatoração da Arquitetura', description: 'Migrar UI e Stores', lastUsedAtUtc: new Date().toISOString() };
+        // Mock adaptado para o novo DTO
+        entities.value[demoId] = { id: demoId, name: 'Refatoração da Arquitetura', description: null, goalId: null, lastUsedAtUtc: new Date().toISOString() };
         catalogIds.value.push(demoId);
         saveToDisk();
       }
-      toastStore.showToast('[OFFLINE] Projetos servidos localmente.', 'neutral');
     } finally {
       isLoading.value = false;
     }
   };
 
-  // --- MUTAÇÕES OTIMISTAS O(1) ---
-
-  const updateProject = async (id: string, payload: any, isSilent: boolean = false) => {
+  const updateProject = async (id: string, payload: Partial<ProjectCatalogItemDto>, isSilent: boolean = false) => {
     if (!entities.value[id]) return;
-
     const originalItem = { ...entities.value[id] };
-    
-    //  Mutação direta no Dicionário O(1)
     Object.assign(entities.value[id], payload); 
 
     try {
-      // Futuro: await CompassApi.updateProject(id, payload);
+      
+      await CompassApi.updateProject(id, { name: entities.value[id].name, goalId: entities.value[id].goalId });
       saveToDisk(); 
-      if (!isSilent) toastStore.showToast('Projeto atualizado.', 'neutral');
+      if (!isSilent) toastStore.showToast('Projeto atualizado e sincronizado.', 'neutral');
     } catch (err: any) {
       Object.assign(entities.value[id], originalItem);
       if (!isSilent) toastStore.showToast('Falha na edição. Revertido.', 'error');
@@ -151,35 +169,37 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   };
 
+  const deleteProject = async (id: string) => {
+    if (!entities.value[id]) return;
+    
+    // Otimismo Visual
+    const projectToDelete = { ...entities.value[id] };
+    delete entities.value[id];
+    catalogIds.value = catalogIds.value.filter(pId => pId !== id);
+
+    try {
+      
+      await CompassApi.deleteProject(id);
+      saveToDisk();
+      toastStore.showToast('Projeto excluído com sucesso.', 'neutral');
+    } catch (err) {
+      // Rollback se falhar
+      entities.value[id] = projectToDelete;
+      catalogIds.value.unshift(id);
+      toastStore.showToast('Falha ao excluir o projeto.', 'error');
+      throw err;
+    }
+  };
+
   const promoteUsage = (projectId: string) => {
     if (!entities.value[projectId]) return;
-    
     entities.value[projectId].lastUsedAtUtc = new Date().toISOString();
     
-    // Move o ponteiro para o topo (LRU) sem mexer no objeto em si
     catalogIds.value = catalogIds.value.filter(id => id !== projectId);
     catalogIds.value.unshift(projectId);
-    
     saveToDisk();
   };
 
-  const addOptimisticProject = (newProject: ProjectCatalogItemDto) => {
-    entities.value[newProject.id] = newProject;
-    catalogIds.value.unshift(newProject.id);
-    saveToDisk();
-  };
-
-  const createProject = async (projectName: string): Promise<ProjectCatalogItemDto> => {
-    const tempId = `temp-${Date.now()}`;
-    const optimisticProject: ProjectCatalogItemDto = {
-      id: tempId, name: projectName, description: null, lastUsedAtUtc: new Date().toISOString()
-    };
-    
-    addOptimisticProject(optimisticProject);
-    return optimisticProject; // Mock temporário até termos o endpoint C#
-  };
-
-  // Getter de ordenação para o dropdown (mantém a lógica original intacta)
   const lruProjects = computed(() => {
     return [...catalog.value].sort((a, b) => {
       const timeA = a.lastUsedAtUtc ? new Date(a.lastUsedAtUtc).getTime() : 0;
@@ -188,16 +208,26 @@ export const useProjectsStore = defineStore('projects', () => {
     });
   });
 
+  const createProject = async (projectName: string): Promise<ProjectCatalogItemDto> => {
+    // 🚀 Bate na API que gera o Guid real
+    const created = await CompassApi.createProject({ name: projectName, goalId: null });
+    
+    entities.value[created.id] = created;
+    catalogIds.value.unshift(created.id);
+    saveToDisk();
+    
+    return created;
+  };
+
   return {
     entities,
-    catalog, 
+    catalog,
+    enrichedProjects, 
     isLoading, 
-    isServingFromCache, 
-    lastSyncedAt, 
     lruProjects,
     fetchCatalog, 
-    promoteUsage, 
-    addOptimisticProject, 
+    promoteUsage,
+    deleteProject,
     createProject,
     updateProject 
   };

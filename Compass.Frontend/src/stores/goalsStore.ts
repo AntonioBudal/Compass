@@ -1,154 +1,116 @@
 import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { useToastStore } from './toastStore';
+import { useProjectsStore } from './projectsStore'; //  ARQ: Integração Top-Down
 import { GoalProvider } from '@/utils/autocomplete/AutocompleteEngine';
+import { CompassApi } from '@/services/api';
 
-export interface GoalChildItem {
-  id: string;
-  name: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
-  progress: number;
-}
-
-export interface GoalItem {
+//  DTO PURIFICADO: Adeus `children` falsos, adeus `progressPercentage` manual.
+export interface GoalItemDto {
   id: string;
   title: string;
   why: string;
   targetDate: string;
-  progressPercentage: number;
   status: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
-  children: GoalChildItem[];
 }
 
-const STORAGE_KEY = 'compass_goals_cache_v1';
+const STORAGE_KEY = 'compass_goals_cache_v2';
 
 export const useGoalsStore = defineStore('goals', () => {
   const toastStore = useToastStore();
-  
-  //  ARQUITETURA NORMALIZADA: Single Source of Truth
-  const entities = ref<Record<string, GoalItem>>({});
+  const projectsStore = useProjectsStore();
+
+  const entities = ref<Record<string, GoalItemDto>>({});
   const goalIds = ref<string[]>([]);
   
   const isLoaded = ref(false);
 
-  //  COMPUTED BRIDGES: As Views consomem esses getters como se fossem arrays normais
-  const goals = computed(() => goalIds.value.map(id => entities.value[id]).filter(Boolean));
-  const activeGoals = computed(() => goals.value.filter(g => g.status !== 'ARCHIVED'));
+  const rawGoals = computed(() => goalIds.value.map(id => entities.value[id]).filter(Boolean));
 
-  watch(() => goals.value, (newGoals) => {
+  //  MÁGICA CASCATA (Top-Down): Calcula o avanço da Meta baseado nos Projetos (que vêm das Tarefas)
+  const enrichedGoals = computed(() => {
+    const allEnrichedProjects = projectsStore.enrichedProjects;
+
+    return rawGoals.value.map(goal => {
+      // Pega os projetos atrelados a esta Meta
+      const goalProjects = allEnrichedProjects.filter(p => p.goalId === goal.id);
+      
+      let progressPercentage = 0;
+      if (goalProjects.length > 0) {
+        const sum = goalProjects.reduce((acc, p) => acc + p.progressPercentage, 0);
+        progressPercentage = Math.round(sum / goalProjects.length);
+      }
+
+      // O Status continua manual (o usuário decide quando a Meta inteira foi batida),
+      // mas o progresso reflete a matemática real da execução diária.
+      return {
+        ...goal,
+        progressPercentage,
+        projectCount: goalProjects.length,
+        projects: goalProjects // Enviamos os projetos hidratados para a UI exibir dentro da Meta
+      };
+    });
+  });
+
+  const activeGoals = computed(() => enrichedGoals.value.filter(g => g.status !== 'ARCHIVED'));
+
+  watch(() => rawGoals.value, (newGoals) => {
     if (newGoals && newGoals.length > 0) {
-      GoalProvider.syncData(
-        newGoals.map(g => ({
-          id: g.id,
-          name: g.title
-        }))
-      );
+      GoalProvider.syncData(newGoals.map(g => ({ id: g.id, name: g.title })));
     }
   }, { deep: true, immediate: true });
 
-  // --- MOTOR DE CACHE (Disco Local) ---
-
   const saveToDisk = () => {
     try {
-      // Salva o array projetado para manter compatibilidade com o formato antigo no disco
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(goals.value));
-    } catch (e) {
-      console.warn('[GoalsStore] Falha ao persistir metas.', e);
-    }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rawGoals.value));
+    } catch (e) {}
   };
 
   const loadFromDisk = () => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed: GoalItem[] = JSON.parse(raw);
-        
-        // Hidrata o Dicionário e a Lista de Ponteiros
-        const newEntities: Record<string, GoalItem> = {};
+        const parsed: GoalItemDto[] = JSON.parse(raw);
+        const newEntities: Record<string, GoalItemDto> = {};
         const newIds: string[] = [];
         
         parsed.forEach(g => {
-          newEntities[g.id] = g;
-          newIds.push(g.id);
+          const { children, progressPercentage, ...cleanGoal } = g as any;
+          newEntities[cleanGoal.id] = cleanGoal;
+          newIds.push(cleanGoal.id);
         });
 
         entities.value = newEntities;
         goalIds.value = newIds;
         isLoaded.value = true;
-        return;
       }
-    } catch (e) {
-      console.warn('[GoalsStore] Erro ao carregar metas do localStorage', e);
-    }
-
-    // Dados iniciais padrão se o disco estiver vazio (Mock de Sobrevivência)
-    const mockGoals: GoalItem[] = [
-      {
-        id: 'goal-1',
-        title: 'Lançamento do Compass MVP (Q3 2026)',
-        why: 'Provar a viabilidade de um software de produtividade local-first em .NET 10 e Vue 3.',
-        targetDate: '30/09/2026',
-        progressPercentage: 65,
-        status: 'ACTIVE',
-        children: [
-          { id: 'child-101', name: 'Compass Backend Core (.NET 10 REST API)', status: 'IN_PROGRESS', progress: 80 },
-          { id: 'child-102', name: 'Auth & Identity JWT', status: 'PENDING', progress: 50 },
-          { id: 'child-103', name: 'Design System UI (Zinc Monocromático)', status: 'COMPLETED', progress: 100 }
-        ]
-      },
-      {
-        id: 'goal-2',
-        title: 'Excelência em Engenharia e Arquitetura Limpa',
-        why: 'Dominar os padrões DDD e CQRS em ambientes de missão crítica.',
-        targetDate: '15/12/2026',
-        progressPercentage: 40,
-        status: 'ACTIVE',
-        children: [
-          { id: 'child-201', name: 'Leitura de Arquitetura de Software (Hábito)', status: 'IN_PROGRESS', progress: 60 },
-          { id: 'child-202', name: 'Refatoração do Motor de Scoring', status: 'IN_PROGRESS', progress: 20 }
-        ]
-      }
-    ];
-
-    const newEntities: Record<string, GoalItem> = {};
-    const newIds: string[] = [];
-    
-    mockGoals.forEach(g => {
-      newEntities[g.id] = g;
-      newIds.push(g.id);
-    });
-
-    entities.value = newEntities;
-    goalIds.value = newIds;
-
-    saveToDisk();
-    isLoaded.value = true;
+    } catch (e) {}
   };
 
-  // --- MUTAÇÕES NORMALIZADAS O(1) ---
-  
-  const recalculateProgress = (goal: GoalItem) => {
-    if (!goal.children || goal.children.length === 0) {
-      goal.progressPercentage = 0;
-      return;
-    }
-    const sum = goal.children.reduce((acc, curr) => acc + curr.progress, 0);
-    goal.progressPercentage = Math.round(sum / goal.children.length);
+  const fetchGoals = async () => {
+    try {
+      // 🚀 Agora sim! Busca as Metas reais (com Guids reais) do Banco de Dados
+      const res = await CompassApi.getActiveGoals();
+      const newEntities: Record<string, GoalItemDto> = {};
+      const newIds: string[] = [];
+      
+      res.forEach(g => {
+        newEntities[g.id] = g;
+        newIds.push(g.id);
+      });
 
-    if (goal.progressPercentage === 100) goal.status = 'COMPLETED';
-    else if (goal.status === 'COMPLETED' && goal.progressPercentage < 100) goal.status = 'ACTIVE';
-  };
-
-  const updateGoalTitle = (id: string, newTitle: string) => {
-    const goal = entities.value[id]; //  Acesso direto O(1)
-    if (goal && newTitle.trim()) {
-      goal.title = newTitle.trim();
+      entities.value = newEntities;
+      goalIds.value = newIds;
+      
       saveToDisk();
-      toastStore.showToast('Título da meta atualizado.', 'neutral');
+      isLoaded.value = true;
+    } catch (e) {
+      console.warn('[GoalsStore] API indisponível. Carregando cache local.');
+      loadFromDisk();
     }
   };
 
-  const updateGoalStatus = (id: string, newStatus: GoalItem['status']) => {
+  const updateGoalStatus = (id: string, newStatus: GoalItemDto['status']) => {
     const goal = entities.value[id];
     if (goal) {
       goal.status = newStatus;
@@ -157,64 +119,83 @@ export const useGoalsStore = defineStore('goals', () => {
     }
   };
 
-  const updateGoal = async (id: string, payload: any, isSilent: boolean = false) => {
+  //  ARQ: Motor de Criação de Metas
+  const createGoal = async (payload: { title: string, whyDescription?: string | null, targetDate?: string | null }) => {
+    console.log('[GoalsStore] 1. Tentando criar meta na API...', payload);
+    
+    try {
+      // 🚀 Chamada rigorosa para o Backend
+      const created = await CompassApi.createGoal(payload);
+      
+      console.log('[GoalsStore] 2. API retornou sucesso com Guid Real:', created);
+      
+      entities.value[created.id] = created;
+      goalIds.value.unshift(created.id);
+      saveToDisk();
+      
+      return created;
+    } catch (error) {
+      console.error('[GoalsStore] ERRO FATAL ao criar Meta:', error);
+      throw error;
+    }
+  };
+
+  const updateGoal = async (id: string, payload: Partial<GoalItemDto>, isSilent: boolean = false) => {
     if (!entities.value[id]) return;
 
-    // Mutação Otimista na Memória
     const originalItem = { ...entities.value[id] };
     Object.assign(entities.value[id], payload);
 
     try {
-      // Futuro: const updated = await CompassApi.updateGoal(id, payload);
-      // Object.assign(entities.value[id], updated);
       
+      await CompassApi.updateGoal(id, {
+        title: entities.value[id].title,
+        whyDescription: entities.value[id].why, // Tratamos a diferença de nomenclatura (why -> whyDescription)
+        targetDate: entities.value[id].targetDate
+      });
       saveToDisk();
       if (!isSilent) toastStore.showToast('Meta atualizada com sucesso.', 'neutral');
     } catch (err: any) {
       Object.assign(entities.value[id], originalItem);
-      if (!isSilent) toastStore.showToast('Falha na edição. Alterações revertidas.', 'error');
+      if (!isSilent) toastStore.showToast('Falha na edição. Revertido.', 'error');
       throw err;
     }
   };
 
-  const addChildModule = (goalId: string, name: string) => {
-    const goal = entities.value[goalId];
-    if (goal && name.trim()) {
-      goal.children.push({
-        id: `child-${Date.now()}`,
-        name: name.trim(),
-        status: 'PENDING',
-        progress: 0
-      });
-      recalculateProgress(goal);
+  const deleteGoal = async (id: string) => {
+    if (!entities.value[id]) return;
+    
+    // Otimismo Visual
+    const goalToDelete = { ...entities.value[id] };
+    delete entities.value[id];
+    goalIds.value = goalIds.value.filter(gId => gId !== id);
+
+    try {
+     
+      await CompassApi.deleteGoal(id);
       saveToDisk();
-      toastStore.showToast('Módulo adicionado à meta.', 'success');
+      toastStore.showToast('Meta excluída com sucesso.', 'neutral');
+    } catch (err) {
+      // Rollback se falhar
+      entities.value[id] = goalToDelete;
+      goalIds.value.unshift(id);
+      toastStore.showToast('Falha ao excluir a meta.', 'error');
+      throw err;
     }
   };
 
-  const updateChildProgress = (goalId: string, childId: string, progress: number) => {
-    const goal = entities.value[goalId];
-    if (!goal) return;
-    
-    // O find aqui é aceitável pois itera apenas sobre os filhos específicos de 1 meta
-    const child = goal.children.find(c => c.id === childId);
-    if (child) {
-      child.progress = Math.min(100, Math.max(0, progress));
-      child.status = child.progress === 100 ? 'COMPLETED' : child.progress === 0 ? 'PENDING' : 'IN_PROGRESS';
-      recalculateProgress(goal);
-      saveToDisk();
-    }
-  };
+  
 
   return {
     entities,
-    goals,
+    goals: enrichedGoals, 
     activeGoals,
+    isLoaded, // 
     loadFromDisk,
-    updateGoalTitle,
+    fetchGoals,
     updateGoalStatus,
-    addChildModule,
-    updateChildProgress,
+    createGoal,
+    deleteGoal,
     updateGoal
   };
 });

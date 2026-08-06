@@ -50,7 +50,7 @@ export const useInspectorStore = defineStore('inspector', () => {
 
   const markAsEditing = () => {
     if (!draft.value) return;
-    if (syncStatus.value === 'PAUSED_FOR_CONFIRMATION') return; // Bloqueia edição se um modal de alerta estiver aberto
+    if (syncStatus.value === 'PAUSED_FOR_CONFIRMATION') return;
 
     syncStatus.value = 'EDITING';
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -76,14 +76,39 @@ export const useInspectorStore = defineStore('inspector', () => {
     }, 200);
   };
 
-  // --- 1. MOTOR DE UX DEFENSIVA: AVALIAÇÃO DE EXCLUSÃO (Raio de Impacto) ---
+  // --- 1. MOTOR DE UX DEFENSIVA: AVALIAÇÃO DE EXCLUSÃO RELACIONAL EM CASCATA ---
   const requestDeletion = () => {
     if (!draft.value) return;
     const { entityType, entityId, originalPayload } = draft.value;
 
-    // Avaliação de Exclusão de Projeto
-    if (entityType === 'PROJECT') {
-      //  ARQ: Consulta a Fonte de Verdade Absoluta (Dicionário) em vez da view filtrada 'items'
+    //  ARQ: Avaliação de Exclusão de META (Top-Level)
+    if (entityType === 'GOAL') {
+      const allKnownProjects = Object.values(projectsStore.entities);
+      const linkedProjects = allKnownProjects.filter(p => p.goalId === entityId);
+      
+      if (linkedProjects.length > 0) {
+        syncStatus.value = 'PAUSED_FOR_CONFIRMATION';
+        toastStore.showIntervention({
+          code: 'GOAL_HAS_ORPHANS',
+          title: 'Atenção ao excluir a Meta Estratégica',
+          explanation: `Esta meta possui ${linkedProjects.length} projeto(s) vinculado(s). Excluir a meta NÃO apagará os projetos; eles ficarão "avulsos" (sem bússola).`,
+          severity: 'warning',
+          actions: [
+            { label: 'Cancelar', isPrimary: true, handler: () => { syncStatus.value = 'IDLE'; } },
+            { label: 'Descartar Meta (Arquivar)', handler: async () => { 
+                await goalsStore.updateGoalStatus(entityId, 'ARCHIVED');
+                closeInspector(); 
+              } 
+            },
+            { label: 'Excluir Meta', handler: async () => { await executeDelete(entityType, entityId); } }
+          ]
+        });
+        return;
+      }
+    }
+
+    // Avaliação de Exclusão de PROJETO (Mid-Level)
+    else if (entityType === 'PROJECT') {
       const allKnownCommitments = Object.values(commitmentsStore.entities);
       const linkedTasks = allKnownCommitments.filter(i => i.projectId === entityId);
       
@@ -96,19 +121,15 @@ export const useInspectorStore = defineStore('inspector', () => {
           severity: 'warning',
           actions: [
             { label: 'Cancelar', isPrimary: true, handler: () => { syncStatus.value = 'IDLE'; } },
-            { label: 'Arquivar Projeto (Recomendado)', handler: async () => { 
-                // Futuro: await projectsStore.updateStatus(entityId, 'ARCHIVED');
-                closeInspector(); 
-              } 
-            },
-            { label: 'Excluir e Desvincular', handler: async () => { await executeDelete(entityType, entityId); } }
+            //  ARQ: O projeto agora suporta edição total, podemos usar updateProject para simular status se precisarmos
+            { label: 'Excluir Projeto e Desvincular Tarefas', handler: async () => { await executeDelete(entityType, entityId); } }
           ]
         });
         return;
       }
     } 
     
-    // Avaliação de Exclusão de Hábitos Consistentes
+    // Avaliação de Exclusão de HÁBITOS (Base-Level)
     else if (entityType === 'COMMITMENT') {
       const item = originalPayload as CommitmentItem;
       if (item.type === 'HABIT' && (item.currentStreak > 3 || item.bestStreak > 3)) {
@@ -132,20 +153,18 @@ export const useInspectorStore = defineStore('inspector', () => {
       }
     }
 
-    // Se a avaliação não detectou impactos críticos, executa o delete diretamente.
+    // Sem impactos críticos = Execução Limpa.
     executeDelete(entityType, entityId);
   };
 
   const executeDelete = async (type: InspectableType, id: string) => {
-    closeInspector(); // Otimismo visual: Fecha o modal imediatamente
+    closeInspector(); 
     if (type === 'COMMITMENT') {
       await commitmentsStore.deleteCommitment(id);
     } else if (type === 'PROJECT') {
-      //  Quando adicionarmos o deleteProject na store de Projetos, será chamado aqui
-      // await projectsStore.deleteProject(id); 
+      await projectsStore.deleteProject(id);
     } else if (type === 'GOAL') {
-      //  Quando adicionarmos o deleteGoal na store de Metas, será chamado aqui
-      // await goalsStore.deleteGoal(id);
+      await goalsStore.deleteGoal(id); 
     }
   };
 
@@ -161,18 +180,15 @@ export const useInspectorStore = defineStore('inspector', () => {
     const targetId = draft.value.entityId;
     const targetType = draft.value.entityType;
 
-    // BLINDAGEM DE CONTRATO (Zod)
     if (targetType === 'COMMITMENT') {
       const validation = DraftCommitmentSchema.safeParse(targetPayload);
       if (!validation.success) {
         syncStatus.value = 'ERROR';
-        console.error('[Zod Validation Failed]', validation.error.format()); 
         toastStore.showToast('Erro de validação local. Verifique os campos.', 'error');
         return; 
       }
     }
 
-    // INTERVENÇÃO DE MUTAÇÃO (Diff Engine)
     if (targetType === 'COMMITMENT') {
       const original = currentSnapshot as CommitmentItem;
       const mutado = targetPayload as CommitmentItem;
@@ -206,7 +222,6 @@ export const useInspectorStore = defineStore('inspector', () => {
       }
     }
 
-    // COMIT PADRÃO
     await commitPayload(targetType, targetId, targetPayload, currentSnapshot);
   };
 
@@ -224,7 +239,6 @@ export const useInspectorStore = defineStore('inspector', () => {
       syncStatus.value = 'SAVED';
       if (draft.value) draft.value.originalPayload = cloneDeep(payload);
 
-      // Memento (Undo)
       toastStore.showToast(
         'Alterações sincronizadas.', 
         'neutral',
@@ -233,7 +247,6 @@ export const useInspectorStore = defineStore('inspector', () => {
       );
 
     } catch (e) {
-      console.error('[InspectorStore] Falha no Auto-Save', e);
       syncStatus.value = 'ERROR';
     }
   };

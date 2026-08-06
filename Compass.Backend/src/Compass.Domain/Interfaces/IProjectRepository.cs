@@ -9,4 +9,7 @@ public interface IProjectRepository
     Task AddAsync(Project project, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Project>> GetActiveCatalogAsync(Guid userId, CancellationToken cancellationToken = default);
     void Update(Project project);
+
+    void Remove(Project project);
+    Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

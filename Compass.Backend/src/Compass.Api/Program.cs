@@ -58,6 +58,7 @@ builder.Services.AddScoped<IProgressService, ProgressService>();
 builder.Services.AddScoped<IUserBehaviorProfilerService, UserBehaviorProfilerService>();
 builder.Services.AddHostedService<BehavioralCalibrationWorker>();
 
+
 // 5. Registro dos Validadores do FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<CreateCommitmentDtoValidator>();
 builder.Services.AddScoped<IDataPortabilityService, DataPortabilityService>();
@@ -79,6 +80,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IGoalRepository, GoalRepository>();
 builder.Services.AddScoped<IGoalService, GoalService>();
+builder.Services.AddScoped<IGoalRepository, GoalRepository>();
 
 builder.Services.AddHealthChecks().AddDbContextCheck<CompassDbContext>("postgres_db", tags: new[] { "db", "sql", "postgresql" });
 

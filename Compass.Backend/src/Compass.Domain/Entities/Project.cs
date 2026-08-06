@@ -73,6 +73,17 @@ public class Project
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UpdateDetails(string title, Guid? goalId, DateTime? deadline = null)
+    {
+        if (string.IsNullOrWhiteSpace(title) || title.Trim().Length < 3)
+            throw new DomainException("O título do projeto deve ter pelo menos 3 caracteres.");
+
+        Title = title.Trim();
+        GoalId = goalId;
+        Deadline = deadline;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void ClearDomainEvents() => _domainEvents.Clear();
     protected void AddDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
 }

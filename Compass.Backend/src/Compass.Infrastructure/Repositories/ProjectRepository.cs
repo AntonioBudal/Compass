@@ -53,4 +53,12 @@ public class ProjectRepository : IProjectRepository
             .OrderByDescending(p => p.LastUsedAt ?? p.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+
+    public void Remove(Project project)
+    {
+        _context.Projects.Remove(project);
+    }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default) 
+        => await _context.SaveChangesAsync(cancellationToken);
 }

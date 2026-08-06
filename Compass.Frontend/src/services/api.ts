@@ -128,6 +128,8 @@ api.interceptors.response.use(
   }
 );
 
+
+
 export const CompassApi = {
   getNowDecision: async (timeZoneId = 'America/Sao_Paulo'): Promise<DecisionResponseDto> => {
     const response = await api.get<DecisionResponseDto>('/decisions/now', { params: { timeZoneId } });
@@ -154,5 +156,38 @@ export const CompassApi = {
   },
   deleteCommitment: async (id: string): Promise<void> => {
     await api.delete(`/commitments/${id}`);
+  },
+
+  // --- PROJETOS ---
+  createProject: async (payload: { name: string, goalId?: string | null }): Promise<any> => {
+    const response = await api.post('/projects', payload);
+    return response.data;
+  },
+  updateProject: async (id: string, payload: { name: string, goalId?: string | null }): Promise<any> => {
+    const response = await api.put(`/projects/${id}`, payload);
+    return response.data;
+  },
+  deleteProject: async (id: string): Promise<void> => {
+    await api.delete(`/projects/${id}`);
+  },
+  
+  // --- METAS ---
+  // --- METAS ---
+  createGoal: async (payload: { title: string, whyDescription?: string | null, targetDate?: string | null }): Promise<any> => {
+    const response = await api.post('/goals', payload);
+    return response.data;
+  },
+  getActiveGoals: async (): Promise<any[]> => {
+    const response = await api.get('/goals/active');
+    return response.data;
+  },
+  updateGoal: async (id: string, payload: { title: string, whyDescription?: string | null, targetDate?: string | null }): Promise<any> => {
+    const response = await api.put(`/goals/${id}`, payload);
+    return response.data;
+  },
+  deleteGoal: async (id: string): Promise<void> => {
+    await api.delete(`/goals/${id}`);
   }
+
+  
 };

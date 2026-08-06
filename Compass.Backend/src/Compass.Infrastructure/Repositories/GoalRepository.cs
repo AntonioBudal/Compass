@@ -1,4 +1,5 @@
 using Compass.Domain.Entities;
+using Compass.Domain.Enums;
 using Compass.Domain.Interfaces;
 using Compass.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -19,13 +20,29 @@ public class GoalRepository : IGoalRepository
         return await _context.Goals.FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
     }
 
+    public async Task<IEnumerable<Goal>> GetActiveGoalsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Goals
+            .AsNoTracking()
+            .Where(g => g.UserId == userId && g.Status != GoalStatus.OnHold)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task AddAsync(Goal goal, CancellationToken cancellationToken = default)
+    {
+        await _context.Goals.AddAsync(goal, cancellationToken);
+    }
+
     public void Update(Goal goal)
     {
         _context.Goals.Update(goal);
     }
 
-    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    public void Remove(Goal goal)
     {
-        await _context.SaveChangesAsync(cancellationToken);
+        _context.Goals.Remove(goal);
     }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+        => await _context.SaveChangesAsync(cancellationToken);
 }

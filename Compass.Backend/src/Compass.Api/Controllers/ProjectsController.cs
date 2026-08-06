@@ -1,3 +1,4 @@
+using Compass.Application.DTOs;
 using Compass.Application.DTOs.Projects;
 using Compass.Domain.Entities;
 using Compass.Domain.Interfaces;
@@ -31,14 +32,60 @@ public class ProjectsController : ControllerBase
         // CORRIGIDO: Mapeamos a propriedade Title real para o DTO que a interface visual espera
         var catalogDtos = projects.Select(p => new ProjectCatalogDto(
             p.Id,
-            p.Title, // Lê de Title e injeta em Name no JSON
-            null,    // Como o Project atual não tem descrição, enviamos null de forma limpa
+            p.Title, 
+            null,       // Description 
+            p.GoalId,   //  Agora sim, o Guid? está no lugar certo!
             p.LastUsedAt
         ));
 
         Response.Headers.CacheControl = "private, max-age=60";
         
         return Ok(catalogDtos);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    public async Task<IActionResult> Create([FromBody] CreateProjectDto dto, CancellationToken cancellationToken = default)
+    {
+        var userId = GetUserId();
+        
+        // Entidade limpa e direta
+        var project = new Project(userId, dto.Name, dto.GoalId);
+        
+        await _projectRepository.AddAsync(project, cancellationToken);
+        // Lembre-se de garantir que o ProjectRepository tenha o método SaveChangesAsync()
+        await _projectRepository.SaveChangesAsync(cancellationToken); 
+
+        return Ok(new ProjectCatalogDto(project.Id, project.Title, null, project.GoalId, project.LastUsedAt));
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] CreateProjectDto dto, CancellationToken cancellationToken = default)
+    {
+        var project = await _projectRepository.GetByIdAsync(id, cancellationToken);
+        if (project == null || project.UserId != GetUserId()) return NotFound();
+
+        // Usa o método que acabamos de criar na entidade
+        project.UpdateDetails(dto.Name, dto.GoalId);
+        
+        _projectRepository.Update(project);
+        await _projectRepository.SaveChangesAsync(cancellationToken);
+
+        return Ok(new ProjectCatalogDto(project.Id, project.Title, null, project.GoalId, project.LastUsedAt));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    {
+        var project = await _projectRepository.GetByIdAsync(id, cancellationToken);
+        if (project == null || project.UserId != GetUserId()) return NoContent();
+
+        _projectRepository.Remove(project);
+        await _projectRepository.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
     }
 
     private Guid GetUserId()

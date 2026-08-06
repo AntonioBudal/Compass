@@ -7,6 +7,7 @@ import { parseQuickCapture } from '@/utils/nlpParser';
 import { useVisibilityTracker } from '@/composables/useVisibilityTracker';
 import { Terminal, CornerDownLeft, Clock, Zap, Calendar, Folder } from 'lucide-vue-next';
 import OmniInput from '@/components/core/OmniInput.vue';
+import { useGoalsStore } from '@/stores/goalsStore';
 
 const props = defineProps<{ isOpen: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -39,61 +40,112 @@ const getNextWorkDay = (currentIso: string | null) => {
   return date.toISOString();
 };
 
+// Adicione um interceptador tático antes do parser normal
+const captureIntent = computed(() => {
+  const text = rawInput.value.trim().toLowerCase();
+  
+  if (text.startsWith('/meta ') || text.startsWith('/goal ')) {
+    return { type: 'GOAL', title: rawInput.value.substring(6).trim() };
+  }
+  
+  if (text.startsWith('/projeto ') || text.startsWith('/proj ')) {
+    const titlePart = rawInput.value.split(/#|@|!|\^/)[0].substring(9).trim(); // Pega só o título
+    return { type: 'PROJECT', title: titlePart };
+  }
+
+  return { type: 'COMMITMENT', data: parseQuickCapture(rawInput.value) };
+});
+
+// A interface reage a intenção para mostrar a badge correta
+const displayType = computed(() => {
+  if (captureIntent.value.type === 'GOAL') return 'META ESTRATÉGICA';
+  if (captureIntent.value.type === 'PROJECT') return 'NOVO PROJETO';
+  return captureIntent.value.data?.type || 'COMANDO'; //  O '?' salva a vida aqui!
+});
+
+
+
 const handleSubmit = async (forceSchedule = false, overrideDateIso: string | null = null) => {
   if (!rawInput.value.trim() || isSubmitting.value) return;
-  const parsed = livePreview.value;
   isSubmitting.value = true;
+  const intent = captureIntent.value;
 
   try {
-    let matchedProjectId: string | null = null;
-    
-    //  CORREÇÃO (ARQ-028 & BUG-027): CRIAÇÃO CASCADA (Projeto -> Tarefa)
-    if (parsed.projectQuery) {
-      const match = projectsStore.catalog.find(p => p.name.toLowerCase() === parsed.projectQuery?.toLowerCase());
+    //  ROTA 1: CRIAÇÃO PURA DE META (Top-Down)
+   
+    if (intent.type === 'GOAL') {
+      const goalsStore = useGoalsStore();
       
-      if (match) {
-        // Projeto já existe
-        matchedProjectId = match.id;
-        projectsStore.promoteUsage(match.id);
-      } else {
-        // PROJETO NOVO! Cria no banco antes de criar a tarefa
-        const newProject = await projectsStore.createProject(parsed.projectQuery);
-        matchedProjectId = newProject.id;
-      }
+      // O await aqui é crucial para aguardar o Guid do Backend
+      await goalsStore.createGoal({ title: intent.title! }); 
+      
+      toastStore.showToast(`Meta "${intent.title}" criada com sucesso!`, 'success');
     }
+    //  ROTA 2: CRIAÇÃO PURA DE PROJETO (Top-Down)
+    else if (intent.type === 'PROJECT') {
+      const projectsStore = useProjectsStore();
+      await projectsStore.createProject(intent.title!);
+      toastStore.showToast(`Projeto "${intent.title}" criado com sucesso!`, 'success');
+    }
+    //  ROTA 3: CRIAÇÃO DE COMPROMISSO (Bottom-Up normal)
+    else if (intent.type === 'COMMITMENT' && intent.data) {
+      const parsed = intent.data;
+      let matchedProjectId: string | null = null;
+      
+      const projectsStore = useProjectsStore();
+      if (parsed.projectQuery) {
+        const match = projectsStore.catalog.find(p => p.name.toLowerCase() === parsed.projectQuery?.toLowerCase());
+        if (match) {
+          matchedProjectId = match.id;
+          projectsStore.promoteUsage(match.id);
+        } else {
+          const newProject = await projectsStore.createProject(parsed.projectQuery);
+          matchedProjectId = newProject.id;
+        }
+      }
 
-    const createdItem = await commitmentsStore.createCommitment({
-      title: parsed.title,
-      type: parsed.type,
-      estimatedDurationMinutes: parsed.estimatedDurationMinutes,
-      energyRequired: parsed.energyRequired,
-      deadline: overrideDateIso || parsed.deadlineIso,
-      projectId: matchedProjectId
-    });
+      const createdItem = await commitmentsStore.createCommitment({
+        title: parsed.title,
+        type: parsed.type,
+        estimatedDurationMinutes: parsed.estimatedDurationMinutes,
+        energyRequired: parsed.energyRequired,
+        deadline: overrideDateIso || parsed.deadlineIso,
+        projectId: matchedProjectId
+      });
 
-    toastStore.showToast(`[${parsed.type}] capturado com sucesso!`, 'success');
-    
-    setTimeout(() => {
-      const currentList = parsed.type === 'HABIT' ? commitmentsStore.habitsToday : commitmentsStore.activeCandidates;
-      verifyCreationVisibility(createdItem, currentList);
-    }, 100);
+      toastStore.showToast(`[${parsed.type}] capturado com sucesso!`, 'success');
+      
+      setTimeout(() => {
+        const currentList = parsed.type === 'HABIT' ? commitmentsStore.habitsToday : commitmentsStore.activeCandidates;
+        verifyCreationVisibility(createdItem, currentList);
+      }, 100);
+    }
 
     rawInput.value = '';
     emit('close');
   } catch (err: any) {
+    emit('close'); // 🔥 ARQ: Libera a tela para o usuário poder ler os alertas!
+
+    if (err.response?.status === 404) {
+      toastStore.showToast('Endpoint não encontrado (404). Você esqueceu de reiniciar o Backend?', 'error');
+      return;
+    }
+
     const errData = err.response?.data || {};
     const errorCode = errData.code || errData.type || '';
     
+    // 🔥 ARQ: Correção do escopo. Só tenta ler a data se for realmente um Compromisso (Tarefa).
     if (errorCode.includes('SCHEDULE_CONFLICT') || errData.message?.includes('turno') || errData.detail?.includes('turno') || errData.detail?.includes('Schedule')) {
-       const suggestedDate = errData.suggestedDate || getNextWorkDay(parsed.deadlineIso);
+       const deadline = intent.type === 'COMMITMENT' ? intent.data?.deadlineIso : null;
+       const suggestedDate = errData.suggestedDate || getNextWorkDay(deadline || null);
        
        toastStore.showIntervention({
          code: 'SCHEDULE_CONFLICT',
          title: 'Fora do Calendário Útil',
-         explanation: 'A data que você escolheu cai em um período bloqueado ou dia de descanso na sua agenda. O algoritmo pode ajustá-la para você.',
+         explanation: 'A data que você escolheu cai em um período bloqueado. O algoritmo pode ajustá-la.',
          severity: 'warning',
          actions: [
-           { label: 'Mover para o Próximo Dia Útil', isPrimary: true, handler: async () => {
+           { label: 'Mover para Próximo Dia Útil', isPrimary: true, handler: async () => {
                isSubmitting.value = false;
                await handleSubmit(false, suggestedDate);
              }
@@ -105,7 +157,7 @@ const handleSubmit = async (forceSchedule = false, overrideDateIso: string | nul
     }
 
     const isNetworkError = !err.response;
-    const errorMessage = errData.detail || errData.title || 'Falha na validação das regras de negócio no servidor.';
+    const errorMessage = errData.detail || errData.title || 'Falha de validação no servidor.';
     
     toastStore.showIntervention({
       code: isNetworkError ? 'NETWORK_FAILURE' : 'VALIDATION_ERROR',

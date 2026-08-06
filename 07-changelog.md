@@ -662,3 +662,34 @@
 - Implementação do método `DeleteAsync` no `CommitmentService`, centralizando a lógica de remoção com validações de domínio.
 
 - Adição do endpoint `DELETE /api/v1/commitments/{id}` no `CommitmentsController`, integrando o fluxo de exclusão ao repositório e ao `SaveChangesAsync`.
+
+
+# 2026-08-05
+
+## Hierarquia Meta → Projeto → Tarefa
+
+* Implementação da nova estrutura hierárquica do Compass, organizando o fluxo entre Metas, Projetos e Tarefas.
+
+* Atualização da entidade `Project` e dos DTOs para suportarem o relacionamento opcional com `Goal` através de `GoalId`.
+
+* Criação da infraestrutura de Metas no Backend, incluindo repositório, controller e operações completas de CRUD.
+
+## Frontend
+
+* Implementação do cálculo automático de progresso em cascata, onde tarefas atualizam projetos e projetos atualizam metas de forma reativa.
+
+* Atualização do Quick Capture para reconhecer os comandos `/meta` e `/projeto`, permitindo criar entidades estratégicas diretamente pelo capturador.
+
+* Simplificação da `ProjectsView` e `GoalsView`, removendo regras de negócio da interface e concentrando a lógica nas Stores.
+
+* Evolução do Universal Entity Inspector com seleção dinâmica de relacionamentos utilizando listas (`select`) em vez de campos de texto livres.
+
+* Adição de validações de UX para impedir a exclusão de projetos e metas que ainda possuam entidades vinculadas.
+
+## Correções
+
+* Correção da implementação dos repositórios garantindo suporte ao `SaveChangesAsync`.
+
+* Correção do fluxo de criação para utilizar exclusivamente os identificadores retornados pelo Backend, eliminando IDs temporários e evitando erros de persistência.
+
+* Ajustes gerais na integração entre Frontend e Backend para garantir a consistência dos relacionamentos entre Metas, Projetos e Tarefas.
