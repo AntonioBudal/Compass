@@ -6,11 +6,15 @@ import {
   Folder, Clock, Zap, Calendar, Terminal, History, Command, CornerDownLeft
 } from 'lucide-vue-next';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string;
+
   placeholder?: string;
   autofocus?: boolean;
-}>();
+}>(), {
+  placeholder: 'Capturar ideia (ex: Pagar boleto ^amanhã), /meta ou /projeto...',
+  autofocus: false
+});
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void;

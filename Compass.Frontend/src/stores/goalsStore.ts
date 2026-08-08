@@ -14,7 +14,7 @@ export interface GoalItemDto {
   status: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
 }
 
-const STORAGE_KEY = 'compass_goals_cache_v2';
+
 
 export const useGoalsStore = defineStore('goals', () => {
   const toastStore = useToastStore();
@@ -60,32 +60,9 @@ export const useGoalsStore = defineStore('goals', () => {
     }
   }, { deep: true, immediate: true });
 
-  const saveToDisk = () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rawGoals.value));
-    } catch (e) {}
-  };
+  
 
-  const loadFromDisk = () => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: GoalItemDto[] = JSON.parse(raw);
-        const newEntities: Record<string, GoalItemDto> = {};
-        const newIds: string[] = [];
-        
-        parsed.forEach(g => {
-          const { children, progressPercentage, ...cleanGoal } = g as any;
-          newEntities[cleanGoal.id] = cleanGoal;
-          newIds.push(cleanGoal.id);
-        });
-
-        entities.value = newEntities;
-        goalIds.value = newIds;
-        isLoaded.value = true;
-      }
-    } catch (e) {}
-  };
+  
 
   const fetchGoals = async () => {
     try {
@@ -102,11 +79,11 @@ export const useGoalsStore = defineStore('goals', () => {
       entities.value = newEntities;
       goalIds.value = newIds;
       
-      saveToDisk();
+     
       isLoaded.value = true;
     } catch (e) {
       console.warn('[GoalsStore] API indisponível. Carregando cache local.');
-      loadFromDisk();
+      
     }
   };
 
@@ -114,7 +91,7 @@ export const useGoalsStore = defineStore('goals', () => {
     const goal = entities.value[id];
     if (goal) {
       goal.status = newStatus;
-      saveToDisk();
+      
       toastStore.showToast(`Meta alterada para ${newStatus}.`, 'success');
     }
   };
@@ -131,7 +108,7 @@ export const useGoalsStore = defineStore('goals', () => {
       
       entities.value[created.id] = created;
       goalIds.value.unshift(created.id);
-      saveToDisk();
+      
       
       return created;
     } catch (error) {
@@ -153,7 +130,7 @@ export const useGoalsStore = defineStore('goals', () => {
         whyDescription: entities.value[id].why, // Tratamos a diferença de nomenclatura (why -> whyDescription)
         targetDate: entities.value[id].targetDate
       });
-      saveToDisk();
+      
       if (!isSilent) toastStore.showToast('Meta atualizada com sucesso.', 'neutral');
     } catch (err: any) {
       Object.assign(entities.value[id], originalItem);
@@ -173,7 +150,7 @@ export const useGoalsStore = defineStore('goals', () => {
     try {
      
       await CompassApi.deleteGoal(id);
-      saveToDisk();
+     
       toastStore.showToast('Meta excluída com sucesso.', 'neutral');
     } catch (err) {
       // Rollback se falhar
@@ -191,7 +168,6 @@ export const useGoalsStore = defineStore('goals', () => {
     goals: enrichedGoals, 
     activeGoals,
     isLoaded, // 
-    loadFromDisk,
     fetchGoals,
     updateGoalStatus,
     createGoal,

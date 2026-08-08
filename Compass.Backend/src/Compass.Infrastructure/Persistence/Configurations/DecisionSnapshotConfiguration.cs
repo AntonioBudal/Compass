@@ -11,7 +11,7 @@ public class DecisionSnapshotConfiguration : IEntityTypeConfiguration<DecisionSn
         builder.ToTable("decision_snapshots");
 
         builder.HasKey(d => d.Id);
-        builder.Property(d => d.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(d => d.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
         builder.Property(d => d.UserId).HasColumnName("user_id").IsRequired();
         builder.HasOne<User>().WithMany().HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Cascade);

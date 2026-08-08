@@ -693,3 +693,30 @@
 * Correção do fluxo de criação para utilizar exclusivamente os identificadores retornados pelo Backend, eliminando IDs temporários e evitando erros de persistência.
 
 * Ajustes gerais na integração entre Frontend e Backend para garantir a consistência dos relacionamentos entre Metas, Projetos e Tarefas.
+
+
+# 2026-08-07
+
+## Banco de Dados
+
+- Migração da persistência principal do IndexedDB (Frontend) para um banco local em SQLite (Backend) via Entity Framework Core.
+- Remoção de funções específicas do PostgreSQL nas configurações do EF Core para garantir a geração limpa das Migrations locais.
+
+## Gerenciamento de Estado
+
+- Expurgo do `localStorage` e IndexedDB nas Stores principais:
+  - `commitmentsStore`
+  - `projectsStore`
+  - `goalsStore`
+  - `progressStore`
+- O Pinia agora atua como um espelho de estado puro da API (**State Mirror**), eliminando o armazenamento duplicado no navegador.
+
+## Sincronização e Resiliência
+
+- Correção de rota na `offlineStore` para garantir que a fila de comandos pendentes aponte para a porta correta do Backend (`5000`).
+- Adição de limpeza de cache na `progressStore` em caso de falha de conexão, evitando a exibição de gráficos e métricas corrompidas.
+
+## Interface e UX
+
+- Atualização do `OmniInput` com novos placeholders sugestivos.
+- Inclusão dos novos atalhos de criação rápida (`/meta` e `/projeto`) na documentação viva da `LibraryView`.

@@ -70,37 +70,9 @@ export const useProgressStore = defineStore('progress', () => {
     return `compass_progress_${endpoint}_${range}`;
   }
 
-  function saveToDisk(range: string) {
-    try {
-      localStorage.setItem(getStorageKey('overview', range), JSON.stringify(rawOverview.value));
-      localStorage.setItem(getStorageKey('daily', range), JSON.stringify(rawDailySeries.value));
-      localStorage.setItem(getStorageKey('heatmap', range), JSON.stringify(rawHeatmap.value));
-      localStorage.setItem(getStorageKey('chronology', range), JSON.stringify(rawChronology.value));
-    } catch (e) {
-      console.warn('[ProgressStore] Falha ao persistir telemetria no disco local.', e);
-    }
-  }
+ 
 
-  function loadFromDisk(range: string): boolean {
-    try {
-      const ov = localStorage.getItem(getStorageKey('overview', range));
-      const ds = localStorage.getItem(getStorageKey('daily', range));
-      const hm = localStorage.getItem(getStorageKey('heatmap', range));
-      const ch = localStorage.getItem(getStorageKey('chronology', range));
-
-      if (ov && ds && hm && ch) {
-        rawOverview.value = JSON.parse(ov);
-        rawDailySeries.value = JSON.parse(ds);
-        rawHeatmap.value = JSON.parse(hm);
-        rawChronology.value = JSON.parse(ch);
-        isServingFromCache.value = true;
-        return true;
-      }
-    } catch (e) {
-      console.warn('[ProgressStore] Cache local corrompido ou ausente.', e);
-    }
-    return false;
-  }
+  
 
   // --- Ação Principal de Carregamento (Actions) ---
   const fetchProgress = async (range: TimeRangeOption = selectedRange.value, forceRefresh = false) => {
@@ -143,20 +115,21 @@ export const useProgressStore = defineStore('progress', () => {
           lastETag.value = ovRes.headers['etag'];
         }
 
-        saveToDisk(range);
+       
       } else {
         throw new Error(`HTTP Status Inesperado: ${ovRes.status}`);
       }
     } catch (err: any) {
-      // --- INTERCEPTADOR DE RESILIÊNCIA LOCAL-FIRST ---
-      console.warn('[ProgressStore] Falha de rede ou servidor inacessível. Hidratando via Disk Cache...', err);
-      const restored = loadFromDisk(range);
+      // --- FALHA DE REDE (Sem fallback local) ---
+      console.warn('[ProgressStore] Falha de rede ou servidor inacessível.', err);
+      toastStore.showToast('Sem conexão. Dados de progresso indisponíveis no momento.', 'error');
       
-      if (restored) {
-        toastStore.showToast('[OFFLINE MODE] Telemetria servida do cache local.', 'neutral');
-      } else {
-        toastStore.showToast('Sem conexão e sem cache histórico para este período.', 'error');
-      }
+      // Limpa os dados velhos para não exibir informações parciais/inconsistentes
+      rawOverview.value = null;
+      rawDailySeries.value = [];
+      rawHeatmap.value = [];
+      rawChronology.value = [];
+      lastETag.value = null;
     } finally {
       isLoading.value = false;
     }

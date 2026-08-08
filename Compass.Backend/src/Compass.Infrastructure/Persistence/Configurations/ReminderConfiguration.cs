@@ -11,7 +11,7 @@ public class ReminderConfiguration : IEntityTypeConfiguration<Reminder>
         builder.ToTable("reminders");
 
         builder.HasKey(r => r.Id);
-        builder.Property(r => r.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(r => r.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
         builder.Property(r => r.CommitmentId).HasColumnName("commitment_id").IsRequired();
         builder.HasOne<Commitment>().WithMany().HasForeignKey(r => r.CommitmentId).OnDelete(DeleteBehavior.Cascade);

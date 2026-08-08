@@ -12,7 +12,7 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
         builder.ToTable("commitments");
 
         builder.HasKey(c => c.Id);
-        builder.Property(c => c.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(c => c.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
         // Relacionamentos sem propriedade de navegação (estritamente usando Tipos de Referência em <T>)
         builder.Property(c => c.UserId).HasColumnName("user_id").IsRequired();
@@ -25,7 +25,7 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
         builder.HasOne<Commitment>().WithMany().HasForeignKey(c => c.ConvertedToCommitmentId).OnDelete(DeleteBehavior.SetNull);
 
         builder.Property(c => c.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
-        builder.ToTable(t => t.HasCheckConstraint("chk_commitment_title_length", "char_length(title) >= 3"));
+        builder.ToTable(t => t.HasCheckConstraint("chk_commitment_title_length", "length(title) >= 3"));
 
         builder.Property(c => c.Status).HasColumnName("status");
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");

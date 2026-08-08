@@ -84,11 +84,15 @@ export const useOfflineStore = defineStore('offline', () => {
 
     let successCount = 0;
     const unresolvedIds = new Set(queue.value.map(p => p.id));
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
     for (const item of pending) {
       try {
+        // 🔥 ARQ: Ajuste de Mira! Garante que a requisição vá para o Backend (5000) e não para o Vue (5173)
+        const fullUrl = item.url.startsWith('http') ? item.url : `${baseUrl}${item.url.startsWith('/') ? '' : '/'}${item.url}`;
+
         await axios({
-          url: item.url,
+          url: fullUrl,
           method: item.method,
           data: item.payload,
           headers: {
@@ -100,17 +104,16 @@ export const useOfflineStore = defineStore('offline', () => {
         
         unresolvedIds.delete(item.id);
         successCount++;
-      } catch (err) {
+      } catch (err: any) {
         if (axios.isAxiosError(err) && err.response && err.response.status >= 400 && err.response.status < 500) {
           
-
           if (item.method.toUpperCase() === 'DELETE' && err.response.status === 404) {
             unresolvedIds.delete(item.id);
           } 
           // Erros 400 (Bad Request) ou 422 descarta da fila para não criar loop infinito.
           else {
             unresolvedIds.delete(item.id);
-            console.error(`[Offline Sync] Descartando requisição corrompida (HTTP ${err.response.status}):`, item.url);
+            //console.error(`[Offline Sync] Descartando requisição corrompida (HTTP ${err.response.status}):`, fullurl);
           }
         } else {
           // Erro 5xx ou Falha de Rede -> Interrompe o processamento e tenta depois

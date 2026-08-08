@@ -15,7 +15,6 @@ import type {
 export type CommitmentItem = CommitmentDto & {
   _isSyncing?: boolean;
   _syncError?: string | null;
-  _lastCompletedDate?: string | null;
 };
 
 export interface DatabaseFilters {
@@ -27,8 +26,9 @@ export interface DatabaseFilters {
 
 export const useCommitmentsStore = defineStore('commitments', () => {
   const toastStore = useToastStore();
+  const offlineStore = useOfflineStore();
 
-  //  ARQUITETURA NORMALIZADA: Única Fonte de Verdade
+  // 🔥 ARQ: O Vue é apenas um Espelho do EF Core / SQLite
   const entities = ref<Record<string, CommitmentItem>>({});
   
   const activeIds = ref<string[]>([]);
@@ -40,14 +40,11 @@ export const useCommitmentsStore = defineStore('commitments', () => {
   const databaseTotal = ref<number>(0);
   const isDatabaseLoading = ref<boolean>(false);
 
-  //  ARQ: Helper que extrai todas as entidades conhecidas (Verdade Absoluta O(N))
   const allKnownEntities = computed(() => Object.values(entities.value));
 
-  // Computed Bridges (Compatibilidade com as views antigas que ainda usam ponteiros)
   const items = computed(() => activeIds.value.map(id => entities.value[id]).filter(Boolean));
   const databaseItems = computed(() => databaseIds.value.map(id => entities.value[id]).filter(Boolean));
 
-  //  SOLUÇÃO BUG 2: Todos os Getters Internos agora leem de allKnownEntities
   const activeCandidates = computed(() => 
     allKnownEntities.value.filter(i => 
       (i.status === 'PENDING' || i.status === 'IN_PROGRESS') && 
@@ -75,8 +72,6 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     return Array.from(map.values());
   });
 
-  // --- BUSCAS E HIDRATAÇÃO ---
-  //  SOLUÇÃO BUG 1: Removemos o Watcher. Sincronizamos o Autocomplete sob demanda.
   const syncHistory = () => {
     GlobalHistoryProvider.syncData(allKnownEntities.value);
   };
@@ -89,20 +84,19 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     try {
       const data = await CompassApi.getActiveCommitments();
       
-      const newEntities = { ...entities.value };
+      const newEntities: Record<string, CommitmentItem> = {};
       const ids: string[] = [];
       data.forEach((item: CommitmentItem) => {
         newEntities[item.id] = item;
         ids.push(item.id);
       });
       
-      // Reatribuição reativa limpa para o Vue
       entities.value = newEntities;
       activeIds.value = ids;
       isLoaded.value = true;
       syncHistory();
     } catch (err: any) {
-      globalError.value = 'Falha ao sincronizar compromissos locais com o servidor.';
+      globalError.value = 'Falha ao sincronizar compromissos com o banco de dados.';
     } finally {
       isLoading.value = false;
     }
@@ -139,125 +133,66 @@ export const useCommitmentsStore = defineStore('commitments', () => {
       databaseIds.value = ids;
       databaseTotal.value = res.data.total || databaseIds.value.length;
       syncHistory();
-
     } catch (err: any) {
-      // Fallback analítico offline omitido para brevidade no erro
-      databaseIds.value = activeIds.value; 
-      databaseTotal.value = activeIds.value.length;
+      console.error('[CommitmentsStore] Falha ao buscar database', err);
     } finally {
       isDatabaseLoading.value = false;
     }
   };
 
-  // --- MUTAÇÕES NORMALIZADAS ---
-
+  // --- MUTAÇÕES ---
   const createCommitment = async (payload: CreateCommitmentDto) => {
     if (payload.type === 'HABIT' && !payload.cronExpression) payload.cronExpression = '0 8 * * *';
     if (payload.type === 'NOTE') payload.estimatedDurationMinutes = 0; 
 
-    const tempId = `temp-${Date.now()}`;
-    const optimisticItem: CommitmentItem = {
-      id: tempId,
-      title: payload.title,
-      type: payload.type,
-      status: 'PENDING',
-      estimatedDurationMinutes: payload.estimatedDurationMinutes ?? 30,
-      energyRequired: payload.energyRequired ?? 2,
-      deadline: payload.deadline ?? null,
-      startTime: payload.startTime ?? null,
-      endTime: payload.endTime ?? null,
-      locationOrLink: payload.locationOrLink ?? null,
-      cronExpression: payload.cronExpression ?? null,
-      currentStreak: 0,
-      bestStreak: 0,
-      postponedCount: 0,
-      content: payload.content ?? null,
-      projectId: payload.projectId ?? null,
-      projectName: null,
-      _isSyncing: true
-    };
-
-    entities.value = { ...entities.value, [tempId]: optimisticItem };
-    activeIds.value.unshift(tempId);
-    databaseIds.value.unshift(tempId);
-
-    try {
-      const created = await CompassApi.createCommitment(payload);
-      
-      const newEntities = { ...entities.value };
-      newEntities[created.id] = created;
-      delete newEntities[tempId];
-      
-      entities.value = newEntities;
-      activeIds.value = activeIds.value.map(id => id === tempId ? created.id : id);
-      databaseIds.value = databaseIds.value.map(id => id === tempId ? created.id : id);
-      syncHistory();
-      
-      return created;
-    } catch (err: any) {
-      const newEntities = { ...entities.value };
-      delete newEntities[tempId];
-      entities.value = newEntities;
-      
-      activeIds.value = activeIds.value.filter(id => id !== tempId);
-      databaseIds.value = databaseIds.value.filter(id => id !== tempId);
-      throw err;
+    // 🔥 ARQ: O Backend Cria, Nós Espelhamos
+    const created = await CompassApi.createCommitment(payload);
+    
+    entities.value = { ...entities.value, [created.id]: created };
+    activeIds.value.unshift(created.id);
+    if (!databaseIds.value.includes(created.id)) {
+        databaseIds.value.unshift(created.id);
     }
+    
+    syncHistory();
+    return created;
   };
 
   const updateCommitment = async (id: string, payload: UpdateCommitmentDto, isSilent: boolean = false) => {
     if (!entities.value[id]) return;
-
     const originalItem = { ...entities.value[id] };
+    
+    // Otimismo Visual
     Object.assign(entities.value[id], payload, { _isSyncing: true });
 
     try {
       const updated = await CompassApi.updateCommitment(id, payload);
       Object.assign(entities.value[id], updated, { _isSyncing: false });
       syncHistory();
-      
       if (!isSilent) toastStore.showToast('Compromisso atualizado.', 'neutral');
     } catch (err: any) {
       Object.assign(entities.value[id], originalItem, { _isSyncing: false });
-      if (!isSilent) toastStore.showToast('Falha na edição. Alterações revertidas.', 'error');
+      if (!isSilent) toastStore.showToast('Falha na edição. Revertido.', 'error');
       throw err;
     }
   };
 
   const updateStatus = async (id: string, newStatus: CommitmentStatus) => {
     if (!entities.value[id]) return;
-
     const targetItem = entities.value[id];
     const previousStatus = targetItem.status;
+    
     if (previousStatus === newStatus) return;
-
-    const todayIso = new Date().toISOString().slice(0, 10);
-    if (targetItem.type === 'HABIT' && newStatus === 'COMPLETED' && targetItem._lastCompletedDate === todayIso) {
-      return;
-    }
 
     targetItem.status = newStatus;
     targetItem._isSyncing = true;
     targetItem._syncError = null;
 
     try {
+      // 🔥 ARQ: O Backend C# sabe recalcular Streaks e Progresso.
+      // Retornamos todo o DTO atualizado do C# e sobrescrevemos a RAM.
       const response = await CompassApi.updateStatus(id, { newStatus });
-      targetItem._isSyncing = false;
-
-      if (newStatus === 'COMPLETED' && targetItem.type === 'HABIT') {
-        targetItem._lastCompletedDate = todayIso;
-      }
-
-      if (response.cascadedDomainEvents && response.cascadedDomainEvents.length > 0) {
-        response.cascadedDomainEvents.forEach((evt: any) => {
-          if (evt.eventType === 'HabitStreakIncremented') {
-            targetItem.currentStreak = (targetItem.currentStreak || 0) + 1;
-            if (targetItem.currentStreak > (targetItem.bestStreak || 0)) {
-              targetItem.bestStreak = targetItem.currentStreak;
-            }
-          }
-        });
-      }
+      Object.assign(entities.value[id], response, { _isSyncing: false });
 
       toastStore.showToast(`Status alterado para ${newStatus}.`, newStatus === 'COMPLETED' ? 'success' : 'neutral',
         async () => { await updateStatus(id, previousStatus); }
@@ -274,9 +209,7 @@ export const useCommitmentsStore = defineStore('commitments', () => {
 
   const deleteCommitment = async (id: string) => {
     if (!entities.value[id]) return;
-
     const removedItem = { ...entities.value[id] };
-    const offlineStore = useOfflineStore();
 
     // 1. OTIMISMO: Remove da Fonte de Verdade e dos Ponteiros imediatamente (UI Latência Zero)
     const newEntities = { ...entities.value };
@@ -288,23 +221,21 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     databaseTotal.value = Math.max(0, databaseTotal.value - 1);
     syncHistory();
 
-    // 2. RESPONSABILIDADE DE REDE: Delega o Comando de Destruição para a Fila Persistente
+    // 2. FILA PERSISTENTE (O Desfazer)
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
     
     const operationId = offlineStore.addToQueue({
       url: `${baseUrl}/commitments/${id}`,
       method: 'DELETE',
       payload: null,
-      executeAfter: Date.now() + 8000 //  Fica retido na fila local (disco) por 8 segundos
+      executeAfter: Date.now() + 8000 // Fica retido na fila local (disco) por 8 segundos
     });
 
-    // 3. RESPONSABILIDADE DE UX: Exibe o botão de Desfazer
+    // 3. UX: O Toast com botão "Desfazer"
     toastStore.showToast('Compromisso removido.', 'neutral', () => {
-        
-        // 4. UNDO: O usuário clicou. Abortamos a missão cancelando a operação na fila.
         offlineStore.cancelRequest(operationId);
-
-        // 5. Devolve para a memória UI
+        
+        // Devolve para a memória UI
         entities.value = { ...entities.value, [id]: removedItem };
         activeIds.value.unshift(id);
         databaseIds.value.unshift(id);
@@ -313,11 +244,6 @@ export const useCommitmentsStore = defineStore('commitments', () => {
       },
       8000
     );
-    
-    // E acabou! Não existe mais setTimeout controlando backend.
-    // Se o usuário apertar F5 no meio dos 8 segundos, o Toast e a memória somem, 
-    // mas a `offlineStore` preservou o "executeAfter" no LocalStorage. 
-    // O próximo boot lerá a fila e disparará o DELETE com maestria.
   };
 
   return {

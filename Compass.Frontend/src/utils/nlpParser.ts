@@ -128,7 +128,7 @@ export function parseQuickCapture(input: string): ParsedNLP {
     if (flag.startsWith('h')) type = 'HABIT';
     else if (flag.startsWith('e')) type = 'EVENT';
     else if (flag.startsWith('n')) type = 'NOTE';
-    else type = 'TASK'; // /t ou qualquer outra variação cai no fallback padrão
+    else type = 'TASK';
 
     workingText = workingText.replace(typeMatch[0], ' ');
   }
@@ -162,15 +162,18 @@ export function parseQuickCapture(input: string): ParsedNLP {
     workingText = workingText.replace(energyMatch[0], ' ');
   }
 
-  // --- 4. Extração de Projeto (#nome-do-projeto) ---
+  // --- 4. Extração de Projeto (#nome do projeto composto) ---
   let projectQuery: string | null = null;
   let rawProject: string | null = null;
-  const projectRegex = /\s#([a-zA-Z0-9_-]+)\b/;
+  
+  // 🔥 ARQ: Regex Gananciosa. Lê o '#' e captura TUDO até encontrar outro gatilho (@, !, ^, /) ou o fim da linha.
+  // Isso permite nomes com espaços, acentos, hifens e números (Ex: #Integração C# e Vue.js).
+  const projectRegex = /\s#([^@!\^\/]+)/;
   const projectMatch = workingText.match(projectRegex);
 
   if (projectMatch) {
-    rawProject = projectMatch[0].trim();
-    projectQuery = projectMatch[1].toLowerCase();
+    rawProject = projectMatch[0];
+    projectQuery = projectMatch[1].trim(); // Remove espaços residuais do final
     workingText = workingText.replace(projectMatch[0], ' ');
   }
 

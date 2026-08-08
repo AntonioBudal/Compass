@@ -11,7 +11,7 @@ public class ScheduleConfiguration : IEntityTypeConfiguration<Schedule>
         builder.ToTable("schedules");
 
         builder.HasKey(s => s.Id);
-        builder.Property(s => s.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(s => s.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
         builder.Property(s => s.UserId).HasColumnName("user_id").IsRequired();
         builder.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);

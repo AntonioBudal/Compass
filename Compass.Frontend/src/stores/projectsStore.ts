@@ -80,39 +80,11 @@ export const useProjectsStore = defineStore('projects', () => {
   }, { deep: true, immediate: true });
 
   // --- MOTOR DE CACHE ---
-  function saveToDisk() {
-    try {
-      const payload = { timestamp: new Date().toISOString(), items: catalog.value };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {}
-  }
+  
 
-  function loadFromDisk(): boolean {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const cachedItems: ProjectCatalogItemDto[] = parsed.items || [];
-        
-        const newEntities: Record<string, ProjectCatalogItemDto> = {};
-        const newIds: string[] = [];
-        
-        cachedItems.forEach(p => {
-          newEntities[p.id] = p;
-          newIds.push(p.id);
-        });
-
-        entities.value = newEntities;
-        catalogIds.value = newIds;
-        isServingFromCache.value = true;
-        return catalogIds.value.length > 0;
-      }
-    } catch (e) {}
-    return false;
-  }
-
+  
   const fetchCatalog = async (forceRefresh = false) => {
-    if (catalogIds.value.length === 0 && !forceRefresh) loadFromDisk();
+    
 
     isLoading.value = true;
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
@@ -136,16 +108,16 @@ export const useProjectsStore = defineStore('projects', () => {
         catalogIds.value = newIds;
         isServingFromCache.value = false;
         lastSyncedAt.value = new Date();
-        saveToDisk();
+   
       }
     } catch (err: any) {
-      const hasOfflineData = loadFromDisk();
+      const hasOfflineData = 1
       if (!hasOfflineData && catalogIds.value.length === 0) {
         const demoId = 'proj-demo-1';
         // Mock adaptado para o novo DTO
         entities.value[demoId] = { id: demoId, name: 'Refatoração da Arquitetura', description: null, goalId: null, lastUsedAtUtc: new Date().toISOString() };
         catalogIds.value.push(demoId);
-        saveToDisk();
+       
       }
     } finally {
       isLoading.value = false;
@@ -160,7 +132,7 @@ export const useProjectsStore = defineStore('projects', () => {
     try {
       
       await CompassApi.updateProject(id, { name: entities.value[id].name, goalId: entities.value[id].goalId });
-      saveToDisk(); 
+      
       if (!isSilent) toastStore.showToast('Projeto atualizado e sincronizado.', 'neutral');
     } catch (err: any) {
       Object.assign(entities.value[id], originalItem);
@@ -180,7 +152,7 @@ export const useProjectsStore = defineStore('projects', () => {
     try {
       
       await CompassApi.deleteProject(id);
-      saveToDisk();
+    
       toastStore.showToast('Projeto excluído com sucesso.', 'neutral');
     } catch (err) {
       // Rollback se falhar
@@ -197,7 +169,7 @@ export const useProjectsStore = defineStore('projects', () => {
     
     catalogIds.value = catalogIds.value.filter(id => id !== projectId);
     catalogIds.value.unshift(projectId);
-    saveToDisk();
+
   };
 
   const lruProjects = computed(() => {
@@ -214,7 +186,7 @@ export const useProjectsStore = defineStore('projects', () => {
     
     entities.value[created.id] = created;
     catalogIds.value.unshift(created.id);
-    saveToDisk();
+
     
     return created;
   };

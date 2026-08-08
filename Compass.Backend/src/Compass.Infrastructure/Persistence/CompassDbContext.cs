@@ -1,7 +1,6 @@
 using Compass.Domain.Entities;
 using Compass.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace Compass.Infrastructure.Persistence;
 
@@ -19,8 +18,6 @@ public class CompassDbContext : DbContext
     public DbSet<FocusSession> FocusSessions { get; set; } = null!;
     public DbSet<DecisionSnapshot> DecisionSnapshots { get; set; } = null!; 
     public DbSet<UserScoringProfile> UserScoringProfiles { get; set; } = null!;
-
-    
     public DbSet<DailyReview> DailyReviews { get; set; } = null!;
 
     public CompassDbContext(DbContextOptions<CompassDbContext> options) : base(options)
@@ -32,20 +29,12 @@ public class CompassDbContext : DbContext
         base.OnConfiguring(optionsBuilder);
         
         // 🚨 O DISJUNTOR DOS TESTES 🚨
-        // Verifica se a Factory do xUnit já injetou o provedor InMemory.
-        // Se sim, abortamos a injeção do Npgsql para não causar a colisão de provedores.
+        // Mantemos apenas a trava de testes em memória. 
+        // Removemos o Npgsql para permitir que o Program.cs injete o SQLite com sucesso!
         if (optionsBuilder.Options.Extensions.Any(e => e.GetType().Name.Contains("InMemory")))
         {
             return;
         }
-        
-        // Mapeamento nativo dos Enums no Npgsql (Rodará apenas em Produção/Dev)
-        optionsBuilder.UseNpgsql(npgsqlBuilder =>
-        {
-            npgsqlBuilder.MapEnum<CommitmentType>("commitment_type");
-            npgsqlBuilder.MapEnum<CommitmentStatus>("commitment_status");
-            npgsqlBuilder.MapEnum<GoalStatus>("goal_status");
-        });
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -56,12 +45,12 @@ public class CompassDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CompassDbContext).Assembly);
 
         modelBuilder.Entity<DecisionSnapshot>(builder =>
-{
-        // Índice Parcial Otimizado: Permite que o job de calibração varra 
-        // apenas decisões que geraram aprendizado real (escolhas ou ignorados explicitamente)
-        builder.HasIndex(d => new { d.UserId, d.CreatedAt })
-            .HasDatabaseName("idx_snapshots_reinforcement")
-            .HasFilter("was_ignored = false OR chosen_commitment_id IS NOT NULL");
+        {
+            // Índice Parcial Otimizado: Permite que o job de calibração varra 
+            // apenas decisões que geraram aprendizado real (escolhas ou ignorados explicitamente)
+            builder.HasIndex(d => new { d.UserId, d.CreatedAt })
+                .HasDatabaseName("idx_snapshots_reinforcement")
+                .HasFilter("was_ignored = false OR chosen_commitment_id IS NOT NULL");
         });
     }
 }

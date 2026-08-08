@@ -12,7 +12,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.ToTable("projects");
 
         builder.HasKey(p => p.Id);
-        builder.Property(p => p.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(p => p.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
         builder.Property(p => p.UserId).HasColumnName("user_id").IsRequired();
         builder.HasOne<User>().WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
@@ -21,7 +21,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.HasOne<Goal>().WithMany().HasForeignKey(p => p.GoalId).OnDelete(DeleteBehavior.SetNull);
 
         builder.Property(p => p.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
-        builder.ToTable(t => t.HasCheckConstraint("chk_project_title_length", "char_length(title) >= 3"));
+        builder.ToTable(t => t.HasCheckConstraint("chk_project_title_length", "length(title) >= 3"));
 
         builder.Property(p => p.Deadline).HasColumnName("deadline");
 

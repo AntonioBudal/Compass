@@ -11,7 +11,7 @@ public class FocusSessionConfiguration : IEntityTypeConfiguration<FocusSession>
         builder.ToTable("focus_sessions");
 
         builder.HasKey(f => f.Id);
-        builder.Property(f => f.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(f => f.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
         builder.Property(f => f.UserId).HasColumnName("user_id").IsRequired();
         builder.HasOne<User>().WithMany().HasForeignKey(f => f.UserId).OnDelete(DeleteBehavior.Cascade);

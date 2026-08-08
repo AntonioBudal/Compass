@@ -29,10 +29,10 @@ public class UserScoringProfileConfiguration : IEntityTypeConfiguration<UserScor
         builder.Property(p => p.UpdatedAt).HasColumnName("updated_at").IsRequired();
 
         // BLINDAGEM DE CONCORRÊNCIA: Mapeia o token para a coluna de sistema 'xmin' do PostgreSQL
-        builder.Property(p => p.Version)
-            .HasColumnName("xmin")
-            .HasColumnType("xid")
-            .IsRowVersion();
+        // builder.Property(p => p.Version)
+        //     .HasColumnName("xmin")
+        //     .HasColumnType("xid")
+        //     .IsRowVersion();
 
         // Índice único para garantir relação 1:1 entre Usuário e Perfil de Pontuação
         builder.HasIndex(p => p.UserId)

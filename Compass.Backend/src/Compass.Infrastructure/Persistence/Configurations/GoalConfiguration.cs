@@ -12,13 +12,13 @@ public class GoalConfiguration : IEntityTypeConfiguration<Goal>
         builder.ToTable("goals");
 
         builder.HasKey(g => g.Id);
-        builder.Property(g => g.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(g => g.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
         builder.Property(g => g.UserId).HasColumnName("user_id").IsRequired();
         builder.HasOne<User>().WithMany().HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(g => g.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
-        builder.ToTable(t => t.HasCheckConstraint("chk_goal_title_length", "char_length(title) >= 3"));
+        builder.ToTable(t => t.HasCheckConstraint("chk_goal_title_length", "length(title) >= 3"));
 
         builder.Property(g => g.WhyDescription).HasColumnName("why_description");
         builder.Property(g => g.TargetDate).HasColumnName("target_date");

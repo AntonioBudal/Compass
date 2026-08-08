@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue';
 import { useDecisionStore } from '@/stores/decisionStore';
 import { useCommitmentsStore } from '@/stores/commitmentsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useProjectsStore } from '@/stores/projectsStore';
+import { useGoalsStore } from '@/stores/goalsStore';
 import TopFocusCard from '@/components/core/TopFocusCard.vue';
 import CommitmentCard from '@/components/core/CommitmentCard.vue';
 import TacticalHorizonBar, { type HorizonOption } from '@/components/core/TacticalHorizonBar.vue';
@@ -14,6 +16,8 @@ import { RefreshCw, Sparkles, PlusCircle, Sunrise, ListTodo } from 'lucide-vue-n
 const decisionStore = useDecisionStore();
 const commitmentsStore = useCommitmentsStore();
 const settingsStore = useSettingsStore();
+const projectsStore = useProjectsStore();
+const goalsStore = useGoalsStore();
 
 const currentHorizon = ref<HorizonOption>('today');
 const isForceRefreshing = ref(false);
@@ -21,11 +25,13 @@ const isForceRefreshing = ref(false);
 const viewDensity = computed(() => settingsStore.getViewDensity('now'));
 
 onMounted(async () => {
-  //  SOLUÇÃO 3: FIM DA CONDIÇÃO DE CORRIDA (Pipeline Sequencial)
-  // 1. Primeiro trazemos a base de dados real para a memória
-  await commitmentsStore.fetchAllActive(); 
   
-  // 2. Só então o motor roda, calculando em cima dos dados que já estão lá
+  await Promise.all([
+  commitmentsStore.fetchAllActive(), 
+  projectsStore.fetchCatalog(),
+  goalsStore.fetchGoals()
+]);
+  
   await decisionStore.fetchNow(); 
 });
 
@@ -40,11 +46,22 @@ const openCreateModal = () => {
   isQuickCaptureOpen.value = true;
 };
 
-//  SOLUÇÃO 2: SEPARAÇÃO DOMÍNIO VS MOTOR (Fim das atividades ocultas)
+
+const getBreadcrumb = (projectId: string | null | undefined): string | null => {
+  if (!projectId) return null;
+  const project = projectsStore.entities[projectId];
+  if (!project) return null;
+
+  const goal = project.goalId ? goalsStore.entities[project.goalId] : null;
+  
+  // Se tiver Meta e Projeto: "Minha Meta ❯ Meu Projeto"
+  // Se tiver só Projeto: "Meu Projeto"
+  return goal ? `${goal.title} ❯ ${project.name}` : project.name;
+};
+
 const horizonBuckets = computed(() => {
   const allKnownEntities = Object.values(commitmentsStore.entities);
   
-  // Busca a realidade absoluta de TUDO o que está pendente
   const allPending = allKnownEntities.filter(i => 
     i.type === 'TASK' && (i.status === 'PENDING' || i.status === 'IN_PROGRESS')
   );
@@ -65,7 +82,6 @@ const horizonBuckets = computed(() => {
   };
 
   allPending.forEach(item => {
-    // Aloca cada tarefa na sua caixa cronológica correta
     const targetTime = item.deadline ? new Date(item.deadline).getTime() : todayEnd + (MS_IN_A_DAY * 5);
 
     if (targetTime <= todayEnd) buckets.today.push(item);
@@ -76,7 +92,7 @@ const horizonBuckets = computed(() => {
 
   return {
     counts: {
-      today: buckets.today.length, // Agora mostra TUDO que está vencendo hoje
+      today: buckets.today.length, 
       tomorrow: buckets.tomorrow.length,
       '3days': buckets['3days'].length,
       week: buckets.week.length
@@ -90,12 +106,29 @@ const horizonBuckets = computed(() => {
   };
 });
 
-// Resgata o restante das tarefas de hoje que o motor "escondeu"
+// 🔥 ENRIQUECIMENTO: Injetamos o Breadcrumb nas recomendações do Motor de Decisão
+const enrichedTopFocus = computed(() => {
+  if (!decisionStore.topFocus) return null;
+  const base = decisionStore.topFocus;
+  const task = commitmentsStore.entities[base.commitmentId];
+  return {
+    ...base,
+    projectName: getBreadcrumb(task?.projectId) || base.projectName
+  };
+});
+
+const enrichedAlternatives = computed(() => {
+  return decisionStore.alternatives.map(alt => {
+    const task = commitmentsStore.entities[alt.commitmentId];
+    return {
+      ...alt,
+      projectName: getBreadcrumb(task?.projectId) || alt.projectName
+    };
+  });
+});
+
 const remainingTodayTasks = computed(() => {
-  // Coleta os IDs que o motor de decisão já separou
   const suggestedIds = new Set(decisionStore.topActions.map(a => a.commitmentId));
-  
-  // Filtra as tarefas de hoje que NÃO estão no motor de decisão
   return horizonBuckets.value.lists.today.filter((task: any) => !suggestedIds.has(task.id));
 });
 
@@ -127,10 +160,9 @@ const activeFutureList = computed(() => {
       </template>
     </PageHeader>
 
-    <!-- A barra agora reflete a totalidade da base (Fonte de Verdade) -->
     <TacticalHorizonBar v-model="currentHorizon" :counts="horizonBuckets.counts" />
 
-    <!-- ABA: TURNOS FUTUROS (Intacta) -->
+    <!-- ABA: TURNOS FUTUROS -->
     <template v-if="currentHorizon !== 'today'">
       <div v-if="activeFutureList.length === 0" class="p-10 rounded-xl border border-dashed border-borderbase bg-app/40 text-center space-y-4 my-6">
         <div class="w-12 h-12 rounded-full bg-surface border border-borderfocus flex items-center justify-center mx-auto text-content">
@@ -169,7 +201,7 @@ const activeFutureList = computed(() => {
                 nominalDurationMinutes: task.estimatedDurationMinutes || 30,
                 effectiveDurationMinutes: task.estimatedDurationMinutes || 30,
                 energyRequired: task.energyRequired || 2,
-                projectName: task.projectName || null,
+                projectName: getBreadcrumb(task.projectId), /* 🔥 O(1) Breadcrumb Injetado */
                 scorePercentage: 0,
                 reason: 'Aguardando recálculo do motor.',
                 wasTimeAdjustedByEai: false
@@ -206,27 +238,26 @@ const activeFutureList = computed(() => {
       </div>
 
       <template v-else>
-        <!-- SEÇÃO 1: MOTOR DE DECISÃO (Foco Prioritário) -->
-        <section v-if="decisionStore.topFocus" aria-label="Ação Prioritária Recomendada">
-          <!-- Acesso Direto O(1) com Proteção -->
+        <!-- SEÇÃO 1: MOTOR DE DECISÃO -->
+        <section v-if="enrichedTopFocus" aria-label="Ação Prioritária Recomendada">
           <InspectableCard 
-            v-if="commitmentsStore.entities[decisionStore.topFocus.commitmentId]"
-            :entity="commitmentsStore.entities[decisionStore.topFocus.commitmentId]"
+            v-if="commitmentsStore.entities[enrichedTopFocus.commitmentId]"
+            :entity="commitmentsStore.entities[enrichedTopFocus.commitmentId]"
             type="COMMITMENT"
           >
-            <TopFocusCard :item="decisionStore.topFocus" :density="viewDensity" />
+            <TopFocusCard :item="enrichedTopFocus" :density="viewDensity" />
           </InspectableCard>
         </section>
 
-        <!-- SEÇÃO 2: MOTOR DE DECISÃO (Alternativas Secundárias) -->
-        <section v-if="decisionStore.alternatives.length > 0" aria-label="Alternativas" class="space-y-3 pt-4">
+        <!-- SEÇÃO 2: ALTERNATIVAS -->
+        <section v-if="enrichedAlternatives.length > 0" aria-label="Alternativas" class="space-y-3 pt-4">
           <div class="flex items-center justify-between text-xs font-semibold text-content-muted uppercase tracking-wider px-1">
             <span>Alternativas</span>
-            <span class="font-mono">{{ decisionStore.alternatives.length }} sugeridas</span>
+            <span class="font-mono">{{ enrichedAlternatives.length }} sugeridas</span>
           </div>
 
           <transition-group name="fade-list" tag="div" class="space-y-2">
-            <template v-for="alt in decisionStore.alternatives" :key="alt.commitmentId">
+            <template v-for="alt in enrichedAlternatives" :key="alt.commitmentId">
               <InspectableCard
                 v-if="commitmentsStore.entities[alt.commitmentId]"
                 :entity="commitmentsStore.entities[alt.commitmentId]"
@@ -238,7 +269,7 @@ const activeFutureList = computed(() => {
           </transition-group>
         </section>
 
-        <!-- SEÇÃO 3: BACKLOG (O que o motor escondeu mas precisa ser feito hoje) -->
+        <!-- SEÇÃO 3: BACKLOG -->
         <section v-if="remainingTodayTasks.length > 0" aria-label="Restante do Turno" class="space-y-3 pt-8 pb-4">
           <div class="flex items-center gap-2 text-xs font-semibold text-content-muted uppercase tracking-wider px-1 border-b border-borderbase pb-2">
             <ListTodo class="w-4 h-4" />
@@ -260,7 +291,7 @@ const activeFutureList = computed(() => {
                   nominalDurationMinutes: task.estimatedDurationMinutes || 30,
                   effectiveDurationMinutes: task.estimatedDurationMinutes || 30,
                   energyRequired: task.energyRequired || 2,
-                  projectName: task.projectName || null,
+                  projectName: getBreadcrumb(task.projectId), /* 🔥 O(1) Breadcrumb Injetado */
                   scorePercentage: 0,
                   reason: 'Aguardando capacidade operacional.',
                   wasTimeAdjustedByEai: false

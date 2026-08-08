@@ -55,42 +55,16 @@ export const useDecisionStore = defineStore('decision', () => {
   const isServingFromCache = ref<boolean>(false);
   const lastSyncedAt = ref<Date | null>(null);
 
-  function saveToDisk() {
-    try {
-      const payload = {
-        timestamp: new Date().toISOString(),
-        profile: adaptiveProfile.value,
-        actions: rawTopActions.value, 
-        window: availableWindow.value,
-        energy: currentEnergy.value
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {}
-  }
+  
 
-  function loadFromDisk(): boolean {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        adaptiveProfile.value = parsed.profile || adaptiveProfile.value;
-        rawTopActions.value = parsed.actions || [];
-        availableWindow.value = parsed.window || 60;
-        currentEnergy.value = parsed.energy || 2;
-        lastSyncedAt.value = parsed.timestamp ? new Date(parsed.timestamp) : null;
-        isServingFromCache.value = true;
-        return true;
-      }
-    } catch (e) {}
-    return false;
-  }
+
 
   const fetchDecisions = async (windowMinutes = 60, energy = 2, forceRefresh = false) => {
     availableWindow.value = windowMinutes;
     currentEnergy.value = energy;
 
     if (rawTopActions.value.length === 0 && !forceRefresh) {
-      loadFromDisk();
+    
     }
 
     isLoading.value = true;
@@ -108,10 +82,10 @@ export const useDecisionStore = defineStore('decision', () => {
         adaptiveProfile.value = res.data.adaptiveProfile;
         isServingFromCache.value = false;
         lastSyncedAt.value = new Date();
-        saveToDisk();
+     
       }
     } catch (err: any) {
-      const hasOfflineData = rawTopActions.value.length > 0 || loadFromDisk();
+      const hasOfflineData = rawTopActions.value.length > 0 
       if (!hasOfflineData) {
         toastStore.showToast('Sem conexão para calcular o Now Engine.', 'error');
       }
@@ -172,7 +146,7 @@ export const useDecisionStore = defineStore('decision', () => {
     topFocus: primaryFocus,
     alternatives: secondaryActions,
     fetchDecisions,
-    fetchNow: fetchDecisions,
-    loadFromDisk
+    fetchNow: fetchDecisions
+  
   };
 });

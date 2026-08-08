@@ -34,7 +34,7 @@ CREATE TABLE settings (
 CREATE TABLE goals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(200) NOT NULL CHECK (char_length(title) >= 3),
+    title VARCHAR(200) NOT NULL CHECK (length(title) >= 3),
     why_description TEXT,
     target_date DATE,
     status goal_status NOT NULL DEFAULT 'ACTIVE',
@@ -47,7 +47,7 @@ CREATE TABLE projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     goal_id UUID REFERENCES goals(id) ON DELETE SET NULL,
-    title VARCHAR(200) NOT NULL CHECK (char_length(title) >= 3),
+    title VARCHAR(200) NOT NULL CHECK (length(title) >= 3),
     deadline TIMESTAMPTZ,
     status commitment_status NOT NULL DEFAULT 'PENDING',
     total_estimated_duration_minutes INTEGER NOT NULL DEFAULT 0 CHECK (total_estimated_duration_minutes >= 0),
@@ -59,7 +59,7 @@ CREATE TABLE commitments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
-    title VARCHAR(255) NOT NULL CHECK (char_length(title) >= 3),
+    title VARCHAR(255) NOT NULL CHECK (length(title) >= 3),
     type commitment_type NOT NULL,
     status commitment_status NOT NULL DEFAULT 'PENDING',
     estimated_duration_minutes INTEGER NOT NULL DEFAULT 30 CHECK (estimated_duration_minutes >= 0),
@@ -102,7 +102,7 @@ CREATE TABLE schedules (
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(50) NOT NULL CHECK (char_length(name) >= 2),
+    name VARCHAR(50) NOT NULL CHECK (length(name) >= 2),
     color_hex VARCHAR(7) NOT NULL DEFAULT '#6366F1' CHECK (color_hex ~* '^#[a-f0-9]{6}$'),
     UNIQUE (user_id, name)
 );
