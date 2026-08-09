@@ -19,7 +19,9 @@ public abstract class Commitment
     public DateTime? CompletedAt { get; protected set; }
     public Guid? ConvertedToCommitmentId { get; protected set; }
 
-    // Construtor protegido para o EF Core
+    //  A CURA DO TPH: Propriedade unificada na classe base!
+    public DateTime? StartTime { get; protected set; }
+
     protected Commitment() { }
 
     protected Commitment(Guid userId, string title, CommitmentType type, Guid? projectId = null)

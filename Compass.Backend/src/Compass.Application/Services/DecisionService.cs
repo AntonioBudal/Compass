@@ -46,12 +46,12 @@ public class DecisionService : IDecisionService
 
         // 3. Identificar próximo Hard Blocker ativo para exibir no contexto
         var nextBlocker = todayEvents
-            .Where(e => e.StartTime > nowUtc && e.Status != CommitmentStatus.Archived)
+            .Where(e => e.StartTime.HasValue && e.StartTime.Value > nowUtc && e.Status != CommitmentStatus.Archived)
             .OrderBy(e => e.StartTime)
             .FirstOrDefault();
 
         ActiveHardBlockerDto? blockerDto = nextBlocker != null
-            ? new ActiveHardBlockerDto(nextBlocker.Title, nextBlocker.StartTime)
+            ? new ActiveHardBlockerDto(nextBlocker.Title, nextBlocker.StartTime!.Value)
             : null;
 
         short defaultEnergy = 2; // Nível 2 (Média) como padrão de energia no MVP
@@ -110,7 +110,7 @@ public class DecisionService : IDecisionService
         var topFocus = scoredDtos.FirstOrDefault();
         var alternatives = scoredDtos.Skip(1).ToList().AsReadOnly();
 
-        // 8. Gravar o Snapshot de Auditoria no PostgreSQL (< 15ms)
+        // 8. Gravar o Snapshot de Auditoria no Banco (< 15ms)
         var snapshot = new DecisionSnapshot(
             userId,
             availableMinutes,

@@ -31,6 +31,9 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(c => c.CompletedAt).HasColumnName("completed_at");
 
+        // 🔥 FIX ARQUITETURAL TPH: O StartTime agora pertence a Base!
+        builder.Property(c => c.StartTime).HasColumnName("start_time").IsRequired(false);
+
         // Configuração da Herança TPH (Table-Per-Hierarchy)
         builder.Property(c => c.Type).HasColumnName("type").IsRequired();
         
@@ -56,7 +59,7 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
         builder.Property<int>("PostponedCount").HasColumnName("postponed_count").HasDefaultValue(0);
 
         // EventCommitment
-        builder.Property<DateTime?>("StartTime").HasColumnName("start_time").IsRequired(false); 
+        // 🔥 REMOVIDO: builder.Property<DateTime?>("StartTime").HasColumnName("start_time").IsRequired(false); 
         builder.Property<DateTime?>("EndTime").HasColumnName("end_time").IsRequired(false); 
         builder.Property<string?>("LocationOrLink").HasColumnName("location_or_link").HasMaxLength(500).IsRequired(false);
 
@@ -81,7 +84,6 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
             .HasFilter("status IN ('pending', 'in_progress') AND type IN ('task', 'habit')");
 
         // 2. Busca por Eventos/Bloqueadores de agenda
-        // CORRIGIDO: Valores do Enum em minúsculo
         builder.HasIndex(c => new { c.UserId })
             .HasDatabaseName("idx_commitments_events_lookup")
             .HasFilter("type = 'event' AND status != 'archived'");
@@ -93,20 +95,16 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
 
         builder.Ignore(c => c.DomainEvents);
 
-
-        // --- Índices Analíticos Parciais (Semana 1 / Dia 1) ---
-
-      // --- Índices Analíticos Parciais (Semana 1 / Dia 1) ---
+        // --- Índices Analíticos Parciais ---
 
         // 1. Cobertura ultrarrápida para KPIs de eficácia e séries temporais concluídas
         builder.HasIndex(c => new { c.UserId, c.Status, c.CompletedAt })
             .HasDatabaseName("idx_commitments_user_status_completed")
             .HasFilter("status = 'completed' AND completed_at IS NOT NULL");
 
-        // 2. CORRIGIDO: Uso de strings para referenciar propriedades de subclasses no TPH
+        // 2. Uso de strings para referenciar propriedades de subclasses no TPH
         builder.HasIndex("UserId", "PostponedCount", "Type", "EnergyRequired")
             .HasDatabaseName("idx_commitments_user_postponed")
             .HasFilter("postponed_count > 0 AND status != 'archived'");
     }
 }
-    

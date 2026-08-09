@@ -720,3 +720,24 @@
 
 - Atualização do `OmniInput` com novos placeholders sugestivos.
 - Inclusão dos novos atalhos de criação rápida (`/meta` e `/projeto`) na documentação viva da `LibraryView`.
+
+# 2026-08-08
+
+# Refatoração da Agenda Tática
+
+* Divisão da `AgendaView.vue` em componentes menores seguindo responsabilidade única.
+* Criação dos componentes `AgendaHeader`, `AgendaBacklog`, `AgendaTimeGrid`, `AgendaRestBlocks`, `AgendaFreeBlocks`, `AgendaCommitmentBlock`, `AgendaGhostBlock` e `AgendaConflictModal`.
+* `AgendaView.vue` passou a atuar principalmente como orquestradora do estado, cálculos temporais e eventos de Drag & Drop e Resize.
+* Isolamento da renderização dos compromissos, grade de horários, blocos de descanso, espaços livres e pré-visualização do Drag.
+
+# Estado e Sincronização
+
+* Ajuste da atualização de `entities` na `commitmentsStore` para preservar a reatividade da Agenda após o Drop.
+* Correção do fluxo de atualização local após o `PUT`, garantindo que o compromisso seja refletido na interface imediatamente.
+* Implementação de proteção no Frontend para manter o estado visual quando a resposta da API não retorna corretamente os dados de horário.
+
+# Drag & Drop
+
+* Mantida a pré-visualização do compromisso durante o arraste.
+* Integração do cálculo de horário com a atualização persistida via `PUT`.
+* Agenda passa a atualizar visualmente o compromisso após a movimentação.

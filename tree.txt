@@ -1,553 +1,485 @@
-﻿└── tree.txt
-        └── backend-ci.yml
-    └── Compass.slnx
-        └── Compass.Api_BehavioralCalibrationWorker.html
-        └── Compass.Api_CommitmentsController.html
-        └── Compass.Api_CompilerServices.html
-        └── Compass.Api_DailyCycleController.html
-        └── Compass.Api_DecisionsController.html
-        └── Compass.Api_Generated.html
-        └── Compass.Api_GlobalExceptionHandler.html
-        └── Compass.Api_GoalsController.html
-        └── Compass.Api_PortabilityController.html
-        └── Compass.Api_Program.html
-        └── Compass.Api_ProgressController.html
-        └── Compass.Api_ProjectsController.html
-        └── Compass.Application_ActiveHardBlockerDto.html
-        └── Compass.Application_AdaptiveProfileDto.html
-        └── Compass.Application_CascadedDomainEventDto.html
-        └── Compass.Application_ChronologyPeakDto.html
-        └── Compass.Application_CommitmentDto.html
-        └── Compass.Application_CommitmentExportDto.html
-        └── Compass.Application_CommitmentService.html
-        └── Compass.Application_CreateCommitmentDto.html
-        └── Compass.Application_CreateCommitmentDtoValidator.html
-        └── Compass.Application_DailyReviewExportDto.html
-        └── Compass.Application_DailyShutdownRequestDto.html
-        └── Compass.Application_DailyShutdownResponseDto.html
-        └── Compass.Application_DailyTimeSliceDto.html
-        └── Compass.Application_DecisionContextDto.html
-        └── Compass.Application_DecisionResponseDto.2.html
-        └── Compass.Application_DecisionResponseDto.html
-        └── Compass.Application_DecisionService.html
-        └── Compass.Application_FocusSessionExportDto.html
-        └── Compass.Application_GoalService.html
-        └── Compass.Application_MorningBriefingDto.html
-        └── Compass.Application_PortabilityBundleDto.html
-        └── Compass.Application_PortabilityImportResultDto.html
-        └── Compass.Application_ProcrastinationHeatmapDto.html
-        └── Compass.Application_ProgressOverviewDto.html
-        └── Compass.Application_ProjectCatalogDto.html
-        └── Compass.Application_ProjectExportDto.html
-        └── Compass.Application_ScoredActionDto.2.html
-        └── Compass.Application_ScoredActionDto.html
-        └── Compass.Application_ScoringProfileExportDto.html
-        └── Compass.Application_SettingExportDto.html
-        └── Compass.Application_StatusTransitionResponseDto.html
-        └── Compass.Application_UpdateCommitmentDto.html
-        └── Compass.Application_UpdateCommitmentDtoValidator.html
-        └── Compass.Application_UpdateGoalDto.html
-        └── Compass.Application_UpdateGoalDtoValidator.html
-        └── Compass.Application_UpdateStatusDto.html
-        └── Compass.Application_UpdateStatusDtoValidator.html
-        └── Compass.Domain_Commitment.html
-        └── Compass.Domain_CommitmentAttribute.html
-        └── Compass.Domain_DailyReview.html
-        └── Compass.Domain_DecisionSnapshot.html
-        └── Compass.Domain_Dependency.html
-        └── Compass.Domain_DomainException.html
-        └── Compass.Domain_EventCommitment.html
-        └── Compass.Domain_EventOverlapException.html
-        └── Compass.Domain_FocusSession.html
-        └── Compass.Domain_Goal.html
-        └── Compass.Domain_HabitCommitment.html
-        └── Compass.Domain_InvalidTimeRangeException.html
-        └── Compass.Domain_NoteCommitment.html
-        └── Compass.Domain_Project.html
-        └── Compass.Domain_Reminder.html
-        └── Compass.Domain_Schedule.html
-        └── Compass.Domain_ScoredCommitment.html
-        └── Compass.Domain_ScoringEngine.html
-        └── Compass.Domain_Setting.html
-        └── Compass.Domain_Tag.html
-        └── Compass.Domain_TaskCommitment.html
-        └── Compass.Domain_TimeWindowCalculator.html
-        └── Compass.Domain_User.html
-        └── Compass.Domain_UserScoringProfile.html
-        └── Compass.Infrastructure_AddAdaptiveScoringProfiles.html
-        └── Compass.Infrastructure_AddAnalyticsPartialIndexes.html
-        └── Compass.Infrastructure_AddDailyReviewsAndSettingsReconciliation.html
-        └── Compass.Infrastructure_AddDecisionSnapshot.html
-        └── Compass.Infrastructure_AddUserScoringProfiles.html
-        └── Compass.Infrastructure_CommitmentConfiguration.html
-        └── Compass.Infrastructure_CommitmentRepository.html
-        └── Compass.Infrastructure_CompassDbContext.html
-        └── Compass.Infrastructure_CompassDbContextModelSnapshot.html
-        └── Compass.Infrastructure_DailyCycleService.html
-        └── Compass.Infrastructure_DailyReviewConfiguration.html
-        └── Compass.Infrastructure_DataPortabilityService.html
-        └── Compass.Infrastructure_DecisionSnapshotConfiguration.html
-        └── Compass.Infrastructure_DecisionSnapshotRepository.html
-        └── Compass.Infrastructure_DependencyConfiguration.html
-        └── Compass.Infrastructure_FixTphNullability.html
-        └── Compass.Infrastructure_FocusSessionConfiguration.html
-        └── Compass.Infrastructure_GoalConfiguration.html
-        └── Compass.Infrastructure_GoalRepository.html
-        └── Compass.Infrastructure_InitialProductionSchema.html
-        └── Compass.Infrastructure_ProgressService.html
-        └── Compass.Infrastructure_ProjectConfiguration.html
-        └── Compass.Infrastructure_ProjectRepository.html
-        └── Compass.Infrastructure_ReminderConfiguration.html
-        └── Compass.Infrastructure_ScheduleConfiguration.html
-        └── Compass.Infrastructure_SettingConfiguration.html
-        └── Compass.Infrastructure_TagConfiguration.html
-        └── Compass.Infrastructure_UserBehaviorProfilerService.html
-        └── Compass.Infrastructure_UserConfiguration.html
-        └── Compass.Infrastructure_UserScoringProfileConfiguration.html
-        └── Compass.Tests.Shared_GoalBuilder.html
-        └── Compass.Tests.Shared_TaskCommitmentBuilder.html
-        └── Compass.Tests.Shared_TestConstants.html
-        └── icon_cog.svg
-        └── icon_cog_dark.svg
-        └── icon_cube.svg
-        └── icon_cube_dark.svg
-        └── icon_fork.svg
-        └── icon_fork_dark.svg
-        └── icon_info-circled.svg
-        └── icon_info-circled_dark.svg
-        └── icon_minus.svg
-        └── icon_minus_dark.svg
-        └── icon_plus.svg
-        └── icon_plus_dark.svg
-        └── icon_search-minus.svg
-        └── icon_search-minus_dark.svg
-        └── icon_search-plus.svg
-        └── icon_search-plus_dark.svg
-        └── icon_sponsor.svg
-        └── icon_star.svg
-        └── icon_star_dark.svg
-        └── icon_up-dir.svg
-        └── icon_up-dir_active.svg
-        └── icon_up-down-dir.svg
-        └── icon_up-down-dir_dark.svg
-        └── icon_wrench.svg
-        └── icon_wrench_dark.svg
-        └── index.htm
-        └── index.html
-            └── Compass.Api.csproj
-            └── Compass.Api.http
-            └── Program.cs
-            └── rollback_test.sql
-                        └── Compass.Api.exe
-                        └── Compass.Api.pdb
-                        └── Compass.Application.pdb
-                        └── Compass.Domain.pdb
-                        └── Compass.Infrastructure.pdb
-                            └── Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe
-                └── CommitmentsController.cs
-                └── DailyCycleController.cs
-                └── DecisionsController.cs
-                └── GoalsController.cs
-                └── PortabilityController.cs
-                └── ProgressController.cs
-                └── ProjectsController.cs
-                └── GlobalExceptionHandler.cs
-                └── Compass.Api.csproj.nuget.g.props
-                └── Compass.Api.csproj.nuget.g.targets
-                └── project.nuget.cache
-                        └── .NETCoreApp,Version=v10.0.AssemblyAttributes.cs
-                        └── apphost.exe
-                        └── Compass..510E5251.Up2Date
-                        └── Compass.Api.AssemblyInfo.cs
-                        └── Compass.Api.AssemblyInfoInputs.cache
-                        └── Compass.Api.assets.cache
-                        └── Compass.Api.csproj.AssemblyReference.cache
-                        └── Compass.Api.csproj.CoreCompileInputs.cache
-                        └── Compass.Api.csproj.FileListAbsolute.txt
-                        └── Compass.Api.GeneratedMSBuildEditorConfig.editorconfig
-                        └── Compass.Api.genruntimeconfig.cache
-                        └── Compass.Api.GlobalUsings.g.cs
-                        └── Compass.Api.MvcApplicationPartsAssemblyInfo.cache
-                        └── Compass.Api.MvcApplicationPartsAssemblyInfo.cs
-                        └── Compass.Api.pdb
-                        └── staticwebassets.build.json.cache
-                        └── swae.build.ex.cache
-                └── BehavioralCalibrationWorker.cs
-            └── Compass.Application.csproj
-                        └── Compass.Application.pdb
-                        └── Compass.Domain.pdb
-                └── CommitmentDto.cs
-                └── CreateCommitmentDto.cs
-                └── CreateProjectDto.cs
-                └── DecisionResponseDto.cs
-                └── StatusTransitionResponseDto.cs
-                └── UpdateCommitmentDto.cs
-                └── UpdateGoalDto.cs
-                └── UpdateStatusDto.cs
-                    └── ChronologyPeakDto.cs
-                    └── DailyTimeSliceDto.cs
-                    └── ProcrastinationHeatmapDto.cs
-                    └── ProgressOverviewDto.cs
-                    └── DailyCycleContracts.cs
-                    └── DecisionContracts.cs
-                    └── PortabilityContracts.cs
-                    └── ProjectCatalogDto.cs
-                └── ICommitmentService.cs
-                └── IDecisionService.cs
-                └── IGoalService.cs
-                └── IProgressService.cs
-                └── IUserBehaviorProfilerService.cs
-                └── Compass.Application.csproj.nuget.g.props
-                └── Compass.Application.csproj.nuget.g.targets
-                └── project.nuget.cache
-                        └── .NETCoreApp,Version=v10.0.AssemblyAttributes.cs
-                        └── Compass..A4890480.Up2Date
-                        └── Compass.Application.AssemblyInfo.cs
-                        └── Compass.Application.AssemblyInfoInputs.cache
-                        └── Compass.Application.assets.cache
-                        └── Compass.Application.csproj.AssemblyReference.cache
-                        └── Compass.Application.csproj.CoreCompileInputs.cache
-                        └── Compass.Application.csproj.FileListAbsolute.txt
-                        └── Compass.Application.GeneratedMSBuildEditorConfig.editorconfig
-                        └── Compass.Application.GlobalUsings.g.cs
-                        └── Compass.Application.pdb
-                └── CommitmentService.cs
-                └── DecisionService.cs
-                └── GoalService.cs
-                └── CreateCommitmentDtoValidator.cs
-                └── UpdateCommitmentDtoValidator.cs
-                └── UpdateGoalDtoValidator.cs
-                └── UpdateStatusDtoValidator.cs
-            └── Compass.Domain.csproj
-                        └── Compass.Domain.pdb
-                └── Commitment.cs
-                └── DailyReview.cs
-                └── DecisionSnapshot.cs
-                └── Dependency.cs
-                └── EventCommitment.cs
-                └── FocusSession.cs
-                └── Goal.cs
-                └── HabitCommitment.cs
-                └── NoteCommitment.cs
-                └── Project.cs
-                └── Reminder.cs
-                └── Schedule.cs
-                └── Setting.cs
-                └── Tag.cs
-                └── TaskCommitment.cs
-                └── User.cs
-                └── UserScoringProfile.cs
-                └── CommitmentStatus.cs
-                └── CommitmentType.cs
-                └── GoalStatus.cs
-                └── ProjectStatus.cs
-                └── DomainException.cs
-                └── EventOverlapException.cs
-                └── InvalidTimeRangeException.cs
-                └── ICommitmentRepository.cs
-                └── IDecisionSnapshotRepository.cs
-                └── IDomainEvent.cs
-                └── IGoalRepository.cs
-                └── IProjectRepository.cs
-                └── Compass.Domain.csproj.nuget.g.props
-                └── Compass.Domain.csproj.nuget.g.targets
-                └── project.nuget.cache
-                        └── .NETCoreApp,Version=v10.0.AssemblyAttributes.cs
-                        └── Compass.Domain.AssemblyInfo.cs
-                        └── Compass.Domain.AssemblyInfoInputs.cache
-                        └── Compass.Domain.assets.cache
-                        └── Compass.Domain.csproj.CoreCompileInputs.cache
-                        └── Compass.Domain.csproj.FileListAbsolute.txt
-                        └── Compass.Domain.GeneratedMSBuildEditorConfig.editorconfig
-                        └── Compass.Domain.GlobalUsings.g.cs
-                        └── Compass.Domain.pdb
-                └── ScoringEngine.cs
-                └── TimeWindowCalculator.cs
-                └── CommitmentAttribute.cs
-            └── Compass.Infrastructure.csproj
-                        └── Compass.Application.pdb
-                        └── Compass.Domain.pdb
-                        └── Compass.Infrastructure.pdb
-                            └── Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe
-                └── 20260716155741_InitialProductionSchema.cs
-                └── 20260716155741_InitialProductionSchema.Designer.cs
-                └── 20260717173952_AddDecisionSnapshot.cs
-                └── 20260717173952_AddDecisionSnapshot.Designer.cs
-                └── 20260721200935_FixTphNullability.cs
-                └── 20260721200935_FixTphNullability.Designer.cs
-                └── 20260724173711_AddUserScoringProfiles.cs
-                └── 20260724173711_AddUserScoringProfiles.Designer.cs
-                └── 20260724175815_AddAnalyticsPartialIndexes.cs
-                └── 20260724175815_AddAnalyticsPartialIndexes.Designer.cs
-                └── 20260726181732_AddAdaptiveScoringProfiles.cs
-                └── 20260726181732_AddAdaptiveScoringProfiles.Designer.cs
-                └── 20260727182442_AddDailyReviewsAndSettingsReconciliation.cs
-                └── 20260727182442_AddDailyReviewsAndSettingsReconciliation.Designer.cs
-                └── CompassDbContextModelSnapshot.cs
-                └── Compass.Infrastructure.csproj.nuget.g.props
-                └── Compass.Infrastructure.csproj.nuget.g.targets
-                └── project.nuget.cache
-                        └── .NETCoreApp,Version=v10.0.AssemblyAttributes.cs
-                        └── Compass..13C8A441.Up2Date
-                        └── Compass.Infrastructure.AssemblyInfo.cs
-                        └── Compass.Infrastructure.AssemblyInfoInputs.cache
-                        └── Compass.Infrastructure.assets.cache
-                        └── Compass.Infrastructure.csproj.AssemblyReference.cache
-                        └── Compass.Infrastructure.csproj.CoreCompileInputs.cache
-                        └── Compass.Infrastructure.csproj.FileListAbsolute.txt
-                        └── Compass.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
-                        └── Compass.Infrastructure.genruntimeconfig.cache
-                        └── Compass.Infrastructure.GlobalUsings.g.cs
-                        └── Compass.Infrastructure.pdb
-                └── CompassDbContext.cs
-                    └── CommitmentConfiguration.cs
-                    └── DailyReviewConfiguration.cs
-                    └── DecisionSnapshotConfiguration.cs
-                    └── DependencyConfiguration.cs
-                    └── FocusSessionConfiguration.cs
-                    └── GoalConfiguration.cs
-                    └── ProjectConfiguration.cs
-                    └── ReminderConfiguration.cs
-                    └── ScheduleConfiguration.cs
-                    └── SettingConfiguration.cs
-                    └── TagConfiguration.cs
-                    └── UserConfiguration.cs
-                    └── UserScoringProfileConfiguration.cs
-                └── CommitmentRepository.cs
-                └── DecisionSnapshotRepository.cs
-                └── GoalRepository.cs
-                └── ProjectRepository.cs
-                └── DailyCycleService.cs
-                └── DataPortabilityService.cs
-                └── ProgressService.cs
-                └── UserBehaviorProfilerService.cs
-            └── ApiTestBase.cs
-            └── Compass.Api.Tests.csproj
-            └── CustomWebApplicationFactory.cs
-            └── UnitTest1.cs
-                        └── .msCoverageSourceRootsMapping_Compass.Api.Tests
-                        └── Compass.Api.exe
-                        └── Compass.Api.pdb
-                        └── Compass.Api.Tests.pdb
-                        └── Compass.Application.pdb
-                        └── Compass.Domain.pdb
-                        └── Compass.Infrastructure.pdb
-                        └── Compass.Tests.Shared.pdb
-                        └── CoverletSourceRootsMapping_Compass.Api.Tests
-                        └── testhost.exe
-                └── GoalsControllerTests.cs
-                └── Compass.Api.Tests.csproj.nuget.g.props
-                └── Compass.Api.Tests.csproj.nuget.g.targets
-                └── project.nuget.cache
-                        └── .NETCoreApp,Version=v10.0.AssemblyAttributes.cs
-                        └── Compass..4E69F5C4.Up2Date
-                        └── Compass.Api.Tests.AssemblyInfo.cs
-                        └── Compass.Api.Tests.AssemblyInfoInputs.cache
-                        └── Compass.Api.Tests.assets.cache
-                        └── Compass.Api.Tests.csproj.AssemblyReference.cache
-                        └── Compass.Api.Tests.csproj.CoreCompileInputs.cache
-                        └── Compass.Api.Tests.csproj.FileListAbsolute.txt
-                        └── Compass.Api.Tests.GeneratedMSBuildEditorConfig.editorconfig
-                        └── Compass.Api.Tests.genruntimeconfig.cache
-                        └── Compass.Api.Tests.GlobalUsings.g.cs
-                        └── Compass.Api.Tests.pdb
-                    └── coverage.cobertura.xml
-            └── Compass.Application.Tests.csproj
-            └── UnitTest1.cs
-                        └── .msCoverageSourceRootsMapping_Compass.Application.Tests
-                        └── Compass.Application.pdb
-                        └── Compass.Application.Tests.pdb
-                        └── Compass.Domain.pdb
-                        └── Compass.Tests.Shared.pdb
-                        └── CoverletSourceRootsMapping_Compass.Application.Tests
-                        └── testhost.exe
-                └── Compass.Application.Tests.csproj.nuget.g.props
-                └── Compass.Application.Tests.csproj.nuget.g.targets
-                └── project.nuget.cache
-                        └── .NETCoreApp,Version=v10.0.AssemblyAttributes.cs
-                        └── Compass..F7CE102B.Up2Date
-                        └── Compass.Application.Tests.AssemblyInfo.cs
-                        └── Compass.Application.Tests.AssemblyInfoInputs.cache
-                        └── Compass.Application.Tests.assets.cache
-                        └── Compass.Application.Tests.csproj.AssemblyReference.cache
-                        └── Compass.Application.Tests.csproj.CoreCompileInputs.cache
-                        └── Compass.Application.Tests.csproj.FileListAbsolute.txt
-                        └── Compass.Application.Tests.GeneratedMSBuildEditorConfig.editorconfig
-                        └── Compass.Application.Tests.genruntimeconfig.cache
-                        └── Compass.Application.Tests.GlobalUsings.g.cs
-                        └── Compass.Application.Tests.pdb
-                └── GoalServiceTests.cs
-                    └── coverage.cobertura.xml
-            └── Compass.Domain.Tests.csproj
-            └── UnitTest1.cs
-                        └── .msCoverageSourceRootsMapping_Compass.Domain.Tests
-                        └── Compass.Domain.pdb
-                        └── Compass.Domain.Tests.pdb
-                        └── Compass.Tests.Shared.pdb
-                        └── CoverletSourceRootsMapping_Compass.Domain.Tests
-                        └── testhost.exe
-                └── GoalTests.cs
-                └── TaskCommitmentTests.cs
-                └── Compass.Domain.Tests.csproj.nuget.g.props
-                └── Compass.Domain.Tests.csproj.nuget.g.targets
-                └── project.nuget.cache
-                        └── .NETCoreApp,Version=v10.0.AssemblyAttributes.cs
-                        └── Compass..C29F5D6D.Up2Date
-                        └── Compass.Domain.Tests.AssemblyInfo.cs
-                        └── Compass.Domain.Tests.AssemblyInfoInputs.cache
-                        └── Compass.Domain.Tests.assets.cache
-                        └── Compass.Domain.Tests.csproj.AssemblyReference.cache
-                        └── Compass.Domain.Tests.csproj.CoreCompileInputs.cache
-                        └── Compass.Domain.Tests.csproj.FileListAbsolute.txt
-                        └── Compass.Domain.Tests.GeneratedMSBuildEditorConfig.editorconfig
-                        └── Compass.Domain.Tests.genruntimeconfig.cache
-                        └── Compass.Domain.Tests.GlobalUsings.g.cs
-                        └── Compass.Domain.Tests.pdb
-                    └── coverage.cobertura.xml
-            └── Compass.Infrastructure.Tests.csproj
-            └── UnitTest1.cs
-                        └── .msCoverageSourceRootsMapping_Compass.Infrastructure.Tests
-                        └── Compass.Application.pdb
-                        └── Compass.Domain.pdb
-                        └── Compass.Infrastructure.pdb
-                        └── Compass.Infrastructure.Tests.pdb
-                        └── Compass.Tests.Shared.pdb
-                        └── CoverletSourceRootsMapping_Compass.Infrastructure.Tests
-                        └── testhost.exe
-                └── Compass.Infrastructure.Tests.csproj.nuget.g.props
-                └── Compass.Infrastructure.Tests.csproj.nuget.g.targets
-                └── project.nuget.cache
-                        └── .NETCoreApp,Version=v10.0.AssemblyAttributes.cs
-                        └── Compass..1DD03196.Up2Date
-                        └── Compass.Infrastructure.Tests.AssemblyInfo.cs
-                        └── Compass.Infrastructure.Tests.AssemblyInfoInputs.cache
-                        └── Compass.Infrastructure.Tests.assets.cache
-                        └── Compass.Infrastructure.Tests.csproj.AssemblyReference.cache
-                        └── Compass.Infrastructure.Tests.csproj.CoreCompileInputs.cache
-                        └── Compass.Infrastructure.Tests.csproj.FileListAbsolute.txt
-                        └── Compass.Infrastructure.Tests.GeneratedMSBuildEditorConfig.editorconfig
-                        └── Compass.Infrastructure.Tests.genruntimeconfig.cache
-                        └── Compass.Infrastructure.Tests.GlobalUsings.g.cs
-                        └── Compass.Infrastructure.Tests.pdb
-                    └── coverage.cobertura.xml
-            └── Class1.cs
-            └── Compass.Tests.Shared.csproj
-            └── TestConstants.cs
-                        └── Compass.Domain.pdb
-                        └── Compass.Tests.Shared.pdb
-                └── GoalBuilder.cs
-                └── TaskCommitmentBuilder.cs
-                └── Compass.Tests.Shared.csproj.nuget.g.props
-                └── Compass.Tests.Shared.csproj.nuget.g.targets
-                └── project.nuget.cache
-                        └── .NETCoreApp,Version=v10.0.AssemblyAttributes.cs
-                        └── Compass..296A2E39.Up2Date
-                        └── Compass.Tests.Shared.AssemblyInfo.cs
-                        └── Compass.Tests.Shared.AssemblyInfoInputs.cache
-                        └── Compass.Tests.Shared.assets.cache
-                        └── Compass.Tests.Shared.csproj.AssemblyReference.cache
-                        └── Compass.Tests.Shared.csproj.CoreCompileInputs.cache
-                        └── Compass.Tests.Shared.csproj.FileListAbsolute.txt
-                        └── Compass.Tests.Shared.GeneratedMSBuildEditorConfig.editorconfig
-                        └── Compass.Tests.Shared.GlobalUsings.g.cs
-                        └── Compass.Tests.Shared.pdb
-    └── index.html
-    └── vite.config.ts
-        └── App.vue
-        └── main.ts
-        └── vite-env.d.ts
-            └── hero.png
-            └── vite.svg
-            └── vue.svg
-                └── AutoCompleteDropdown.vue
-                └── CommitmentCard.vue
-                └── DefensiveEmptyState.vue
-                └── EnergyIndicator.vue
-                └── ErrorBoundary.vue
-                └── InspectableCard.vue
-                └── OmniInput.vue
-                └── SandboxTopBanner.vue
-                └── ScoreBreakdownPanel.vue
-                └── TacticalHorizonBar.vue
-                └── TacticBadge.vue
-                └── ToastContainer.vue
-                └── TopFocusCard.vue
-                └── DeveloperConsole.vue
-                └── EventEditorForm.vue
-                └── GoalEditorForm.vue
-                └── HabitEditorForm.vue
-                └── ProjectEditorForm.vue
-                └── TaskEditorForm.vue
-                └── VisualCronEditor.vue
-                └── AppLayout.vue
-                └── HeaderContext.vue
-                └── PageHeader.vue
-                └── Sidebar.vue
-                └── StatusBar.vue
-                └── AllocationPickerModal.vue
-                └── CommandBarModal.vue
-                └── DailyCycleModal.vue
-                └── DailyShutdownModal.vue
-                └── QuickCaptureModal.vue
-                └── UniversalEntityInspector.vue
-                └── GlassBoxPipeline.vue
-                └── OnboardingSteps.vue
-                └── PilotChecklistWidget.vue
-                └── SpotlightOverlay.vue
-                └── EstimationAccuracyChart.vue
-                └── ExecutionChronology.vue
-                └── FrictionHeatmapGrid.vue
-                └── ProgressKpiGrid.vue
-            └── useFocusTrap.ts
-            └── useKeyboardNavigation.ts
-            └── useKeyboardShortcuts.ts
-            └── usePerformanceMonitor.ts
-            └── useQuickCaptureParser.ts
-            └── useVisibilityTracker.ts
-                └── useKeyboardNavigation.spec.ts
-            └── globalErrorHandler.ts
-            └── index.ts
-            └── draftSchema.ts
-            └── portabilitySchema.ts
-            └── api.ts
-            └── commitmentsStore.ts
-            └── dailyCycleStore.ts
-            └── decisionStore.ts
-            └── devStore.ts
-            └── goalsStore.ts
-            └── inspectorStore.ts
-            └── journalStore.ts
-            └── offlineStore.ts
-            └── onboardingStore.ts
-            └── progressStore.ts
-            └── projectsStore.ts
-            └── settingsStore.ts
-            └── themeStore.ts
-            └── toastStore.ts
-                └── decisionStore.spec.ts
-                └── e2e-ecosystem.spec.ts
-                └── offlineStore.spec.ts
-                └── progressStore.spec.ts
-            └── index.ts
-            └── nlpParser.ts
-            └── trieIndex.ts
-                └── AutocompleteEngine.ts
-                └── types.ts
-                    └── DynamicTrieProvider.ts
-                    └── HistoryProvider.ts
-                    └── StaticProviders.ts
-                    └── AutocompleteEngine.spec.ts
-                └── nlpParser.spec.ts
-                └── trieIndex.spec.ts
-            └── AgendaView.vue
-            └── DatabaseView.vue
-            └── GoalsView.vue
-            └── HabitsView.vue
-            └── InteractiveLabView.vue
-            └── JournalView.vue
-            └── LibraryView.vue
-            └── NowEngineView.vue
-            └── OnboardingView.vue
-            └── ProjectsView.vue
-            └── SandboxView.vue
-            └── SettingsView.vue
+﻿|-- .github
+|   |-- workflows
+|   |   |-- backend-ci.yml
+|-- Compass.Backend
+|   |-- coveragereport
+|   |   |-- class.js
+|   |   |-- Compass.Api_BehavioralCalibrationWorker.html
+|   |   |-- Compass.Api_CommitmentsController.html
+|   |   |-- Compass.Api_CompilerServices.html
+|   |   |-- Compass.Api_DailyCycleController.html
+|   |   |-- Compass.Api_DecisionsController.html
+|   |   |-- Compass.Api_Generated.html
+|   |   |-- Compass.Api_GlobalExceptionHandler.html
+|   |   |-- Compass.Api_GoalsController.html
+|   |   |-- Compass.Api_PortabilityController.html
+|   |   |-- Compass.Api_Program.html
+|   |   |-- Compass.Api_ProgressController.html
+|   |   |-- Compass.Api_ProjectsController.html
+|   |   |-- Compass.Application_ActiveHardBlockerDto.html
+|   |   |-- Compass.Application_AdaptiveProfileDto.html
+|   |   |-- Compass.Application_CascadedDomainEventDto.html
+|   |   |-- Compass.Application_ChronologyPeakDto.html
+|   |   |-- Compass.Application_CommitmentDto.html
+|   |   |-- Compass.Application_CommitmentExportDto.html
+|   |   |-- Compass.Application_CommitmentService.html
+|   |   |-- Compass.Application_CreateCommitmentDto.html
+|   |   |-- Compass.Application_CreateCommitmentDtoValidator.html
+|   |   |-- Compass.Application_DailyReviewExportDto.html
+|   |   |-- Compass.Application_DailyShutdownRequestDto.html
+|   |   |-- Compass.Application_DailyShutdownResponseDto.html
+|   |   |-- Compass.Application_DailyTimeSliceDto.html
+|   |   |-- Compass.Application_DecisionContextDto.html
+|   |   |-- Compass.Application_DecisionResponseDto.2.html
+|   |   |-- Compass.Application_DecisionResponseDto.html
+|   |   |-- Compass.Application_DecisionService.html
+|   |   |-- Compass.Application_FocusSessionExportDto.html
+|   |   |-- Compass.Application_GoalService.html
+|   |   |-- Compass.Application_MorningBriefingDto.html
+|   |   |-- Compass.Application_PortabilityBundleDto.html
+|   |   |-- Compass.Application_PortabilityImportResultDto.html
+|   |   |-- Compass.Application_ProcrastinationHeatmapDto.html
+|   |   |-- Compass.Application_ProgressOverviewDto.html
+|   |   |-- Compass.Application_ProjectCatalogDto.html
+|   |   |-- Compass.Application_ProjectExportDto.html
+|   |   |-- Compass.Application_ScoredActionDto.2.html
+|   |   |-- Compass.Application_ScoredActionDto.html
+|   |   |-- Compass.Application_ScoringProfileExportDto.html
+|   |   |-- Compass.Application_SettingExportDto.html
+|   |   |-- Compass.Application_StatusTransitionResponseDto.html
+|   |   |-- Compass.Application_UpdateCommitmentDto.html
+|   |   |-- Compass.Application_UpdateCommitmentDtoValidator.html
+|   |   |-- Compass.Application_UpdateGoalDto.html
+|   |   |-- Compass.Application_UpdateGoalDtoValidator.html
+|   |   |-- Compass.Application_UpdateStatusDto.html
+|   |   |-- Compass.Application_UpdateStatusDtoValidator.html
+|   |   |-- Compass.Domain_Commitment.html
+|   |   |-- Compass.Domain_CommitmentAttribute.html
+|   |   |-- Compass.Domain_DailyReview.html
+|   |   |-- Compass.Domain_DecisionSnapshot.html
+|   |   |-- Compass.Domain_Dependency.html
+|   |   |-- Compass.Domain_DomainException.html
+|   |   |-- Compass.Domain_EventCommitment.html
+|   |   |-- Compass.Domain_EventOverlapException.html
+|   |   |-- Compass.Domain_FocusSession.html
+|   |   |-- Compass.Domain_Goal.html
+|   |   |-- Compass.Domain_HabitCommitment.html
+|   |   |-- Compass.Domain_InvalidTimeRangeException.html
+|   |   |-- Compass.Domain_NoteCommitment.html
+|   |   |-- Compass.Domain_Project.html
+|   |   |-- Compass.Domain_Reminder.html
+|   |   |-- Compass.Domain_Schedule.html
+|   |   |-- Compass.Domain_ScoredCommitment.html
+|   |   |-- Compass.Domain_ScoringEngine.html
+|   |   |-- Compass.Domain_Setting.html
+|   |   |-- Compass.Domain_Tag.html
+|   |   |-- Compass.Domain_TaskCommitment.html
+|   |   |-- Compass.Domain_TimeWindowCalculator.html
+|   |   |-- Compass.Domain_User.html
+|   |   |-- Compass.Domain_UserScoringProfile.html
+|   |   |-- Compass.Infrastructure_AddAdaptiveScoringProfiles.html
+|   |   |-- Compass.Infrastructure_AddAnalyticsPartialIndexes.html
+|   |   |-- Compass.Infrastructure_AddDailyReviewsAndSettingsReconciliation.html
+|   |   |-- Compass.Infrastructure_AddDecisionSnapshot.html
+|   |   |-- Compass.Infrastructure_AddUserScoringProfiles.html
+|   |   |-- Compass.Infrastructure_CommitmentConfiguration.html
+|   |   |-- Compass.Infrastructure_CommitmentRepository.html
+|   |   |-- Compass.Infrastructure_CompassDbContext.html
+|   |   |-- Compass.Infrastructure_CompassDbContextModelSnapshot.html
+|   |   |-- Compass.Infrastructure_DailyCycleService.html
+|   |   |-- Compass.Infrastructure_DailyReviewConfiguration.html
+|   |   |-- Compass.Infrastructure_DataPortabilityService.html
+|   |   |-- Compass.Infrastructure_DecisionSnapshotConfiguration.html
+|   |   |-- Compass.Infrastructure_DecisionSnapshotRepository.html
+|   |   |-- Compass.Infrastructure_DependencyConfiguration.html
+|   |   |-- Compass.Infrastructure_FixTphNullability.html
+|   |   |-- Compass.Infrastructure_FocusSessionConfiguration.html
+|   |   |-- Compass.Infrastructure_GoalConfiguration.html
+|   |   |-- Compass.Infrastructure_GoalRepository.html
+|   |   |-- Compass.Infrastructure_InitialProductionSchema.html
+|   |   |-- Compass.Infrastructure_ProgressService.html
+|   |   |-- Compass.Infrastructure_ProjectConfiguration.html
+|   |   |-- Compass.Infrastructure_ProjectRepository.html
+|   |   |-- Compass.Infrastructure_ReminderConfiguration.html
+|   |   |-- Compass.Infrastructure_ScheduleConfiguration.html
+|   |   |-- Compass.Infrastructure_SettingConfiguration.html
+|   |   |-- Compass.Infrastructure_TagConfiguration.html
+|   |   |-- Compass.Infrastructure_UserBehaviorProfilerService.html
+|   |   |-- Compass.Infrastructure_UserConfiguration.html
+|   |   |-- Compass.Infrastructure_UserScoringProfileConfiguration.html
+|   |   |-- Compass.Tests.Shared_GoalBuilder.html
+|   |   |-- Compass.Tests.Shared_TaskCommitmentBuilder.html
+|   |   |-- Compass.Tests.Shared_TestConstants.html
+|   |   |-- icon_cog.svg
+|   |   |-- icon_cog_dark.svg
+|   |   |-- icon_cube.svg
+|   |   |-- icon_cube_dark.svg
+|   |   |-- icon_fork.svg
+|   |   |-- icon_fork_dark.svg
+|   |   |-- icon_info-circled.svg
+|   |   |-- icon_info-circled_dark.svg
+|   |   |-- icon_minus.svg
+|   |   |-- icon_minus_dark.svg
+|   |   |-- icon_plus.svg
+|   |   |-- icon_plus_dark.svg
+|   |   |-- icon_search-minus.svg
+|   |   |-- icon_search-minus_dark.svg
+|   |   |-- icon_search-plus.svg
+|   |   |-- icon_search-plus_dark.svg
+|   |   |-- icon_sponsor.svg
+|   |   |-- icon_star.svg
+|   |   |-- icon_star_dark.svg
+|   |   |-- icon_up-dir.svg
+|   |   |-- icon_up-dir_active.svg
+|   |   |-- icon_up-down-dir.svg
+|   |   |-- icon_up-down-dir_dark.svg
+|   |   |-- icon_wrench.svg
+|   |   |-- icon_wrench_dark.svg
+|   |   |-- index.htm
+|   |   |-- index.html
+|   |   |-- main.js
+|   |   |-- report.css
+|   |-- src
+|   |   |-- Compass.Api
+|   |   |   |-- Controllers
+|   |   |   |   |-- CommitmentsController.cs
+|   |   |   |   |-- DailyCycleController.cs
+|   |   |   |   |-- DecisionsController.cs
+|   |   |   |   |-- GoalsController.cs
+|   |   |   |   |-- PortabilityController.cs
+|   |   |   |   |-- ProgressController.cs
+|   |   |   |   |-- ProjectsController.cs
+|   |   |   |   |-- SchedulesController.cs
+|   |   |   |-- Middlewares
+|   |   |   |   |-- GlobalExceptionHandler.cs
+|   |   |   |-- Properties
+|   |   |   |   |-- launchSettings.json
+|   |   |   |-- Workers
+|   |   |   |   |-- BehavioralCalibrationWorker.cs
+|   |   |   |-- appsettings.Development.json
+|   |   |   |-- appsettings.json
+|   |   |   |-- Compass.Api.csproj
+|   |   |   |-- Compass.Api.http
+|   |   |   |-- compass_local.db
+|   |   |   |-- Program.cs
+|   |   |   |-- rollback_test.sql
+|   |   |-- Compass.Application
+|   |   |   |-- DTOs
+|   |   |   |   |-- Analytics
+|   |   |   |   |   |-- ChronologyPeakDto.cs
+|   |   |   |   |   |-- DailyTimeSliceDto.cs
+|   |   |   |   |   |-- ProcrastinationHeatmapDto.cs
+|   |   |   |   |   |-- ProgressOverviewDto.cs
+|   |   |   |   |-- DailyCycle
+|   |   |   |   |   |-- DailyCycleContracts.cs
+|   |   |   |   |-- Decisions
+|   |   |   |   |   |-- DecisionContracts.cs
+|   |   |   |   |-- Portability
+|   |   |   |   |   |-- PortabilityContracts.cs
+|   |   |   |   |-- Projects
+|   |   |   |   |   |-- ProjectCatalogDto.cs
+|   |   |   |   |-- CommitmentDto.cs
+|   |   |   |   |-- CreateCommitmentDto.cs
+|   |   |   |   |-- CreateProjectDto.cs
+|   |   |   |   |-- DecisionResponseDto.cs
+|   |   |   |   |-- StatusTransitionResponseDto.cs
+|   |   |   |   |-- UpdateCommitmentDto.cs
+|   |   |   |   |-- UpdateGoalDto.cs
+|   |   |   |   |-- UpdateStatusDto.cs
+|   |   |   |-- Interfaces
+|   |   |   |   |-- ICommitmentService.cs
+|   |   |   |   |-- IDecisionService.cs
+|   |   |   |   |-- IGoalService.cs
+|   |   |   |   |-- IProgressService.cs
+|   |   |   |   |-- IUserBehaviorProfilerService.cs
+|   |   |   |-- Services
+|   |   |   |   |-- CommitmentService.cs
+|   |   |   |   |-- DecisionService.cs
+|   |   |   |   |-- GoalService.cs
+|   |   |   |-- Validators
+|   |   |   |   |-- CreateCommitmentDtoValidator.cs
+|   |   |   |   |-- UpdateCommitmentDtoValidator.cs
+|   |   |   |   |-- UpdateGoalDtoValidator.cs
+|   |   |   |   |-- UpdateStatusDtoValidator.cs
+|   |   |   |-- Compass.Application.csproj
+|   |   |-- Compass.Domain
+|   |   |   |-- Entities
+|   |   |   |   |-- Commitment.cs
+|   |   |   |   |-- DailyReview.cs
+|   |   |   |   |-- DecisionSnapshot.cs
+|   |   |   |   |-- Dependency.cs
+|   |   |   |   |-- EventCommitment.cs
+|   |   |   |   |-- FocusSession.cs
+|   |   |   |   |-- Goal.cs
+|   |   |   |   |-- HabitCommitment.cs
+|   |   |   |   |-- NoteCommitment.cs
+|   |   |   |   |-- Project.cs
+|   |   |   |   |-- Reminder.cs
+|   |   |   |   |-- Schedule.cs
+|   |   |   |   |-- Setting.cs
+|   |   |   |   |-- Tag.cs
+|   |   |   |   |-- TaskCommitment.cs
+|   |   |   |   |-- User.cs
+|   |   |   |   |-- UserScoringProfile.cs
+|   |   |   |-- Enums
+|   |   |   |   |-- CommitmentStatus.cs
+|   |   |   |   |-- CommitmentType.cs
+|   |   |   |   |-- GoalStatus.cs
+|   |   |   |   |-- ProjectStatus.cs
+|   |   |   |-- Exceptions
+|   |   |   |   |-- DomainException.cs
+|   |   |   |   |-- EventOverlapException.cs
+|   |   |   |   |-- InvalidTimeRangeException.cs
+|   |   |   |-- Interfaces
+|   |   |   |   |-- ICommitmentRepository.cs
+|   |   |   |   |-- IDecisionSnapshotRepository.cs
+|   |   |   |   |-- IDomainEvent.cs
+|   |   |   |   |-- IGoalRepository.cs
+|   |   |   |   |-- IProjectRepository.cs
+|   |   |   |-- Services
+|   |   |   |   |-- ScoringEngine.cs
+|   |   |   |   |-- TimeWindowCalculator.cs
+|   |   |   |-- ValueObjects
+|   |   |   |   |-- CommitmentAttribute.cs
+|   |   |   |-- Compass.Domain.csproj
+|   |   |-- Compass.Infrastructure
+|   |   |   |-- Migrations
+|   |   |   |   |-- 20260807151812_InitialSqliteMigration.cs
+|   |   |   |   |-- 20260807151812_InitialSqliteMigration.Designer.cs
+|   |   |   |   |-- 20260808231340_AddTimeboxingToTasks.cs
+|   |   |   |   |-- 20260808231340_AddTimeboxingToTasks.Designer.cs
+|   |   |   |   |-- 20260809211956_AddHabitStartTime.cs
+|   |   |   |   |-- 20260809211956_AddHabitStartTime.Designer.cs
+|   |   |   |   |-- CompassDbContextModelSnapshot.cs
+|   |   |   |-- Persistence
+|   |   |   |   |-- Configurations
+|   |   |   |   |   |-- CommitmentConfiguration.cs
+|   |   |   |   |   |-- DailyReviewConfiguration.cs
+|   |   |   |   |   |-- DecisionSnapshotConfiguration.cs
+|   |   |   |   |   |-- DependencyConfiguration.cs
+|   |   |   |   |   |-- FocusSessionConfiguration.cs
+|   |   |   |   |   |-- GoalConfiguration.cs
+|   |   |   |   |   |-- ProjectConfiguration.cs
+|   |   |   |   |   |-- ReminderConfiguration.cs
+|   |   |   |   |   |-- ScheduleConfiguration.cs
+|   |   |   |   |   |-- SettingConfiguration.cs
+|   |   |   |   |   |-- TagConfiguration.cs
+|   |   |   |   |   |-- UserConfiguration.cs
+|   |   |   |   |   |-- UserScoringProfileConfiguration.cs
+|   |   |   |   |-- CompassDbContext.cs
+|   |   |   |-- Repositories
+|   |   |   |   |-- CommitmentRepository.cs
+|   |   |   |   |-- DecisionSnapshotRepository.cs
+|   |   |   |   |-- GoalRepository.cs
+|   |   |   |   |-- ProjectRepository.cs
+|   |   |   |-- Services
+|   |   |   |   |-- DailyCycleService.cs
+|   |   |   |   |-- DataPortabilityService.cs
+|   |   |   |   |-- ProgressService.cs
+|   |   |   |   |-- UserBehaviorProfilerService.cs
+|   |   |   |-- Compass.Infrastructure.csproj
+|   |-- tests
+|   |   |-- Compass.Api.Tests
+|   |   |   |-- Controllers
+|   |   |   |   |-- GoalsControllerTests.cs
+|   |   |   |-- TestResults
+|   |   |   |   |-- 4e23aa33-927c-4c8b-8a89-e387f0a36f60
+|   |   |   |   |   |-- coverage.cobertura.xml
+|   |   |   |-- ApiTestBase.cs
+|   |   |   |-- Compass.Api.Tests.csproj
+|   |   |   |-- CustomWebApplicationFactory.cs
+|   |   |   |-- UnitTest1.cs
+|   |   |-- Compass.Application.Tests
+|   |   |   |-- Services
+|   |   |   |   |-- GoalServiceTests.cs
+|   |   |   |-- TestResults
+|   |   |   |   |-- 5f53ae29-894f-4d06-ac57-5da433e62b82
+|   |   |   |   |   |-- coverage.cobertura.xml
+|   |   |   |-- Compass.Application.Tests.csproj
+|   |   |   |-- UnitTest1.cs
+|   |   |-- Compass.Domain.Tests
+|   |   |   |-- Entities
+|   |   |   |   |-- GoalTests.cs
+|   |   |   |   |-- TaskCommitmentTests.cs
+|   |   |   |-- TestResults
+|   |   |   |   |-- f2a79144-499b-4892-a400-5e0efea18032
+|   |   |   |   |   |-- coverage.cobertura.xml
+|   |   |   |-- Compass.Domain.Tests.csproj
+|   |   |   |-- UnitTest1.cs
+|   |   |-- Compass.Infrastructure.Tests
+|   |   |   |-- TestResults
+|   |   |   |   |-- 1aa88ec0-7416-413d-90fb-d33649479b58
+|   |   |   |   |   |-- coverage.cobertura.xml
+|   |   |   |-- Compass.Infrastructure.Tests.csproj
+|   |   |   |-- UnitTest1.cs
+|   |   |-- Compass.Tests.Shared
+|   |   |   |-- Builders
+|   |   |   |   |-- GoalBuilder.cs
+|   |   |   |   |-- TaskCommitmentBuilder.cs
+|   |   |   |-- Class1.cs
+|   |   |   |-- Compass.Tests.Shared.csproj
+|   |   |   |-- TestConstants.cs
+|   |-- Compass.slnx
+|-- Compass.Frontend
+|   |-- .vscode
+|   |   |-- extensions.json
+|   |-- public
+|   |   |-- favicon.svg
+|   |   |-- icons.svg
+|   |-- scripts
+|   |   |-- dev-orchestrator.mjs
+|   |-- src
+|   |   |-- assets
+|   |   |   |-- hero.png
+|   |   |   |-- vite.svg
+|   |   |   |-- vue.svg
+|   |   |-- components
+|   |   |   |-- agenda
+|   |   |   |   |-- AgendaBacklog.vue
+|   |   |   |   |-- AgendaCommitmentBlock.vue
+|   |   |   |   |-- AgendaConflictModal.vue
+|   |   |   |   |-- AgendaFreeBlocks.vue
+|   |   |   |   |-- AgendaGhostBlock.vue
+|   |   |   |   |-- AgendaHeader.vue
+|   |   |   |   |-- AgendaRestBlocks.vue
+|   |   |   |   |-- AgendaTimeGrid.vue
+|   |   |   |-- core
+|   |   |   |   |-- AutoCompleteDropdown.vue
+|   |   |   |   |-- CommitmentCard.vue
+|   |   |   |   |-- DefensiveEmptyState.vue
+|   |   |   |   |-- EnergyIndicator.vue
+|   |   |   |   |-- ErrorBoundary.vue
+|   |   |   |   |-- InspectableCard.vue
+|   |   |   |   |-- OmniInput.vue
+|   |   |   |   |-- SandboxTopBanner.vue
+|   |   |   |   |-- ScoreBreakdownPanel.vue
+|   |   |   |   |-- TacticalHorizonBar.vue
+|   |   |   |   |-- TacticBadge.vue
+|   |   |   |   |-- ToastContainer.vue
+|   |   |   |   |-- TopFocusCard.vue
+|   |   |   |-- dev
+|   |   |   |   |-- DeveloperConsole.vue
+|   |   |   |-- inspectors
+|   |   |   |   |-- EventEditorForm.vue
+|   |   |   |   |-- GoalEditorForm.vue
+|   |   |   |   |-- HabitEditorForm.vue
+|   |   |   |   |-- ProjectEditorForm.vue
+|   |   |   |   |-- TaskEditorForm.vue
+|   |   |   |   |-- VisualCronEditor.vue
+|   |   |   |-- layout
+|   |   |   |   |-- AppLayout.vue
+|   |   |   |   |-- HeaderContext.vue
+|   |   |   |   |-- PageHeader.vue
+|   |   |   |   |-- Sidebar.vue
+|   |   |   |   |-- StatusBar.vue
+|   |   |   |-- modals
+|   |   |   |   |-- AllocationPickerModal.vue
+|   |   |   |   |-- CommandBarModal.vue
+|   |   |   |   |-- DailyCycleModal.vue
+|   |   |   |   |-- DailyShutdownModal.vue
+|   |   |   |   |-- QuickCaptureModal.vue
+|   |   |   |   |-- UniversalEntityInspector.vue
+|   |   |   |-- onboarding
+|   |   |   |   |-- GlassBoxPipeline.vue
+|   |   |   |   |-- OnboardingSteps.vue
+|   |   |   |   |-- PilotChecklistWidget.vue
+|   |   |   |   |-- SpotlightOverlay.vue
+|   |   |   |-- progress
+|   |   |   |   |-- EstimationAccuracyChart.vue
+|   |   |   |   |-- ExecutionChronology.vue
+|   |   |   |   |-- FrictionHeatmapGrid.vue
+|   |   |   |   |-- ProgressKpiGrid.vue
+|   |   |-- composables
+|   |   |   |-- __tests__
+|   |   |   |   |-- useKeyboardNavigation.spec.ts
+|   |   |   |-- useFocusTrap.ts
+|   |   |   |-- useKeyboardNavigation.ts
+|   |   |   |-- useKeyboardShortcuts.ts
+|   |   |   |-- usePerformanceMonitor.ts
+|   |   |   |-- useQuickCaptureParser.ts
+|   |   |   |-- useTimeResize.ts
+|   |   |   |-- useVisibilityTracker.ts
+|   |   |-- plugins
+|   |   |   |-- globalErrorHandler.ts
+|   |   |-- router
+|   |   |   |-- index.ts
+|   |   |-- schemas
+|   |   |   |-- draftSchema.ts
+|   |   |   |-- portabilitySchema.ts
+|   |   |-- services
+|   |   |   |-- api.ts
+|   |   |-- stores
+|   |   |   |-- __tests__
+|   |   |   |   |-- decisionStore.spec.ts
+|   |   |   |   |-- e2e-ecosystem.spec.ts
+|   |   |   |   |-- offlineStore.spec.ts
+|   |   |   |   |-- progressStore.spec.ts
+|   |   |   |-- commitmentsStore.ts
+|   |   |   |-- dailyCycleStore.ts
+|   |   |   |-- decisionStore.ts
+|   |   |   |-- devStore.ts
+|   |   |   |-- goalsStore.ts
+|   |   |   |-- inspectorStore.ts
+|   |   |   |-- journalStore.ts
+|   |   |   |-- offlineStore.ts
+|   |   |   |-- onboardingStore.ts
+|   |   |   |-- progressStore.ts
+|   |   |   |-- projectsStore.ts
+|   |   |   |-- settingsStore.ts
+|   |   |   |-- themeStore.ts
+|   |   |   |-- toastStore.ts
+|   |   |-- types
+|   |   |   |-- index.ts
+|   |   |-- utils
+|   |   |   |-- __tests__
+|   |   |   |   |-- nlpParser.spec.ts
+|   |   |   |   |-- trieIndex.spec.ts
+|   |   |   |-- autocomplete
+|   |   |   |   |-- __tests__
+|   |   |   |   |   |-- AutocompleteEngine.spec.ts
+|   |   |   |   |-- providers
+|   |   |   |   |   |-- DynamicTrieProvider.ts
+|   |   |   |   |   |-- HistoryProvider.ts
+|   |   |   |   |   |-- StaticProviders.ts
+|   |   |   |   |-- AutocompleteEngine.ts
+|   |   |   |   |-- types.ts
+|   |   |   |-- nlpParser.ts
+|   |   |   |-- trieIndex.ts
+|   |   |-- views
+|   |   |   |-- AgendaView.vue
+|   |   |   |-- DatabaseView.vue
+|   |   |   |-- GoalsView.vue
+|   |   |   |-- HabitsView.vue
+|   |   |   |-- InteractiveLabView.vue
+|   |   |   |-- JournalView.vue
+|   |   |   |-- LibraryView.vue
+|   |   |   |-- NowEngineView.vue
+|   |   |   |-- OnboardingView.vue
+|   |   |   |-- ProjectsView.vue
+|   |   |   |-- SandboxView.vue
+|   |   |   |-- SettingsView.vue
+|   |   |-- App.vue
+|   |   |-- main.ts
+|   |   |-- style.css
+|   |   |-- vite-env.d.ts
+|   |-- .gitignore
+|   |-- index.html
+|   |-- package.json
+|   |-- package-lock.json
+|   |-- postcss.config.js
+|   |-- README.md
+|   |-- tailwind.config.js
+|   |-- tsconfig.app.json
+|   |-- tsconfig.json
+|   |-- tsconfig.node.json
+|   |-- vite.config.ts
+|-- .gitignore
+|-- 01-overview.md
+|-- 02-domain.md
+|-- 03-use-cases.md
+|-- 04-architecture.md
+|-- 05-database.md
+|-- 06-api.md
+|-- 07-changelog.md
+|-- 08.ui-specification.md
+|-- tree.txt

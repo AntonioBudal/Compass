@@ -11,6 +11,8 @@ public class HabitCommitment : Commitment
     public int EstimatedDurationMinutes { get; private set; }
     public short EnergyRequired { get; private set; }
 
+    //  REMOVIDO: public DateTime? StartTime { get; private set; } -> Herança resolve!
+
     protected HabitCommitment() { }
 
     public HabitCommitment(
@@ -39,9 +41,7 @@ public class HabitCommitment : Commitment
 
         CurrentStreak++;
         if (CurrentStreak > BestStreak)
-        {
             BestStreak = CurrentStreak;
-        }
 
         Status = CommitmentStatus.Completed;
         CompletedAt = DateTime.UtcNow;
@@ -53,7 +53,7 @@ public class HabitCommitment : Commitment
         Status = CommitmentStatus.Pending;
     }
 
-    public void UpdateHabitDetails(string cron, int duration, short energy)
+    public void UpdateHabitDetails(string cron, int duration, short energy, DateTime? startTime)
     {
         if (Status == CommitmentStatus.Archived)
             throw new DomainException("Não é possível alterar os detalhes de um hábito arquivado.");
@@ -64,5 +64,6 @@ public class HabitCommitment : Commitment
         CronExpression = cron.Trim();
         EstimatedDurationMinutes = duration;
         EnergyRequired = energy;
+        StartTime = startTime; // Classe base
     }
 }

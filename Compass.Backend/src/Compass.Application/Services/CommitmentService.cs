@@ -48,7 +48,6 @@ public class CommitmentService : ICommitmentService
 
     public async Task<CommitmentDto> CreateAsync(Guid userId, CreateCommitmentDto dto, CancellationToken cancellationToken = default)
     {
-        // CORRIGIDO: Ordem dos parâmetros alinhada com as entidades da Etapa 01
         Commitment commitment = dto.Type.ToUpperInvariant() switch
         {
             "TASK" => new TaskCommitment(userId, dto.Title, dto.EstimatedDurationMinutes ?? 30, dto.EnergyRequired ?? 2, dto.ProjectId, dto.Deadline),
@@ -88,48 +87,32 @@ public class CommitmentService : ICommitmentService
         if (!Enum.TryParse<CommitmentStatus>(dto.NewStatus, true, out var targetStatus))
             throw new DomainException($"O status '{dto.NewStatus}' é inválido.");
 
-        // Transição de estado de acordo com as regras de negócio
         if (targetStatus == CommitmentStatus.Completed && commitment.Status != CommitmentStatus.Completed)
-        {
             commitment.Complete();
-        }
         else if (targetStatus == CommitmentStatus.InProgress && commitment.Status != CommitmentStatus.InProgress)
-        {
             commitment.Start();
-        }
         else
-        {
             commitment.UpdateStatus(targetStatus);
-        }
 
         _commitmentRepo.Update(commitment);
         await _commitmentRepo.SaveChangesAsync(cancellationToken);
 
         string currentStatus = commitment.Status.ToString().ToUpperInvariant();
 
-        // Gerar eventos em cascata para feedback visual imediato no frontend
         var cascadedEvents = new List<CascadedDomainEventDto>();
         if (targetStatus == CommitmentStatus.Completed && commitment is HabitCommitment habit)
         {
             cascadedEvents.Add(new CascadedDomainEventDto(
-                "HabitStreakIncremented",
-                habit.Id,
-                $" Hábito concluído! Seu streak atual subiu para {habit.CurrentStreak} dias contínuos."
+                "HabitStreakIncremented", habit.Id, $" Hábito concluído! Seu streak atual subiu para {habit.CurrentStreak} dias contínuos."
             ));
         }
 
-        return new StatusTransitionResponseDto(
-            commitment.Id,
-            previousStatus,
-            currentStatus,
-            DateTime.UtcNow,
-            cascadedEvents.AsReadOnly()
-        );
+        return new StatusTransitionResponseDto(commitment.Id, previousStatus, currentStatus, DateTime.UtcNow, cascadedEvents.AsReadOnly());
     }
 
     private static CommitmentDto MapToDto(Commitment c, string? projectName = null)
     {
-        int duration = 0; short energy = 0; DateTime? deadline = null; DateTime? start = null; DateTime? end = null;
+        int duration = 0; short energy = 0; DateTime? deadline = null; DateTime? end = null;
         string? location = null; string? cron = null; int currentStreak = 0; int bestStreak = 0; int postponed = 0; string? content = null;
 
         if (c is TaskCommitment t) { 
@@ -137,15 +120,21 @@ public class CommitmentService : ICommitmentService
             energy = t.EnergyRequired; 
             deadline = t.Deadline; 
             postponed = t.PostponedCount; 
-            start = t.StartTime; //  Garante que o Vue receba o StartTime e renderize na Timeline!
         }
-        else if (c is HabitCommitment h) { duration = h.EstimatedDurationMinutes; energy = h.EnergyRequired; cron = h.CronExpression; currentStreak = h.CurrentStreak; bestStreak = h.BestStreak; }
-        else if (c is EventCommitment e) { start = e.StartTime; end = e.EndTime; location = e.LocationOrLink; }
+        else if (c is HabitCommitment h) { 
+            duration = h.EstimatedDurationMinutes; 
+            energy = h.EnergyRequired; 
+            cron = h.CronExpression; 
+            currentStreak = h.CurrentStreak; 
+            bestStreak = h.BestStreak; 
+        }
+        else if (c is EventCommitment e) { end = e.EndTime; location = e.LocationOrLink; }
         else if (c is NoteCommitment n) { content = n.Content; }
 
+        //  TPH FIX: O StartTime agora é lido da base de forma universal (c.StartTime)
         return new CommitmentDto(
             c.Id, c.Title, c.Type.ToString().ToUpperInvariant(), c.Status.ToString().ToUpperInvariant(),
-            duration, energy, deadline, start, end, location, cron, currentStreak, bestStreak, postponed, content,
+            duration, energy, deadline, c.StartTime, end, location, cron, currentStreak, bestStreak, postponed, content,
             c.ProjectId, projectName
         );
     }
@@ -158,32 +147,35 @@ public class CommitmentService : ICommitmentService
         if (commitment.UserId != userId)
             throw new DomainException("Acesso negado a este compromisso.");
 
-        // 1. Atualiza propriedades base
         commitment.UpdateBaseDetails(dto.Title, dto.ProjectId);
 
-        // 2. Atualiza propriedades específicas por Tipo
         switch (commitment)
         {
             case TaskCommitment task:
                 task.UpdateTaskDetails(
                     dto.EstimatedDurationMinutes ?? task.EstimatedDurationMinutes, 
                     dto.EnergyRequired ?? task.EnergyRequired, 
-                    dto.StartTime ?? task.StartTime,
-                    dto.Deadline);
+                    dto.Deadline ?? task.Deadline, 
+                    dto.StartTime // Sem `??` para permitir o Drop reverso (limpar data)
+                ); 
                 break;
                 
             case HabitCommitment habit:
                 habit.UpdateHabitDetails(
                     dto.CronExpression ?? habit.CronExpression, 
                     dto.EstimatedDurationMinutes ?? habit.EstimatedDurationMinutes, 
-                    dto.EnergyRequired ?? habit.EnergyRequired);
+                    dto.EnergyRequired ?? habit.EnergyRequired,
+                    dto.StartTime // Sem `??`
+                ); 
                 break;
                 
             case EventCommitment evt:
+                // 🔥 FIX CS1503: Como evt.StartTime agora é nullable (DateTime?), usamos .Value
                 evt.UpdateEventDetails(
-                    dto.StartTime ?? evt.StartTime, 
+                    dto.StartTime ?? evt.StartTime!.Value, 
                     dto.EndTime ?? evt.EndTime, 
-                    dto.LocationOrLink);
+                    dto.LocationOrLink
+                );
                 break;
                 
             case NoteCommitment note:
@@ -203,19 +195,14 @@ public class CommitmentService : ICommitmentService
 
         return MapToDto(commitment, projectName);
     }
-
     public async Task DeleteAsync(Guid userId, Guid commitmentId, CancellationToken cancellationToken = default)
     {
         var commitment = await _commitmentRepo.GetByIdAsync(commitmentId, cancellationToken);
-        
-        // Idempotência: Se já não existe, o objetivo de exclusão já foi alcançado.
         if (commitment == null) return; 
 
-        if (commitment.UserId != userId)
-            throw new DomainException("Acesso negado a este compromisso.");
+        if (commitment.UserId != userId) throw new DomainException("Acesso negado a este compromisso.");
 
         _commitmentRepo.Remove(commitment);
         await _commitmentRepo.SaveChangesAsync(cancellationToken);
     }
 }
-

@@ -30,7 +30,8 @@ public static class TimeWindowCalculator
             .ToList();
 
         // 2. Verificar se o usuário está ATUALMENTE dentro de um Hard Blocker (Reunião em andamento)
-        bool isCurrentlyBlocked = activeEvents.Any(e => e.StartTime <= nowUtc && e.EndTime > nowUtc);
+        // 🔥 FIX CS0266: Adicionado .Value
+        bool isCurrentlyBlocked = activeEvents.Any(e => e.StartTime!.Value <= nowUtc && e.EndTime > nowUtc);
         if (isCurrentlyBlocked)
         {
             return 0; // O usuário está ocupado neste milissegundo
@@ -69,15 +70,17 @@ public static class TimeWindowCalculator
         }
 
         // 4. Buscar o PRÓXIMO evento que começa no futuro (UC-31)
+        // 🔥 FIX CS0266: Adicionado .Value
         var nextEvent = activeEvents
-            .Where(e => e.StartTime > nowUtc)
-            .OrderBy(e => e.StartTime)
+            .Where(e => e.StartTime!.Value > nowUtc)
+            .OrderBy(e => e.StartTime!.Value)
             .FirstOrDefault();
 
         // Se houver um evento antes do fim do turno/dia, o evento limita a nossa janela livre
-        if (nextEvent != null && nextEvent.StartTime < maxWindowEndUtc)
+        // 🔥 FIX CS0266: Adicionado .Value
+        if (nextEvent != null && nextEvent.StartTime!.Value < maxWindowEndUtc)
         {
-            maxWindowEndUtc = nextEvent.StartTime;
+            maxWindowEndUtc = nextEvent.StartTime!.Value; 
         }
 
         // 5. Calcular a diferença em minutos inteiros

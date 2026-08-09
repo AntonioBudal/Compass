@@ -8,9 +8,9 @@ public class TaskCommitment : Commitment
     public int EstimatedDurationMinutes { get; private set; }
     public short EnergyRequired { get; private set; }
     public DateTime? Deadline { get; private set; }
-
-    public DateTime? StartTime { get; private set; }
     public int PostponedCount { get; private set; }
+
+    //  REMOVIDO: public DateTime? StartTime { get; private set; } -> Agora vem por Herança!
 
     protected TaskCommitment() { }
 
@@ -55,17 +55,13 @@ public class TaskCommitment : Commitment
     public void Block()
     {
         if (Status != CommitmentStatus.Completed && Status != CommitmentStatus.Archived)
-        {
             Status = CommitmentStatus.Blocked;
-        }
     }
 
     public void Unblock()
     {
         if (Status == CommitmentStatus.Blocked)
-        {
             Status = CommitmentStatus.Pending;
-        }
     }
 
     public void Reopen()
@@ -80,9 +76,7 @@ public class TaskCommitment : Commitment
     public void IncrementPostponed()
     {
         if (Status == CommitmentStatus.Pending)
-        {
             PostponedCount++;
-        }
     }
 
     public void UpdateTaskDetails(int duration, short energy, DateTime? deadline, DateTime? startTime)
@@ -99,6 +93,6 @@ public class TaskCommitment : Commitment
         EstimatedDurationMinutes = duration;
         EnergyRequired = energy;
         Deadline = deadline;
-        StartTime = startTime; //  Salva o horário na memória da entidade
+        StartTime = startTime; // Atribui na classe base perfeitamente
     }
 }
