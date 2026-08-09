@@ -11,6 +11,8 @@ export interface Suggestion {
   commitCharacters?: string[]; // NOVO: Teclas que engatilham a predição (Ex: ['Tab', 'ArrowRight'])
 }
 
+
+
 export interface AutocompleteContext {
   currentProject: string | null;
   currentEnergy: number | null;

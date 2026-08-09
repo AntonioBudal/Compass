@@ -23,6 +23,11 @@ const entityTypes = [
 ];
 
 const nlpSyntax = [
+  
+  { command: '/meta Nome', desc: 'Cria uma nova Meta Estratégica imediatamente.', example: '/meta Lançar SaaS' },
+  { command: '/projeto Nome', desc: 'Cria um novo Projeto Tático imediatamente.', example: '/projeto Redesign UX' },
+  
+  // (comandos existentes mantidos abaixo)
   { command: '@45m', desc: 'Define a duração da tarefa para 45 minutos.', example: 'Revisar PR @45m' },
   { command: '!3', desc: 'Define o nível de energia requerida (1=MAINT, 2=OPER, 3=DEEP).', example: 'Arquitetura do Banco !3' },
   { command: '#Projeto', desc: 'Vincula a tarefa a um projeto existente (com Autocomplete).', example: 'Criar tela de Login #Compass' },
@@ -182,7 +187,7 @@ const copyToClipboard = (text: string) => {
               <div class="flex-1 flex flex-col items-center gap-2">
                 <span class="text-[10px] text-content-muted uppercase">Ação Flexível (Soft Blocker)</span>
                 <div class="w-full p-6 border-l-4 border-l-content border-y border-r border-borderbase rounded-r-lg text-center bg-surface">
-                  🎯 Cai no Now Engine e disputa o Top Focus
+                   Cai no Now Engine e disputa o Top Focus
                 </div>
               </div>
             </div>

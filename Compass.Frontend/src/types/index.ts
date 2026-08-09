@@ -68,6 +68,7 @@ export interface UpdateCommitmentDto {
   title?: string;
   estimatedDurationMinutes?: number;
   energyRequired?: number;
+  startTime? : string | null;
   deadline?: string | null;
   content?: string | null;
   projectId?: string | null;

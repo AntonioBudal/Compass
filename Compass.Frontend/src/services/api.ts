@@ -170,6 +170,12 @@ export const CompassApi = {
   deleteProject: async (id: string): Promise<void> => {
     await api.delete(`/projects/${id}`);
   },
+
+  // --- SCHEDULE (Agenda Padrão) ---
+  fetchTodaySchedule: async (): Promise<{ workStart: string, workEnd: string, isActive: boolean }> => {
+    const response = await api.get('/schedules/today');
+    return response.data;
+  },
   
   // --- METAS ---
   // --- METAS ---
@@ -188,6 +194,8 @@ export const CompassApi = {
   deleteGoal: async (id: string): Promise<void> => {
     await api.delete(`/goals/${id}`);
   }
+
+  
 
   
 };

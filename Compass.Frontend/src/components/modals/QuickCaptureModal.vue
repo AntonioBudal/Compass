@@ -124,7 +124,7 @@ const handleSubmit = async (forceSchedule = false, overrideDateIso: string | nul
     rawInput.value = '';
     emit('close');
   } catch (err: any) {
-    emit('close'); // 🔥 ARQ: Libera a tela para o usuário poder ler os alertas!
+    emit('close'); //  ARQ: Libera a tela para o usuário poder ler os alertas!
 
     if (err.response?.status === 404) {
       toastStore.showToast('Endpoint não encontrado (404). Você esqueceu de reiniciar o Backend?', 'error');
@@ -134,7 +134,7 @@ const handleSubmit = async (forceSchedule = false, overrideDateIso: string | nul
     const errData = err.response?.data || {};
     const errorCode = errData.code || errData.type || '';
     
-    // 🔥 ARQ: Correção do escopo. Só tenta ler a data se for realmente um Compromisso (Tarefa).
+    //  ARQ: Correção do escopo. Só tenta ler a data se for realmente um Compromisso (Tarefa).
     if (errorCode.includes('SCHEDULE_CONFLICT') || errData.message?.includes('turno') || errData.detail?.includes('turno') || errData.detail?.includes('Schedule')) {
        const deadline = intent.type === 'COMMITMENT' ? intent.data?.deadlineIso : null;
        const suggestedDate = errData.suggestedDate || getNextWorkDay(deadline || null);

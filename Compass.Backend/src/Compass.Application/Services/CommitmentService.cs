@@ -132,7 +132,13 @@ public class CommitmentService : ICommitmentService
         int duration = 0; short energy = 0; DateTime? deadline = null; DateTime? start = null; DateTime? end = null;
         string? location = null; string? cron = null; int currentStreak = 0; int bestStreak = 0; int postponed = 0; string? content = null;
 
-        if (c is TaskCommitment t) { duration = t.EstimatedDurationMinutes; energy = t.EnergyRequired; deadline = t.Deadline; postponed = t.PostponedCount; }
+        if (c is TaskCommitment t) { 
+            duration = t.EstimatedDurationMinutes; 
+            energy = t.EnergyRequired; 
+            deadline = t.Deadline; 
+            postponed = t.PostponedCount; 
+            start = t.StartTime; //  Garante que o Vue receba o StartTime e renderize na Timeline!
+        }
         else if (c is HabitCommitment h) { duration = h.EstimatedDurationMinutes; energy = h.EnergyRequired; cron = h.CronExpression; currentStreak = h.CurrentStreak; bestStreak = h.BestStreak; }
         else if (c is EventCommitment e) { start = e.StartTime; end = e.EndTime; location = e.LocationOrLink; }
         else if (c is NoteCommitment n) { content = n.Content; }
@@ -162,6 +168,7 @@ public class CommitmentService : ICommitmentService
                 task.UpdateTaskDetails(
                     dto.EstimatedDurationMinutes ?? task.EstimatedDurationMinutes, 
                     dto.EnergyRequired ?? task.EnergyRequired, 
+                    dto.StartTime ?? task.StartTime,
                     dto.Deadline);
                 break;
                 

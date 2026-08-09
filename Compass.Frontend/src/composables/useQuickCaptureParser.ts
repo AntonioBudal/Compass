@@ -35,7 +35,7 @@ export function useQuickCaptureParser() {
       text = text.replace(typeMatch[0], ' ');
     }
 
-    // 2. Extração de Energia (!1, !2, !3 ou ⚡)
+    // 2. Extração de Energia (!1, !2, !3 ou )
     const energyMatch = text.match(/(?:^|\s)!(1|2|3)(?:\s|$)/);
     if (energyMatch) {
       energyRequired = parseInt(energyMatch[1], 10);

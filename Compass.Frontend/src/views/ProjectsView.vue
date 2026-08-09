@@ -21,7 +21,7 @@ const viewDensity = computed(() => settingsStore.getViewDensity('projects'));
 
 onMounted(async () => {
   //  ARQ: O ecossistema inteiro é hidratado para garantir o cálculo em Cascata
-  goalsStore.loadFromDisk();
+
   await Promise.all([
     goalsStore.fetchGoals(), 
     commitmentsStore.fetchAllActive(),

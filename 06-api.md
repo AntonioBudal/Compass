@@ -30,7 +30,7 @@
     "energyRequired": 3,
     "projectName": "Aprender Vue.js 3",
     "scorePercentage": 98.5,
-    "reason": "⚡ Alinhado ao seu objetivo de carreira e cabe nos seus 45m livres."
+    "reason": " Alinhado ao seu objetivo de carreira e cabe nos seus 45m livres."
   },
   "alternatives": [
     {

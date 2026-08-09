@@ -340,9 +340,9 @@ const captureBossItem = () => {
           <h2 class="text-xl font-bold flex items-center gap-2"><ShieldAlert class="w-5 h-5 text-status-danger-text"/> 9. Recuperação de Erros</h2>
           <p class="text-sm text-content-muted leading-relaxed">O Compass não te deixa no escuro. Se você quebrar uma regra, ele bloqueia a ação, explica o motivo e oferece a solução a um clique.</p>
           <div class="space-y-3 font-mono text-xs">
-            <button @click="fireError('shift')" class="w-full p-4 bg-app border border-borderbase rounded-xl hover:border-content transition-colors flex justify-between shadow-sm font-bold">Forçar Criação Fora do Turno <span>⚡</span></button>
-            <button @click="fireError('overlap')" class="w-full p-4 bg-app border border-borderbase rounded-xl hover:border-content transition-colors flex justify-between shadow-sm font-bold">Forçar Evento Sobreposto <span>⚡</span></button>
-            <button @click="fireError('project')" class="w-full p-4 bg-app border border-borderbase rounded-xl hover:border-content transition-colors flex justify-between shadow-sm font-bold">Forçar Projeto Inexistente <span>⚡</span></button>
+            <button @click="fireError('shift')" class="w-full p-4 bg-app border border-borderbase rounded-xl hover:border-content transition-colors flex justify-between shadow-sm font-bold">Forçar Criação Fora do Turno <span></span></button>
+            <button @click="fireError('overlap')" class="w-full p-4 bg-app border border-borderbase rounded-xl hover:border-content transition-colors flex justify-between shadow-sm font-bold">Forçar Evento Sobreposto <span></span></button>
+            <button @click="fireError('project')" class="w-full p-4 bg-app border border-borderbase rounded-xl hover:border-content transition-colors flex justify-between shadow-sm font-bold">Forçar Projeto Inexistente <span></span></button>
           </div>
           <button @click="goToNext" class="w-full p-3.5 rounded-tactic bg-content text-content-invert font-bold uppercase flex justify-center items-center gap-2 hover:opacity-90 shadow-md transition-all mt-4">
             Iniciar Missão Final <ArrowRight class="w-4 h-4"/>

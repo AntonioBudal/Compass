@@ -21,7 +21,7 @@ export const useProjectsStore = defineStore('projects', () => {
   const toastStore = useToastStore();
   const commitmentsStore = useCommitmentsStore();
 
-  // 📁 ARQUITETURA NORMALIZADA O(1)
+  //  ARQUITETURA NORMALIZADA O(1)
   const entities = ref<Record<string, ProjectCatalogItemDto>>({});
   const catalogIds = ref<string[]>([]);
 

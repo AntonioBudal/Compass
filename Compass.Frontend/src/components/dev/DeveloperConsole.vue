@@ -214,7 +214,7 @@ const selectLog = (log: HttpLogEntry) => {
             class="p-3 rounded bg-surface border border-borderbase flex items-center justify-between gap-4"
           >
             <div class="flex items-center gap-3">
-              <span class="text-status-warning font-bold">⚡ {{ evt.eventType }}</span>
+              <span class="text-status-warning font-bold"> {{ evt.eventType }}</span>
               <span class="text-content-muted">{{ evt.message }}</span>
             </div>
             <div class="flex items-center gap-3 font-mono text-[10px] text-content-muted">

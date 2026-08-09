@@ -8,6 +8,8 @@ public class TaskCommitment : Commitment
     public int EstimatedDurationMinutes { get; private set; }
     public short EnergyRequired { get; private set; }
     public DateTime? Deadline { get; private set; }
+
+    public DateTime? StartTime { get; private set; }
     public int PostponedCount { get; private set; }
 
     protected TaskCommitment() { }
@@ -83,7 +85,7 @@ public class TaskCommitment : Commitment
         }
     }
 
-    public void UpdateTaskDetails(int duration, short energy, DateTime? deadline)
+    public void UpdateTaskDetails(int duration, short energy, DateTime? deadline, DateTime? startTime)
     {
         if (Status == CommitmentStatus.Archived)
             throw new DomainException("Não é possível alterar os detalhes de uma tarefa arquivada.");
@@ -97,5 +99,6 @@ public class TaskCommitment : Commitment
         EstimatedDurationMinutes = duration;
         EnergyRequired = energy;
         Deadline = deadline;
+        StartTime = startTime; //  Salva o horário na memória da entidade
     }
 }

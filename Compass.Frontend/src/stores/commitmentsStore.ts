@@ -28,7 +28,7 @@ export const useCommitmentsStore = defineStore('commitments', () => {
   const toastStore = useToastStore();
   const offlineStore = useOfflineStore();
 
-  // 🔥 ARQ: O Vue é apenas um Espelho do EF Core / SQLite
+  //  ARQ: O Vue é apenas um Espelho do EF Core / SQLite
   const entities = ref<Record<string, CommitmentItem>>({});
   
   const activeIds = ref<string[]>([]);
@@ -145,7 +145,7 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     if (payload.type === 'HABIT' && !payload.cronExpression) payload.cronExpression = '0 8 * * *';
     if (payload.type === 'NOTE') payload.estimatedDurationMinutes = 0; 
 
-    // 🔥 ARQ: O Backend Cria, Nós Espelhamos
+    //  ARQ: O Backend Cria, Nós Espelhamos
     const created = await CompassApi.createCommitment(payload);
     
     entities.value = { ...entities.value, [created.id]: created };
@@ -162,16 +162,36 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     if (!entities.value[id]) return;
     const originalItem = { ...entities.value[id] };
     
-    // Otimismo Visual
-    Object.assign(entities.value[id], payload, { _isSyncing: true });
+    //  FIX REATIVIDADE: Reatribuição do Dicionário força o Vue a redesenhar a Agenda IMEDIATAMENTE
+    entities.value = {
+      ...entities.value,
+      [id]: { ...originalItem, ...payload, _isSyncing: true }
+    };
 
-    try {
+   try {
       const updated = await CompassApi.updateCommitment(id, payload);
-      Object.assign(entities.value[id], updated, { _isSyncing: false });
+      
+      //  PROTEÇÃO CONTRA DATA LOSS DA API: 
+      // Se o backend retornou 200 OK mas "perdeu" a data (retornando null/undefined),
+      // nós confiamos no payload que acabou de ser aceito para manter a integridade visual da Agenda.
+      const safeUpdated = { ...updated };
+      if (payload.startTime && !safeUpdated.startTime) {
+        safeUpdated.startTime = payload.startTime;
+      }
+      
+      //  FIX REATIVIDADE: Atualiza a Store forçando o redesenho.
+      entities.value = {
+        ...entities.value,
+        [id]: { ...entities.value[id], ...safeUpdated, _isSyncing: false }
+      };
+      
       syncHistory();
       if (!isSilent) toastStore.showToast('Compromisso atualizado.', 'neutral');
     } catch (err: any) {
-      Object.assign(entities.value[id], originalItem, { _isSyncing: false });
+      entities.value = {
+        ...entities.value,
+        [id]: { ...originalItem, _isSyncing: false }
+      };
       if (!isSilent) toastStore.showToast('Falha na edição. Revertido.', 'error');
       throw err;
     }
@@ -189,7 +209,7 @@ export const useCommitmentsStore = defineStore('commitments', () => {
     targetItem._syncError = null;
 
     try {
-      // 🔥 ARQ: O Backend C# sabe recalcular Streaks e Progresso.
+      //  ARQ: O Backend C# sabe recalcular Streaks e Progresso.
       // Retornamos todo o DTO atualizado do C# e sobrescrevemos a RAM.
       const response = await CompassApi.updateStatus(id, { newStatus });
       Object.assign(entities.value[id], response, { _isSyncing: false });

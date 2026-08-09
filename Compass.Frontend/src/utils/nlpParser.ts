@@ -166,7 +166,7 @@ export function parseQuickCapture(input: string): ParsedNLP {
   let projectQuery: string | null = null;
   let rawProject: string | null = null;
   
-  // 🔥 ARQ: Regex Gananciosa. Lê o '#' e captura TUDO até encontrar outro gatilho (@, !, ^, /) ou o fim da linha.
+  //  ARQ: Regex Gananciosa. Lê o '#' e captura TUDO até encontrar outro gatilho (@, !, ^, /) ou o fim da linha.
   // Isso permite nomes com espaços, acentos, hifens e números (Ex: #Integração C# e Vue.js).
   const projectRegex = /\s#([^@!\^\/]+)/;
   const projectMatch = workingText.match(projectRegex);

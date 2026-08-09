@@ -57,24 +57,9 @@ export const useSettingsStore = defineStore('settings', () => {
   };
 
   // --- Sincronização em Disco e Multi-Aba ---
-  function saveToDisk() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value));
-    } catch (e) {
-      console.warn('[SettingsStore] Falha ao persistir configurações.', e);
-    }
-  }
+  
 
-  function loadFromDisk(): boolean {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        Object.assign(settings.value, JSON.parse(raw));
-        return true;
-      }
-    } catch (e) {}
-    return false;
-  }
+  
 
   function listenToCrossTabSettings() {
     if (typeof window !== 'undefined') {
@@ -89,7 +74,7 @@ export const useSettingsStore = defineStore('settings', () => {
   // --- Ações de Comunicação API ---
   const fetchSettings = async (force = false) => {
     //  ARQ (Stale-While-Revalidate): Carrega da RAM/Disco para renderizar a UI sem "piscar"
-    loadFromDisk();
+   
     
     // E então vai ao servidor para garantir que as alterações de outros dispositivos sejam refletidas
     isLoading.value = true;
@@ -100,7 +85,7 @@ export const useSettingsStore = defineStore('settings', () => {
       
       if (res.status === 200 && res.data) {
         Object.assign(settings.value, res.data);
-        saveToDisk(); // Atualiza o disco com a Verdade Absoluta
+  
       }
     } catch (e) {
       console.warn('[SettingsStore] Backend indisponível, servindo do cache local.', e);
@@ -117,7 +102,7 @@ export const useSettingsStore = defineStore('settings', () => {
     
     // Mutação Otimista
     Object.assign(settings.value, newSettings);
-    saveToDisk();
+   
 
     try {
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
@@ -129,7 +114,7 @@ export const useSettingsStore = defineStore('settings', () => {
     } catch (e) {
       // Reverte em caso de falha
       Object.assign(settings.value, previous);
-      saveToDisk();
+      
       toastStore.showToast('Erro ao sincronizar configurações.', 'error');
     } finally {
       isSubmitting.value = false;

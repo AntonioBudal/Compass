@@ -106,7 +106,7 @@ const horizonBuckets = computed(() => {
   };
 });
 
-// 🔥 ENRIQUECIMENTO: Injetamos o Breadcrumb nas recomendações do Motor de Decisão
+//  ENRIQUECIMENTO: Injetamos o Breadcrumb nas recomendações do Motor de Decisão
 const enrichedTopFocus = computed(() => {
   if (!decisionStore.topFocus) return null;
   const base = decisionStore.topFocus;
@@ -201,7 +201,7 @@ const activeFutureList = computed(() => {
                 nominalDurationMinutes: task.estimatedDurationMinutes || 30,
                 effectiveDurationMinutes: task.estimatedDurationMinutes || 30,
                 energyRequired: task.energyRequired || 2,
-                projectName: getBreadcrumb(task.projectId), /* 🔥 O(1) Breadcrumb Injetado */
+                projectName: getBreadcrumb(task.projectId), /*  O(1) Breadcrumb Injetado */
                 scorePercentage: 0,
                 reason: 'Aguardando recálculo do motor.',
                 wasTimeAdjustedByEai: false
@@ -291,7 +291,7 @@ const activeFutureList = computed(() => {
                   nominalDurationMinutes: task.estimatedDurationMinutes || 30,
                   effectiveDurationMinutes: task.estimatedDurationMinutes || 30,
                   energyRequired: task.energyRequired || 2,
-                  projectName: getBreadcrumb(task.projectId), /* 🔥 O(1) Breadcrumb Injetado */
+                  projectName: getBreadcrumb(task.projectId), /*  O(1) Breadcrumb Injetado */
                   scorePercentage: 0,
                   reason: 'Aguardando capacidade operacional.',
                   wasTimeAdjustedByEai: false

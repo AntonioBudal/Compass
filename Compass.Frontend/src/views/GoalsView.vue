@@ -27,7 +27,7 @@ const viewDensity = computed(() => settingsStore.getViewDensity('goals'));
 onMounted(async () => {
   //  ARQ: Hidratamos Metas e o Catálogo de Projetos para garantir que o Bubble-Up seja infalível, 
   goalsStore.fetchGoals()
-  goalsStore.loadFromDisk();
+
   await projectsStore.fetchCatalog();
 });
 

@@ -88,7 +88,7 @@ export const useOfflineStore = defineStore('offline', () => {
 
     for (const item of pending) {
       try {
-        // 🔥 ARQ: Ajuste de Mira! Garante que a requisição vá para o Backend (5000) e não para o Vue (5173)
+        //  ARQ: Ajuste de Mira! Garante que a requisição vá para o Backend (5000) e não para o Vue (5173)
         const fullUrl = item.url.startsWith('http') ? item.url : `${baseUrl}${item.url.startsWith('/') ? '' : '/'}${item.url}`;
 
         await axios({
