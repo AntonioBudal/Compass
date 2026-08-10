@@ -1,0 +1,229 @@
+﻿Listagem de caminhos de pasta para o volume Sistema
+O n·mero de sÚrie do volume Ú 0000029F CE3C:4061
+C:\USERS\USER\COMPASS\COMPASS.FRONTEND\SRC
+|   vite-env.d.ts
+|   
++---api
++---app
+|   |   App.vue
+|   |   globalErrorHandler.ts
+|   |   main.ts
+|   |   
+|   +---router
+|   |       index.ts
+|   |       
+|   \---styles
+|           style.css
+|           
++---components
+|   +---agenda
+|   +---core
+|   |       TacticBadge.vue
+|   |       
+|   +---dev
+|   +---inspectors
+|   +---layout
+|   +---modals
+|   +---onboarding
+|   |       GlassBoxPipeline.vue
+|   |       OnboardingSteps.vue
+|   |       PilotChecklistWidget.vue
+|   |       SpotlightOverlay.vue
+|   |       
+|   \---progress
++---composables
+|   |   useQuickCaptureParser.ts
+|   |   
+|   \---__tests__
+|           useKeyboardNavigation.spec.ts
+|           
++---modules
+|   +---analytics
+|   |   +---components
+|   |   |       EstimationAccuracyChart.vue
+|   |   |       ExecutionChronology.vue
+|   |   |       FrictionHeatmapGrid.vue
+|   |   |       ProgressKpiGrid.vue
+|   |   |       
+|   |   \---stores
+|   |           progressStore.ts
+|   |           
+|   +---execution
+|   |   +---api
+|   |   |       decisions.api.ts
+|   |   |       
+|   |   +---components
+|   |   |   |   ScoreBreakdownPanel.vue
+|   |   |   |   TopFocusCard.vue
+|   |   |   |   
+|   |   |   \---modals
+|   |   |           AllocationPickerModal.vue
+|   |   |           DailyCycleModal.vue
+|   |   |           DailyShutdownModal.vue
+|   |   |           
+|   |   +---stores
+|   |   \---views
+|   |           JournalView.vue
+|   |           NowEngineView.vue
+|   |           
+|   +---onboarding
+|   |   +---components
+|   |   |       SandboxTopBanner.vue
+|   |   |       
+|   |   +---stores
+|   |   |       onboardingStore.ts
+|   |   |       
+|   |   \---views
+|   |           InteractiveLabView.vue
+|   |           OnboardingView.vue
+|   |           SandboxView.vue
+|   |           
+|   +---settings
+|   |   +---schemas
+|   |   |       portabilitySchema.ts
+|   |   |       
+|   |   +---stores
+|   |   |       settingsStore.ts
+|   |   |       
+|   |   \---views
+|   |           SettingsView.vue
+|   |           
+|   +---strategy
+|   |   +---api
+|   |   |       goals.api.ts
+|   |   |       projects.api.ts
+|   |   |       
+|   |   +---inspectors
+|   |   |       GoalEditorForm.vue
+|   |   |       ProjectEditorForm.vue
+|   |   |       
+|   |   +---stores
+|   |   |       goalsStore.ts
+|   |   |       projectsStore.ts
+|   |   |       
+|   |   \---views
+|   |           GoalsView.vue
+|   |           LibraryView.vue
+|   |           ProjectsView.vue
+|   |           
+|   \---tactical
+|       +---api
+|       |       commitments.api.ts
+|       |       schedules.api.ts
+|       |       
+|       +---components
+|       |   |   CommitmentCard.vue
+|       |   |   InspectableCard.vue
+|       |   |   TacticalHorizonBar.vue
+|       |   |   
+|       |   \---agenda
+|       |           AgendaBacklog.vue
+|       |           AgendaCommitmentBlock.vue
+|       |           AgendaConflictModal.vue
+|       |           AgendaFreeBlocks.vue
+|       |           AgendaGhostBlock.vue
+|       |           AgendaHeader.vue
+|       |           AgendaRestBlocks.vue
+|       |           AgendaTimeGrid.vue
+|       |           
+|       +---composables
+|       |       useTimeResize.ts
+|       |       
+|       +---inspectors
+|       |       EventEditorForm.vue
+|       |       HabitEditorForm.vue
+|       |       TaskEditorForm.vue
+|       |       VisualCronEditor.vue
+|       |       
+|       +---schemas
+|       |       draftSchema.ts
+|       |       
+|       \---views
+|               AgendaView.vue
+|               DatabaseView.vue
+|               HabitsView.vue
+|               
++---plugins
++---schemas
++---shared
+|   +---api
+|   |       client.ts
+|   |       
+|   +---assets
+|   |       hero.png
+|   |       vite.svg
+|   |       vue.svg
+|   |       
+|   +---composables
+|   |       useFocusTrap.ts
+|   |       useKeyboardNavigation.ts
+|   |       useKeyboardShortcuts.ts
+|   |       usePerformanceMonitor.ts
+|   |       useVisibilityTracker.ts
+|   |       
+|   +---stores
+|   |       devStore.ts
+|   |       offlineStore.ts
+|   |       themeStore.ts
+|   |       toastStore.ts
+|   |       
+|   +---types
+|   |       global.ts
+|   |       
+|   +---ui
+|   |   +---components
+|   |   |       AutoCompleteDropdown.vue
+|   |   |       DefensiveEmptyState.vue
+|   |   |       DeveloperConsole.vue
+|   |   |       EnergyIndicator.vue
+|   |   |       ErrorBoundary.vue
+|   |   |       OmniInput.vue
+|   |   |       ToastContainer.vue
+|   |   |       
+|   |   +---layout
+|   |   |       AppLayout.vue
+|   |   |       HeaderContext.vue
+|   |   |       PageHeader.vue
+|   |   |       Sidebar.vue
+|   |   |       StatusBar.vue
+|   |   |       
+|   |   \---modals
+|   |           CommandBarModal.vue
+|   |           QuickCaptureModal.vue
+|   |           UniversalEntityInspector.vue
+|   |           
+|   \---utils
+|       |   nlpParser.ts
+|       |   trieIndex.ts
+|       |   
+|       +---autocomplete
+|       |   |   AutocompleteEngine.ts
+|       |   |   types.ts
+|       |   |   
+|       |   +---providers
+|       |   |       DynamicTrieProvider.ts
+|       |   |       HistoryProvider.ts
+|       |   |       StaticProviders.ts
+|       |   |       
+|       |   \---__tests__
+|       |           AutocompleteEngine.spec.ts
+|       |           
+|       \---__tests__
+|               nlpParser.spec.ts
+|               trieIndex.spec.ts
+|               
++---stores
+|   |   commitmentsStore.ts
+|   |   dailyCycleStore.ts
+|   |   decisionStore.ts
+|   |   inspectorStore.ts
+|   |   journalStore.ts
+|   |   
+|   \---__tests__
+|           decisionStore.spec.ts
+|           e2e-ecosystem.spec.ts
+|           offlineStore.spec.ts
+|           progressStore.spec.ts
+|           
++---types
+\---views

@@ -1,411 +1,407 @@
-# 04. Architecture
+# Arquitetura do Compass — Frontend
 
-> **Padrão Arquitetural:** MVC Moderno (API-First) + Arquitetura em Camadas Tradicional (N-Tier)
+O frontend do Compass utiliza uma arquitetura baseada em **Feature-Sliced Design (FSD)**, adaptada às necessidades do projeto.
 
-**Frontend:** Vue.js 3 (SPA)  
-**Backend:** ASP.NET Core (.NET 8+)  
-**Banco de Dados:** PostgreSQL 16+
+O principal objetivo é manter **alta coesão**, **baixo acoplamento** e uma separação clara entre infraestrutura, componentes compartilhados e regras de negócio.
+
+Em vez de organizar o código por tecnologia (`views`, `stores`, `components`), a estrutura é organizada principalmente por **domínio de negócio**. Dessa forma, funcionalidades que evoluem juntas permanecem próximas.
+
+## Estrutura do projeto
+
+A pasta `src/` é dividida em três camadas principais:
+
+```text
+Compass.Frontend/
+└── src/
+    ├── app/        # Inicialização e configuração da aplicação
+    ├── shared/     # Infraestrutura e componentes reutilizáveis
+    └── modules/    # Domínios e regras de negócio
+```
+
+A responsabilidade de cada camada é definida abaixo.
 
 ---
 
-# 1. Visão Geral da Arquitetura (MVC Desacoplado / API-First)
+## 1. `app/`
 
-A arquitetura do **Compass** é estruturada em quatro camadas técnicas superpostas e bem definidas, operando em um fluxo unidirecional de dados (**Top-Down** para comandos e **Bottom-Up** para leitura).
+Responsável pela inicialização e configuração global da aplicação.
 
-Em vez de um MVC monolítico onde o servidor renderiza HTML, adotamos uma abordagem **API-First**, onde o **Vue.js** atua exclusivamente como a camada **View**, enquanto o **ASP.NET Core** gerencia os **Controllers**, **Services** e **Models**.
+Essa camada não deve conter regras específicas de negócio.
+
+### `App.vue`
+
+Atua como **bootstrapper da aplicação**.
+
+É responsável por inicializar o estado global e garantir que os dados essenciais sejam carregados antes da renderização das telas.
+
+O carregamento inicial inclui dados como:
+
+* Metas
+* Projetos
+* Compromissos
+* Configurações necessárias para a aplicação
+
+Essa abordagem evita que as Views realizem múltiplos carregamentos independentes e reduz problemas de sincronização durante o reload da aplicação.
+
+### `router/index.ts`
+
+Responsável por:
+
+* Definição das rotas
+* Navegação
+* Guards de rota
+* Controle de acesso
+
+### `styles/`
+
+Contém estilos globais e tokens utilizados pela aplicação.
+
+### `globalErrorHandler.ts`
+
+Centraliza o tratamento de erros não capturados da aplicação.
 
 ---
 
-## 1.1 Camada View (Frontend — Vue.js 3)
+## 2. `shared/`
 
-Responsável por capturar a intenção do usuário em sub-segundos, gerenciar o estado local e garantir funcionamento offline. Não possui regras de negócio, apenas reatividade visual.
+Contém código reutilizável e infraestrutura que não depende de regras específicas de negócio.
+
+O código dessa camada não deve conhecer conceitos como `Goal`, `Project`, `Habit` ou `Commitment`.
+
+### `api/`
+
+Responsável pela infraestrutura de comunicação HTTP.
+
+```text
+shared/api/
+└── client.ts
+```
+
+O `client.ts` centraliza:
+
+* Configuração do Axios
+* Interceptors
+* Headers
+* Tratamento de autenticação
+* Comportamentos relacionados à rede
+* Suporte à estratégia Offline-First
+
+As APIs específicas de cada domínio ficam dentro dos respectivos módulos.
+
+### `ui/`
+
+Contém componentes visuais reutilizáveis e independentes de domínio.
+
+Exemplos:
+
+* `OmniInput`
+* `ToastContainer`
+* `ErrorBoundary`
+* Modais globais
+* Layouts estruturais
+
+### `composables/`
+
+Contém composables reutilizáveis que não pertencem a um domínio específico.
+
+### `utils/`
+
+Contém funções utilitárias, como:
+
+* Formatação de datas
+* Funções matemáticas
+* Utilitários de teclado
+* Funções auxiliares
+
+O `nlpParser` utilizado pelo Quick Capture também pertence a essa camada enquanto permanecer agnóstico de domínio.
+
+### `stores/`
+
+Contém apenas stores relacionados ao estado global da aplicação.
+
+Exemplos:
+
+* `toastStore`
+* `offlineStore`
+* `themeStore`
+
+Stores relacionados a regras de negócio devem permanecer dentro dos respectivos módulos.
+
+---
+
+# 3. `modules/`
+
+Essa é a camada responsável pelas regras e funcionalidades de negócio do Compass.
+
+Cada módulo representa um domínio funcional e mantém seus próprios:
+
+* Components
+* Views
+* Stores
+* APIs
+* Composables
+* Tipos
+* Regras específicas do domínio
+
+Estrutura conceitual:
+
+```text
+modules/
+├── tactical/
+├── strategy/
+├── execution/
+├── analytics/
+├── onboarding/
+└── settings/
+```
+
+A remoção ou alteração de um módulo deve causar o mínimo possível de impacto nos demais módulos.
+
+---
+
+## `modules/tactical/`
+
+Responsável pela execução das atividades do dia a dia.
+
+### Domínios
+
+* Hábitos
+* Tarefas
+* Eventos
+* Notas
+* Compromissos
+
+### Views
+
+* `AgendaView`
+* `HabitsView`
+* `DatabaseView`
 
 ### Responsabilidades
 
-- **Componentes UI (Arquétipos Rápidos)**
-  - Interface focada no uso por teclado.
-  - Botões predestinados (Tarefa, Projeto, Evento e Hábito).
-  - Tela principal **"Agora"**.
+O módulo concentra funcionalidades relacionadas à execução direta das atividades, incluindo:
 
-- **State Cache (Pinia Store)**
-  - Contexto atual do usuário.
-  - Energia disponível.
-  - Tempo disponível.
-  - Cache local do **Top 3**.
+* Agenda
+* Drag & Drop
+* Resize
+* Cálculos de posicionamento
+* Gerenciamento de compromissos
 
-- **Persistência Offline (Dexie.js + IndexedDB)**
-  - Armazena ações sem conexão.
-  - Mantém uma fila de sincronização (*Sync Queue*).
-
-- **Comunicação**
-  - HTTP GET para consultas.
-  - HTTP POST / PUT / PATCH para mutações.
+As chamadas relacionadas a compromissos são realizadas através de `commitments.api.ts`.
 
 ---
 
-## 1.2 Camada Controller (Backend — ASP.NET Core API)
+## `modules/strategy/`
 
-A porta de entrada pública da aplicação.
+Responsável pelo planejamento de médio e longo prazo.
 
-Segue o conceito de **Thin Controller**, cuja responsabilidade limita-se a:
+### Domínios
 
-- Receber requisições HTTP.
-- Validar entrada.
-- Delegar processamento.
+* Projetos
+* Metas
 
-### Componentes
+### Views
 
-- **API Controllers**
-  - DecisionsController
-  - CommitmentsController
+* `ProjectsView`
+* `GoalsView`
+* `LibraryView`
 
-- **Autenticação**
-  - JWT
+### Responsabilidades
 
-- **Validação**
-  - FluentValidation
+O módulo trabalha com:
 
-- **Injeção de Dependência**
-  - ICommitmentService
-  - IDecisionService
+* Definição de objetivos
+* Planejamento de projetos
+* Acompanhamento de progresso
+* Relação entre tarefas, projetos e metas
 
-- **Middlewares**
-  - Tratamento global de exceções.
-  - Respostas RFC 7807.
+O progresso dos projetos pode ser calculado a partir dos dados provenientes do módulo `tactical`, como tarefas concluídas e tempo registrado.
 
 ---
 
-## 1.3 Camada Application & Domain
+## `modules/execution/`
 
-O coração da aplicação.
+Responsável pela execução orientada e tomada de decisão durante uma sessão de trabalho.
 
-Concentra todas as regras de negócio mantendo isolamento completo de HTTP e banco de dados.
+### Domínios
 
-### Services
+* Sistema de decisão
+* Scoring
+* Diário
+* Ciclo diário
 
-- CommitmentService
-- DecisionService
+### Views
 
-Responsabilidades:
+* `NowEngineView`
+* `JournalView`
 
-- Orquestrar casos de uso.
-- Aplicar validações.
-- Persistir dados.
-- Executar atualizações em cascata.
+### Responsabilidades
 
-### Entidades
+O módulo utiliza dados de decisão provenientes de `decisions.api.ts` para determinar os focos prioritários da sessão.
 
-- Commitment
-- Task
-- Project
-- Goal
+Entre os fatores considerados estão:
 
-As entidades encapsulam comportamentos e garantem invariantes do domínio.
-
-### Motor de Decisão
-
-**ScoringEngine**
-
-- Implementado em C#
-- Determinístico
-- Sem dependências externas
-- Baixa latência
+* Energia disponível
+* Janela de tempo
+* Prioridade
+* Contexto
+* Estado atual das atividades
 
 ---
 
-## 1.4 Camada de Infraestrutura
+# Módulos de apoio
 
-Responsável pela persistência física dos dados.
+## `modules/analytics/`
 
-### Repositórios
+Responsável pela análise e visualização dos dados operacionais.
 
-- CommitmentRepository
-- ProjectRepository
+Inclui:
 
-### ORM
-
-- EF Core 8/9
-- Npgsql
-
-### Banco
-
-- PostgreSQL 16+
-
-Recursos utilizados:
-
-- JSONB
-- Partial Indexes
-- Check Constraints
-
-### Background Jobs
-
-Quartz.NET executa:
-
-- geração diária de hábitos;
-- reset de streaks;
-- outras tarefas agendadas.
+* `progressStore`
+* KPIs
+* Heatmaps
+* Gráficos
+* Métricas de produtividade
 
 ---
 
-## 1.5 Fluxo de Execução
+## `modules/onboarding/`
 
-```text
-Usuário
-    │
-    ▼
-Vue.js (View)
-    │
-    ▼
-Pinia
-    │
-    ▼
-HTTP
-    │
-    ▼
-Controller
-    │
-    ▼
-Application Service
-    │
-    ▼
-Domain
-    │
-    ▼
-Repository
-    │
-    ▼
-Entity Framework Core
-    │
-    ▼
-PostgreSQL
+Responsável pelos fluxos de inicialização e experimentação do usuário.
+
+Inclui:
+
+* `SandboxView`
+* Fluxos de onboarding
+* Integração com o `GlassBox`
+
+A `SandboxView` permite testar determinadas funcionalidades sem depender diretamente do estado persistido da aplicação.
+
+---
+
+## `modules/settings/`
+
+Responsável pelas configurações da aplicação.
+
+Inclui:
+
+* Preferências de interface
+* Importação e exportação de dados
+* Configurações relacionadas ao armazenamento local
+* Operações relacionadas ao SQLite
+
+---
+
+# Regras de arquitetura
+
+## 1. Views não devem realizar carregamento inicial de dados
+
+As Views não devem realizar chamadas diretas à API durante o `onMounted`.
+
+```ts
+// Evitar
+onMounted(async () => {
+    const response = await api.get(...)
+})
 ```
 
----
+O carregamento inicial é responsabilidade do `App.vue` e das respectivas camadas de estado.
 
-# 2. Ecossistema de Tecnologias
-
-## 2.1 Backend (.NET)
-
-| Tecnologia | Finalidade |
-|------------|------------|
-| Npgsql.EntityFrameworkCore.PostgreSQL | ORM PostgreSQL |
-| FluentValidation | Validação de DTOs |
-| Quartz.NET | Background Jobs |
-| Serilog | Logs estruturados |
-| Swashbuckle | OpenAPI / Swagger |
+As Views devem consumir os dados já disponíveis através das Stores e apenas cuidar da apresentação e interação com o usuário.
 
 ---
 
-## 2.2 Frontend (Vue)
+## 2. Componentes devem possuir responsabilidades claras
 
-| Tecnologia | Finalidade |
-|------------|------------|
-| Vue 3 (Composition API) | Interface |
-| TypeScript | Tipagem |
-| Pinia | Estado Global |
-| Vue Query | Cache e sincronização |
-| Tailwind CSS | Estilização |
-| Radix Vue / Shadcn Vue | Componentes |
-| Dexie.js | Offline First |
+Componentes genéricos e reutilizáveis devem permanecer em `shared/ui`.
 
----
-
-# 3. O Algoritmo de Pontuação
-
-O algoritmo de pontuação é implementado no **ScoringEngine** em C# puro, garantindo:
-
-- comportamento determinístico;
-- previsibilidade;
-- baixa latência.
-
-Sua responsabilidade é calcular a relevância de cada compromisso elegível.
-
----
-
-## 3.1 Fórmula
+Exemplo:
 
 ```text
-S = w1 * U_prazo
-  + w2 * M_tempo
-  + w3 * M_energia
-  + w4 * A_meta
-  - P_atrito
+shared/ui/
+└── Button.vue
 ```
 
-Onde:
+Componentes que possuem regras específicas de um domínio devem permanecer dentro do módulo correspondente.
 
-| Variável | Significado |
-|----------|-------------|
-| U_prazo | Urgência |
-| M_tempo | Compatibilidade temporal |
-| M_energia | Compatibilidade energética |
-| A_meta | Alinhamento estratégico |
-| P_atrito | Penalidade por adiamentos |
-
----
-
-## 3.2 Componentes
-
-### 1. Urgência (U_prazo)
-
-Quanto menor o tempo restante até o prazo, maior sua influência na nota final.
-
----
-
-### 2. Compatibilidade Temporal (M_tempo)
-
-Verificação:
-
-```csharp
-EstimatedDuration > AvailableWindowMinutes
-```
-
-Caso verdadeiro:
+Exemplo:
 
 ```text
-M_tempo = 0
+modules/strategy/
+└── components/
+    └── ProjectProgressCard.vue
 ```
 
-A tarefa é eliminada do cálculo.
+A regra geral é:
+
+* **Componente genérico:** `shared/ui`
+* **Componente específico de domínio:** `modules/<domain>/components`
 
 ---
 
-### 3. Compatibilidade Energética (M_energia)
+## 3. Módulos devem evitar dependências diretas entre si
+
+Um módulo não deve alterar diretamente o estado interno de outro módulo.
+
+Por exemplo, `execution` pode consumir dados relacionados a tarefas do módulo `tactical`, mas não deve modificar diretamente suas Stores ou estruturas internas.
+
+A comunicação deve ocorrer através das interfaces e estados públicos definidos pela aplicação.
 
 ```text
-M_energia = 1 - |E_usuario - E_tarefa| / 2
+execution
+    │
+    │ consome dados
+    ▼
+tactical
 ```
 
-Quanto maior a compatibilidade entre energia do usuário e energia exigida, maior a pontuação.
+O objetivo é manter os módulos desacoplados e permitir que cada domínio evolua de forma independente.
 
 ---
 
-### 4. Alinhamento Estratégico (A_meta)
+## 4. APIs devem permanecer próximas ao domínio
+
+A infraestrutura HTTP permanece em:
 
 ```text
-Task
-└── Project
-    └── Goal (Ativo)
+shared/api/client.ts
 ```
 
-Projetos vinculados a objetivos ativos recebem prioridade estrutural.
-
----
-
-### 5. Penalidade por Adiamento (P_atrito)
-
-Baseada em:
+Enquanto as operações específicas de cada domínio permanecem dentro do módulo correspondente:
 
 ```text
-PostponedCount
-```
-
-Quanto maior:
-
-- maior a penalidade;
-- menor a chance de permanecer indefinidamente no Top 3.
-
----
-
-## 3.3 Resultado Final
-
-Após os cálculos, o motor:
-
-1. Remove tarefas incompatíveis.
-2. Calcula a nota S.
-3. Ordena por relevância.
-4. Retorna as três melhores ações.
-
----
-
-# 4. Estrutura de Pastas
-
-```text
-Compass.Backend/
+modules/
+├── tactical/
+│   └── api/
+│       └── commitments.api.ts
 │
-└── src/
-    │
-    ├── Compass.Api/
-    │   ├── Controllers/
-    │   ├── Middlewares/
-    │   ├── Extensions/
-    │   └── Program.cs
-    │
-    ├── Compass.Application/
-    │   ├── DTOs/
-    │   ├── Services/
-    │   ├── Interfaces/
-    │   └── Validators/
-    │
-    ├── Compass.Domain/
-    │   ├── Entities/
-    │   ├── Enums/
-    │   ├── Exceptions/
-    │   └── Services/
-    │
-    └── Compass.Infrastructure/
-        ├── Persistence/
-        ├── Repositories/
-        └── Jobs/
+├── strategy/
+│   └── api/
+│       ├── goals.api.ts
+│       └── projects.api.ts
+│
+└── execution/
+    └── api/
+        └── decisions.api.ts
 ```
+
+Essa separação evita a criação de um único arquivo central contendo todas as operações da API.
 
 ---
 
-# 5. Pipeline de Decisão (End-to-End)
+# Objetivo da arquitetura
 
-## 1. Requisição HTTP
+A arquitetura busca manter três responsabilidades claramente separadas:
 
 ```text
-GET /api/v1/decisions/now
+app/
+└── Inicialização da aplicação
+
+shared/
+└── Infraestrutura e recursos reutilizáveis
+
+modules/
+└── Regras e funcionalidades de negócio
 ```
 
-↓
-
-**DecisionsController**
-
-↓
-
-**IDecisionService.GetTop3ActionsAsync()**
-
----
-
-## 2. Consulta ao Repositório
-
-O serviço consulta o **ICommitmentRepository**, utilizando índices parciais do PostgreSQL para recuperar apenas:
-
-- PENDING
-- IN_PROGRESS
-
-não arquivados.
-
----
-
-## 3. Cruzamento de Agenda
-
-O sistema:
-
-- verifica eventos;
-- calcula bloqueios;
-- determina a janela de tempo realmente disponível.
-
----
-
-## 4. Execução do ScoringEngine
-
-O algoritmo:
-
-- calcula a pontuação;
-- remove tarefas incompatíveis;
-- ordena por relevância.
-
----
-
-## 5. Retorno
-
-O serviço:
-
-- registra um **DecisionSnapshot**;
-- converte as entidades para DTO;
-- retorna as **Top 3 Ações**.
-
-**Latência esperada:** `< 15 ms`.
+Com essa organização, novas funcionalidades devem ser adicionadas preferencialmente ao módulo de domínio correspondente, evitando o crescimento de arquivos centralizados e reduzindo o acoplamento entre diferentes partes do sistema.

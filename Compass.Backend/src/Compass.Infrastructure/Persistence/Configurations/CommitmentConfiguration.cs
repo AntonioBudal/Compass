@@ -31,7 +31,7 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(c => c.CompletedAt).HasColumnName("completed_at");
 
-        // 🔥 FIX ARQUITETURAL TPH: O StartTime agora pertence a Base!
+        //  FIX ARQUITETURAL TPH: O StartTime agora pertence a Base!
         builder.Property(c => c.StartTime).HasColumnName("start_time").IsRequired(false);
 
         // Configuração da Herança TPH (Table-Per-Hierarchy)
@@ -59,7 +59,7 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
         builder.Property<int>("PostponedCount").HasColumnName("postponed_count").HasDefaultValue(0);
 
         // EventCommitment
-        // 🔥 REMOVIDO: builder.Property<DateTime?>("StartTime").HasColumnName("start_time").IsRequired(false); 
+        //  REMOVIDO: builder.Property<DateTime?>("StartTime").HasColumnName("start_time").IsRequired(false); 
         builder.Property<DateTime?>("EndTime").HasColumnName("end_time").IsRequired(false); 
         builder.Property<string?>("LocationOrLink").HasColumnName("location_or_link").HasMaxLength(500).IsRequired(false);
 

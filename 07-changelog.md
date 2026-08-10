@@ -741,3 +741,30 @@
 * Mantida a pré-visualização do compromisso durante o arraste.
 * Integração do cálculo de horário com a atualização persistida via `PUT`.
 * Agenda passa a atualizar visualmente o compromisso após a movimentação.
+
+# Devlog: 2026-08-09
+
+## Persistência e Herança TPH (Backend)
+
+- Identificada a causa da perda de `StartTime` após o F5: conflito na herança TPH do Entity Framework Core.
+- Movido `StartTime` para a classe base `Commitment`, unificando o horário de Tarefas, Hábitos e Eventos.
+- Ajustados `UpdateAsync` e `MapToDto` em `CommitmentService.cs` para persistir corretamente o horário e permitir `startTime = null`.
+- Corrigidos `TimeWindowCalculator.cs` e `DecisionService.cs` para suportar `DateTime?`.
+
+## Hábitos e Inspetor
+
+- Corrigido o erro `400 Bad Request` ao arrastar Hábitos para a Agenda.
+- Atualizado o payload de Hábitos para enviar também `cronExpression`.
+- Adicionado campo de horário ao `HabitEditorForm.vue`.
+- Sincronização do horário do Hábito entre Inspetor, Store e Agenda.
+
+## Agenda Tática
+
+- Implementado Drag & Drop reverso: compromissos podem ser arrastados da Agenda de volta para o Backlog.
+- Ao retornar ao Backlog, o `startTime` é removido e a tarefa volta para `unscheduled`.
+- Adicionado aviso no carregamento da Agenda quando existem compromissos sem horário.
+
+## Arquitetura
+
+- Unificação da persistência de `StartTime` no modelo base reduz divergências entre os tipos de compromisso.
+- Fluxo de horário agora segue uma única fonte de verdade entre Backend, Store, Inspetor e Agenda.

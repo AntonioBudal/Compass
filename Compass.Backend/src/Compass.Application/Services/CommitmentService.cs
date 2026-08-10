@@ -170,7 +170,7 @@ public class CommitmentService : ICommitmentService
                 break;
                 
             case EventCommitment evt:
-                // 🔥 FIX CS1503: Como evt.StartTime agora é nullable (DateTime?), usamos .Value
+                //  FIX CS1503: Como evt.StartTime agora é nullable (DateTime?), usamos .Value
                 evt.UpdateEventDetails(
                     dto.StartTime ?? evt.StartTime!.Value, 
                     dto.EndTime ?? evt.EndTime, 

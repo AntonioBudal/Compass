@@ -5,7 +5,7 @@ namespace Compass.Domain.Entities;
 
 public class EventCommitment : Commitment
 {
-    // 🔥 REMOVIDO: public DateTime StartTime { get; private set; } -> Agora herda da classe base!
+    //  REMOVIDO: public DateTime StartTime { get; private set; } -> Agora herda da classe base!
     public DateTime EndTime { get; private set; }
     public string? LocationOrLink { get; private set; }
 
