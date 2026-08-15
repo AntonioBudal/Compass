@@ -1,69 +1,95 @@
-# ==============================================================================
-# 1. SEGREDOS E CONFIGURAÇÕES LOCAIS (CRÍTICO - NUNCA COMITAR SENHAS)
-# ==============================================================================
-# Ignora arquivos de configuração de desenvolvimento local do .NET
-**/appsettings.Development.json
-**/appsettings.Local.json
-**/appsettings.*.override.json
+﻿# =========================================================
+# .NET / ASP.NET
+# =========================================================
 
-# Ignora variáveis de ambiente do Frontend (Vue 3 / Vite)
-.env
-.env.local
-.env.*.local
-*.secret
-
-# ==============================================================================
-# 2. .NET / ASP.NET CORE / C# (COMPILAÇÃO E CACHE)
-# ==============================================================================
-bin/
-obj/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
+**/bin/
+**/obj/
 .vs/
-.vscode/
+*.user
+*.userosscache
+*.suo
+*.pdb
+*.cache
+
+# Logs
 *.log
 
-# Arquivos de teste e cobertura
+# Test results / coverage
 TestResults/
+**/TestResults/
+coverage/
 *.coverage
 *.coveragexml
 
-# ==============================================================================
-# 3. FRONTEND (VUE.JS 3 / VITE / NODE.JS)
-# ==============================================================================
-node_modules/
-dist/
-dist-ssr/
-*.local
-.cache/
-.vuepress/dist/
-.temp/
-.temp-cache/
+# NuGet
+*.nupkg
+*.snupkg
+packages/
 
-# Logs do Node / NPM / Yarn / Pnpm
+# ASP.NET generated/local files
+appsettings.Local.json
+appsettings.Development.local.json
+
+
+# =========================================================
+# Node / Vue / Vite
+# =========================================================
+
+node_modules/
+**/node_modules/
+
+dist/
+**/dist/
+
+.vite/
+**/.vite/
+
+.npm/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# ==============================================================================
-# 4. BANCO DE DADOS & DOCKER
-# ==============================================================================
-*.db
-*.sqlite
-*.sqlite3
-postgres-data/
-pgdata/
+# Environment / secrets
+.env
+.env.*
+!.env.example
 
-# ==============================================================================
-# 5. SISTEMA OPERACIONAL
-# ==============================================================================
+
+# =========================================================
+# IDE / Editors
+# =========================================================
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+.idea/
+*.swp
+*.swo
+
+
+# =========================================================
+# OS
+# =========================================================
+
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
+Desktop.ini
+
+
+# =========================================================
+# Temporary files
+# =========================================================
+
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*~
+
+# Generated reports
+*.html

@@ -1,0 +1,6 @@
+@Compass.API_HostAddress = http://localhost:5286
+
+GET {{Compass.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

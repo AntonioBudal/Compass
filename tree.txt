@@ -1,6 +1,0 @@
-﻿Listagem de caminhos de pasta para o volume Sistema
-O n·mero de sÚrie do volume Ú 000001C8 CE3C:4061
-C:\USERS\USER\COMPASS\SRC
-Caminho invßlido - \USERS\USER\COMPASS\SRC
-NÒo existem subpastas 
-
