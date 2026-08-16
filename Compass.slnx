@@ -1,27 +1,37 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/Host/">
+    <Project Path="src/Host/Compass.API.IntegrationTests/Compass.API.IntegrationTests.csproj" />
     <Project Path="src/Host/Compass.API/Compass.API.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
   <Folder Name="/src/Modules/Calendar/">
-    <Project Path="src/Modules/Calendar/Compass.Modules.Calendar.Contracts/Compass.Modules.Calendar.Contracts.csproj" />
-    <Project Path="src/Modules/Calendar/Compass.Modules.Calendar.Tests/Compass.Modules.Calendar.Tests.csproj" />
-    <Project Path="src/Modules/Calendar/Compass.Modules.Calendar/Compass.Modules.Calendar.csproj" />
+    <Project Path="src/Modules/Calendar/Calendar.Contracts/Compass.Modules.Calendar.Contracts.csproj" />
+    <Project Path="src/Modules/Calendar/Calendar.Infrastructure/Compass.Modules.Calendar.Infrastructure.csproj" />
+    <Project Path="src/Modules/Calendar/Calendar.IntegrationTests/Compass.Modules.Calendar.IntegrationTests.csproj" />
+    <Project Path="src/Modules/Calendar/Calendar.Tests/Compass.Modules.Calendar.Tests.csproj" />
+    <Project Path="src/Modules/Calendar/Calendar/Compass.Modules.Calendar.csproj" />
   </Folder>
   <Folder Name="/src/Modules/Execution/">
-    <Project Path="src/Modules/Execution/Compass.Modules.Execution.Contracts/Compass.Modules.Execution.Contracts.csproj" />
-    <Project Path="src/Modules/Execution/Compass.Modules.Execution.Tests/Compass.Modules.Execution.Tests.csproj" />
-    <Project Path="src/Modules/Execution/Compass.Modules.Execution/Compass.Modules.Execution.csproj" />
+    <Project Path="src/Modules/Execution/Execution.Contracts/Compass.Modules.Execution.Contracts.csproj" />
+    <Project Path="src/Modules/Execution/Execution.Tests/Compass.Modules.Execution.Tests.csproj" />
+    <Project Path="src/Modules/Execution/Execution/Compass.Modules.Execution.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Execution/Execution.Infrastructure/">
+    <Project Path="src/Modules/Execution/Execution.Infrastructure/Compass.Modules.Execution.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Execution/Execution.IntegrationTests/">
+    <Project Path="src/Modules/Execution/Execution.IntegrationTests/Compass.Modules.Execution.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/src/Modules/Planning/">
-    <Project Path="src/Modules/Planning/Compass.Modules.Planning.Contracts/Compass.Modules.Planning.Contracts.csproj" />
-    <Project Path="src/Modules/Planning/Compass.Modules.Planning.Infrastructure/Compass.Modules.Planning.Infrastructure.csproj" />
-    <Project Path="src/Modules/Planning/Compass.Modules.Planning.IntegrationTests/Compass.Modules.Planning.IntegrationTests.csproj" />
-    <Project Path="src/Modules/Planning/Compass.Modules.Planning.Tests/Compass.Modules.Planning.Tests.csproj" />
-    <Project Path="src/Modules/Planning/Compass.Modules.Planning/Compass.Modules.Planning.csproj" />
+    <Project Path="src/Modules/Planning/Planning.Contracts/Compass.Modules.Planning.Contracts.csproj" />
+    <Project Path="src/Modules/Planning/Planning.Infrastructure/Compass.Modules.Planning.Infrastructure.csproj" />
+    <Project Path="src/Modules/Planning/Planning.IntegrationTests/Compass.Modules.Planning.IntegrationTests.csproj" />
+    <Project Path="src/Modules/Planning/Planning.Tests/Compass.Modules.Planning.Tests.csproj" />
+    <Project Path="src/Modules/Planning/Planning/Compass.Modules.Planning.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/Compass.SharedKernel/Compass.SharedKernel.csproj" />
   </Folder>
 </Solution>
+

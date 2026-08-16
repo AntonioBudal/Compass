@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,7 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
+    <PackageReference Include="MediatR" Version="14.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -17,10 +18,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Modules\Planning\Compass.Modules.Planning\Compass.Modules.Planning.csproj" />
-    <ProjectReference Include="..\..\Modules\Calendar\Compass.Modules.Calendar\Compass.Modules.Calendar.csproj" />
-    <ProjectReference Include="..\..\Modules\Execution\Compass.Modules.Execution\Compass.Modules.Execution.csproj" />
-    <ProjectReference Include="..\..\Modules\Planning\Compass.Modules.Planning.Infrastructure\Compass.Modules.Planning.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Planning\Planning\Compass.Modules.Planning.csproj" />
+    <ProjectReference Include="..\..\Modules\Calendar\Calendar\Compass.Modules.Calendar.csproj" />
+    <ProjectReference Include="..\..\Modules\Execution\Execution\Compass.Modules.Execution.csproj" />
+    <ProjectReference Include="..\..\Modules\Planning\Planning.Infrastructure\Compass.Modules.Planning.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Execution\Execution.Infrastructure\Compass.Modules.Execution.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
+

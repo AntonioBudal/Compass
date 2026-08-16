@@ -1,0 +1,573 @@
+=== PACOTES E VERSOES ===
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+
+=== MIGRATION GERADA ===
+--- 20260816015612_Initial_Execution_Schema.cs ---
+using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Compass.Modules.Execution.Infrastructure.Migrations
+{
+    /// <inheritdoc />
+    public partial class Initial_Execution_Schema : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.EnsureSchema(
+                name: "execution");
+
+            migrationBuilder.CreateTable(
+                name: "daily_cycles",
+                schema: "execution",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_daily_cycles", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "execution_logs",
+                schema: "execution",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ReferenceId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StartTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    EndTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    Type = table.Column<string>(type: "text", nullable: false),
+                    DailyCycleId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_execution_logs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_execution_logs_daily_cycles_DailyCycleId",
+                        column: x => x.DailyCycleId,
+                        principalSchema: "execution",
+                        principalTable: "daily_cycles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_execution_logs_DailyCycleId",
+                schema: "execution",
+                table: "execution_logs",
+                column: "DailyCycleId");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "execution_logs",
+                schema: "execution");
+
+            migrationBuilder.DropTable(
+                name: "daily_cycles",
+                schema: "execution");
+        }
+    }
+}
+
+=== ARQUIVOS ===
+
+--- src/Modules/Execution/Execution/Domain/DailyCycles/DailyCycle.cs ---
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Compass.Modules.Execution.Domain.Time;
+using Compass.SharedKernel.Domain.Exceptions;
+
+namespace Compass.Modules.Execution.Domain.DailyCycles;
+
+public class DailyCycle
+{
+    public Guid Id { get; private set; }
+    public DateOnly Date { get; private set; }
+    public CycleStatus Status { get; private set; }
+private readonly List<ExecutionLog> _logs = new();
+    public IReadOnlyCollection<ExecutionLog> Logs => _logs.AsReadOnly();
+
+    private DailyCycle() { } // Requisito ORM
+
+    public DailyCycle(DateOnly date)
+    {
+        Id = Guid.NewGuid();
+        Date = date;
+        Status = CycleStatus.NotStarted;
+    }
+
+    // --- Transições de Estado ---
+
+    public void Start()
+    {
+        if (Status != CycleStatus.NotStarted)
+            throw new DomainException("Cycle can only be started if it is NotStarted.");
+
+        Status = CycleStatus.Active;
+    }
+
+    public void Close()
+    {
+        if (Status == CycleStatus.Closed)
+            throw new DomainException("Cycle is already closed.");
+
+        Status = CycleStatus.Closed;
+    }
+
+    // --- Mutação Interna (A Fronteira de Transação) ---
+
+    public void RecordExecution(Guid referenceId, TimeInterval interval, ExecutionType type)
+    {
+        // 1. Invariante de Estado (Somente dias abertos recebem logs)
+        if (Status != CycleStatus.Active)
+            throw new DomainException("Cannot record logs unless the cycle is active.");
+
+        // 2. Invariante de Data (O Log não pode vazar o limite do dia do ciclo civil)
+        // Simplificação: Verifica se ao menos o Start do log pertence ao dia do ciclo no timezone UTC/local abstraído.
+        // Aqui assumiremos que a Application envia um DateOffset local ao contexto do usuário.
+        var logDate = DateOnly.FromDateTime(interval.Start.Date);
+        if (logDate != Date)
+            throw new DomainException($"Cannot record a log for {logDate} inside a cycle meant for {Date}.");
+
+        // 3. Invariante Matemática Absoluta (A Ubiquidade é probida)
+        if (_logs.Any(existingLog => existingLog.Interval.OverlapsWith(interval)))
+            throw new DomainException("Execution interval overlaps with an existing log.");
+
+        // Tudo aprovado, emite o recibo.
+        var log = new ExecutionLog(referenceId, interval, type);
+        _logs.Add(log);
+    }
+
+    public void DeleteExecution(Guid logId)
+    {
+        if (Status != CycleStatus.Active)
+            throw new DomainException("Cannot delete logs unless the cycle is active.");
+
+        var log = _logs.FirstOrDefault(l => l.Id == logId);
+        if (log != null)
+        {
+            _logs.Remove(log);
+        }
+    }
+}
+
+
+
+
+
+
+--- src/Modules/Execution/Execution/Domain/DailyCycles/ExecutionLog.cs ---
+using System;
+using Compass.Modules.Execution.Domain.Time;
+
+namespace Compass.Modules.Execution.Domain.DailyCycles;
+
+public class ExecutionLog
+{
+    public Guid Id { get; private set; }
+    public Guid ReferenceId { get; private set; }
+    public TimeInterval Interval { get; private set; } = null!;
+    public ExecutionType Type { get; private set; }
+
+    private ExecutionLog() { } // Requisito do ORM
+
+    internal ExecutionLog(Guid referenceId, TimeInterval interval, ExecutionType type)
+    {
+        Id = Guid.NewGuid();
+        ReferenceId = referenceId;
+        Interval = interval;
+        Type = type;
+    }
+}
+
+--- src/Modules/Execution/Execution.Infrastructure/Database/ExecutionDbContext.cs ---
+using Microsoft.EntityFrameworkCore;
+using Compass.Modules.Execution.Domain.DailyCycles;
+
+namespace Compass.Modules.Execution.Infrastructure.Database;
+
+internal class ExecutionDbContext : DbContext
+{
+    public DbSet<DailyCycle> DailyCycles { get; set; } = null!;
+    // ExecutionLog não tem DbSet público. Ele só é acessível via DailyCycle.
+
+    public ExecutionDbContext(DbContextOptions<ExecutionDbContext> options) : base(options) { }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.HasDefaultSchema("execution");
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ExecutionDbContext).Assembly);
+        base.OnModelCreating(modelBuilder);
+    }
+}
+
+--- src/Modules/Execution/Execution.Infrastructure/Database/Configurations/ExecutionMappings.cs ---
+using Compass.Modules.Execution.Domain.DailyCycles;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Compass.Modules.Execution.Infrastructure.Database.Configurations;
+
+internal class DailyCycleConfiguration : IEntityTypeConfiguration<DailyCycle>
+{
+    public void Configure(EntityTypeBuilder<DailyCycle> builder)
+    {
+        builder.ToTable("daily_cycles");
+        builder.HasKey(c => c.Id);
+        
+        builder.Property(c => c.Date).IsRequired();
+        builder.Property(c => c.Status).HasConversion<string>().IsRequired();
+        
+        // O padrão nativo do PostgreSQL para concorrência
+        builder.Property<uint>("Version").IsRowVersion().HasColumnName("xmin");
+
+        var navigation = builder.Metadata.FindNavigation(nameof(DailyCycle.Logs));
+        navigation!.SetPropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(c => c.Logs)
+               .WithOne()
+               .HasForeignKey("DailyCycleId")
+               .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal class ExecutionLogConfiguration : IEntityTypeConfiguration<ExecutionLog>
+{
+    public void Configure(EntityTypeBuilder<ExecutionLog> builder)
+    {
+        builder.ToTable("execution_logs");
+        builder.HasKey(l => l.Id);
+        builder.Property(l => l.ReferenceId).IsRequired();
+        builder.Property(l => l.Type).HasConversion<string>().IsRequired();
+        builder.OwnsOne(l => l.Interval, i =>
+        {
+            i.Property(p => p.Start).HasColumnName("StartTime").HasColumnType("timestamp with time zone").IsRequired();
+            i.Property(p => p.End).HasColumnName("EndTime").HasColumnType("timestamp with time zone").IsRequired();
+        });
+    }
+}
+
+
+--- src/Modules/Execution/Execution.Infrastructure/Repositories/EfDailyCycleRepository.cs ---
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Compass.Modules.Execution.Application.DailyCycles;
+using Compass.Modules.Execution.Domain.DailyCycles;
+using Compass.Modules.Execution.Infrastructure.Database;
+using Microsoft.EntityFrameworkCore;
+
+namespace Compass.Modules.Execution.Infrastructure.Repositories;
+
+internal class EfDailyCycleRepository : IDailyCycleRepository
+{
+    private readonly ExecutionDbContext _dbContext;
+
+    public EfDailyCycleRepository(ExecutionDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task AddAsync(DailyCycle cycle, CancellationToken cancellationToken = default)
+    {
+        await _dbContext.DailyCycles.AddAsync(cycle, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<DailyCycle?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.DailyCycles
+            .Include(c => c.Logs)
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    }
+
+    public async Task UpdateAsync(DailyCycle cycle, CancellationToken cancellationToken = default)
+    {
+        // Força o EF Core a registrar um UPDATE na tabela pai (daily_cycles).
+        // Como o PostgreSQL gera o xmin a cada UPDATE no pai, precisamos que o pai
+        // sofra alteração para que o xmin seja iterado quando inserimos logs filhos.
+        _dbContext.Entry(cycle).State = EntityState.Modified;
+        
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+}
+
+--- src/Modules/Execution/Execution/Application/DailyCycles/IDailyCycleRepository.cs ---
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Compass.Modules.Execution.Domain.DailyCycles;
+
+namespace Compass.Modules.Execution.Application.DailyCycles;
+
+public interface IDailyCycleRepository
+{
+    Task AddAsync(DailyCycle cycle, CancellationToken cancellationToken = default);
+    Task<DailyCycle?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task UpdateAsync(DailyCycle cycle, CancellationToken cancellationToken = default);
+}
+
+--- src/Modules/Execution/Execution/Application/DailyCycles/StartCycle/StartDailyCycleCommandHandler.cs ---
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Compass.Modules.Execution.Domain.DailyCycles;
+
+namespace Compass.Modules.Execution.Application.DailyCycles.StartCycle;
+
+public class StartDailyCycleCommandHandler
+{
+    private readonly IDailyCycleRepository _repository;
+
+    public StartDailyCycleCommandHandler(IDailyCycleRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<Guid> HandleAsync(StartDailyCycleCommand command, CancellationToken cancellationToken = default)
+    {
+        // Nota: Em um cenário multi-tenant ou para evitar duplicidade, 
+        // faríamos uma checagem se já existe um ciclo para esta Date.
+        var cycle = new DailyCycle(command.Date);
+        cycle.Start();
+
+        await _repository.AddAsync(cycle, cancellationToken);
+        
+        return cycle.Id;
+    }
+}
+
+--- src/Modules/Execution/Execution/Application/DailyCycles/RecordExecution/RecordExecutionCommandHandler.cs ---
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Compass.Modules.Execution.Domain.Time;
+
+namespace Compass.Modules.Execution.Application.DailyCycles.RecordExecution;
+
+public class RecordExecutionCommandHandler
+{
+    private readonly IDailyCycleRepository _repository;
+
+    public RecordExecutionCommandHandler(IDailyCycleRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task HandleAsync(RecordExecutionCommand command, CancellationToken cancellationToken = default)
+    {
+        var cycle = await _repository.GetByIdAsync(command.DailyCycleId, cancellationToken);
+        
+        if (cycle == null)
+            throw new Exception($"DailyCycle with ID {command.DailyCycleId} not found.");
+
+        var interval = new TimeInterval(command.Start, command.End);
+        
+        // O Domínio garante as invariantes (Não permite sobreposição, garante que está Active, etc)
+        cycle.RecordExecution(command.ReferenceId, interval, command.Type);
+
+        await _repository.UpdateAsync(cycle, cancellationToken);
+    }
+}
+
+--- src/Modules/Execution/Execution.IntegrationTests/Application/DailyCycleUseCasesTests.cs ---
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Compass.Modules.Execution.Application.DailyCycles.CloseCycle;
+using Compass.Modules.Execution.Application.DailyCycles.RecordExecution;
+using Compass.Modules.Execution.Application.DailyCycles.StartCycle;
+using Compass.Modules.Execution.Domain.DailyCycles;
+using Compass.Modules.Execution.Infrastructure.Database;
+using Compass.Modules.Execution.Infrastructure.Repositories;
+using Compass.SharedKernel.Domain.Exceptions;
+using Microsoft.EntityFrameworkCore;
+using Testcontainers.PostgreSql;
+using Xunit;
+
+namespace Compass.Modules.Execution.IntegrationTests.Application;
+
+public class DailyCycleUseCasesTests : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder()
+        .WithImage("postgres:15-alpine")
+        .WithDatabase("compass_execution_app_test")
+        .WithUsername("postgres")
+        .WithPassword("postgres")
+        .Build();
+
+    private ExecutionDbContext _dbContext = null!;
+    private EfDailyCycleRepository _repository = null!;
+
+    public async Task InitializeAsync()
+    {
+        await _dbContainer.StartAsync();
+        var options = new DbContextOptionsBuilder<ExecutionDbContext>()
+            .UseNpgsql(_dbContainer.GetConnectionString())
+            .Options;
+
+        _dbContext = new ExecutionDbContext(options);
+        await _dbContext.Database.MigrateAsync();
+        _repository = new EfDailyCycleRepository(_dbContext);
+    }
+
+    [Fact]
+    public async Task Deve_Executar_O_Ciclo_De_Vida_Completo_De_Um_Dia()
+    {
+        // 1. Iniciar o dia
+        var startHandler = new StartDailyCycleCommandHandler(_repository);
+        var date = new DateOnly(2026, 8, 18);
+        var cycleId = await startHandler.HandleAsync(new StartDailyCycleCommand(date));
+
+        Assert.NotEqual(Guid.Empty, cycleId);
+        _dbContext.ChangeTracker.Clear();
+
+        // 2. Registrar Trabalho (Pomodoro)
+        var recordHandler = new RecordExecutionCommandHandler(_repository);
+        var taskId = Guid.NewGuid();
+        var start = new DateTimeOffset(2026, 8, 18, 14, 0, 0, TimeSpan.Zero);
+        var end = new DateTimeOffset(2026, 8, 18, 14, 25, 0, TimeSpan.Zero);
+        
+        await recordHandler.HandleAsync(new RecordExecutionCommand(cycleId, taskId, start, end, ExecutionType.DeepWork));
+        _dbContext.ChangeTracker.Clear();
+
+        // Verificar se salvou
+        var loaded = await _repository.GetByIdAsync(cycleId);
+        Assert.Single(loaded!.Logs);
+        Assert.Equal(ExecutionType.DeepWork, loaded.Logs.First().Type);
+        
+        // 3. Tentar registrar no mesmo tempo (Testando o vazamento da invariante)
+        var exception = await Assert.ThrowsAsync<DomainException>(async () => 
+            await recordHandler.HandleAsync(new RecordExecutionCommand(cycleId, Guid.NewGuid(), start, end, ExecutionType.Routine)));
+        
+        Assert.Contains("overlaps", exception.Message);
+
+        // 4. Fechar o dia
+        var closeHandler = new CloseDailyCycleCommandHandler(_repository);
+        await closeHandler.HandleAsync(new CloseDailyCycleCommand(cycleId));
+        _dbContext.ChangeTracker.Clear();
+
+        var closedCycle = await _repository.GetByIdAsync(cycleId);
+        Assert.Equal(CycleStatus.Closed, closedCycle!.Status);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _dbContext.DisposeAsync();
+        await _dbContainer.StopAsync();
+    }
+}
+
+--- src/Modules/Execution/Execution.IntegrationTests/Persistence/DailyCyclePersistenceTests.cs (NAO ENCONTRADO) ---
+    D e t e r m i n a n d o   o s   p r o j e t o s   a   s e r e m   r e s t a u r a d o s . . .  
+     T o d o s   o s   p r o j e t o s   e s t %ú o   a t u a l i z a d o s   p a r a   r e s t a u r a %º %ú o .  
+     C o m p a s s . M o d u l e s . E x e c u t i o n . C o n t r a c t s   - >   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . C o n t r a c t s \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . E x e c u t i o n . C o n t r a c t s . d l l  
+     C o m p a s s . M o d u l e s . C a l e n d a r . C o n t r a c t s   - >   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ C a l e n d a r \ C a l e n d a r . C o n t r a c t s \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . C a l e n d a r . C o n t r a c t s . d l l  
+     C o m p a s s . M o d u l e s . P l a n n i n g . C o n t r a c t s   - >   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ P l a n n i n g \ P l a n n i n g . C o n t r a c t s \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . P l a n n i n g . C o n t r a c t s . d l l  
+     C o m p a s s . S h a r e d K e r n e l   - >   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ S h a r e d \ C o m p a s s . S h a r e d K e r n e l \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . S h a r e d K e r n e l . d l l  
+     C o m p a s s . M o d u l e s . E x e c u t i o n   - >   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . E x e c u t i o n . d l l  
+     C o m p a s s . M o d u l e s . E x e c u t i o n . I n f r a s t r u c t u r e   - >   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n f r a s t r u c t u r e \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n f r a s t r u c t u r e . d l l  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :   f o r a m   e n c o n t r a d o s   c o n f l i t o s   e n t r e   d i f e r e n t e s   v e r s %Á e s   d o   " M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l "   q u e   n %ú o   p u d e r a m   s e r   r e s o l v i d a s .   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :   H %í   u m   c o n f l i t o   e n t r e   " M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l ,   V e r s i o n = 1 0 . 0 . 4 . 0 ,   C u l t u r e = n e u t r a l ,   P u b l i c K e y T o k e n = a d b 9 7 9 3 8 2 9 d d a e 6 0 "   e   " M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l ,   V e r s i o n = 1 0 . 0 . 1 1 . 0 ,   C u l t u r e = n e u t r a l ,   P u b l i c K e y T o k e n = a d b 9 7 9 3 8 2 9 d d a e 6 0 " .   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :           " M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l ,   V e r s i o n = 1 0 . 0 . 4 . 0 ,   C u l t u r e = n e u t r a l ,   P u b l i c K e y T o k e n = a d b 9 7 9 3 8 2 9 d d a e 6 0 "   f o i   e s c o l h i d o   p o r q u e   e r a   p r i n c i p a l   e   " M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l ,   V e r s i o n = 1 0 . 0 . 1 1 . 0 ,   C u l t u r e = n e u t r a l ,   P u b l i c K e y T o k e n = a d b 9 7 9 3 8 2 9 d d a e 6 0 "   n %ú o   e r a .   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :           A s   r e f e r %¬ n c i a s   d e p e n d e r %ú o   d e   " M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l ,   V e r s i o n = 1 0 . 0 . 4 . 0 ,   C u l t u r e = n e u t r a l ,   P u b l i c K e y T o k e n = a d b 9 7 9 3 8 2 9 d d a e 6 0 "   [ C : \ U s e r s \ U s e r \ . n u g e t \ p a c k a g e s \ m i c r o s o f t . e n t i t y f r a m e w o r k c o r e . r e l a t i o n a l \ 1 0 . 0 . 4 \ l i b \ n e t 1 0 . 0 \ M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l . d l l ] .   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :                   C : \ U s e r s \ U s e r \ . n u g e t \ p a c k a g e s \ m i c r o s o f t . e n t i t y f r a m e w o r k c o r e . r e l a t i o n a l \ 1 0 . 0 . 4 \ l i b \ n e t 1 0 . 0 \ M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l . d l l   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :                       I n c l u s %Á e s   d e   i t e n s   d o   a r q u i v o   d e   p r o j e t o   q u e   g e r a r a m   a   r e f e r %¬ n c i a " C : \ U s e r s \ U s e r \ . n u g e t \ p a c k a g e s \ m i c r o s o f t . e n t i t y f r a m e w o r k c o r e . r e l a t i o n a l \ 1 0 . 0 . 4 \ l i b \ n e t 1 0 . 0 \ M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l . d l l " .   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :                           C : \ U s e r s \ U s e r \ . n u g e t \ p a c k a g e s \ m i c r o s o f t . e n t i t y f r a m e w o r k c o r e . r e l a t i o n a l \ 1 0 . 0 . 4 \ l i b \ n e t 1 0 . 0 \ M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l . d l l   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :           R e f e r %¬ n c i a s   q u e   d e p e n d e m   d e   o u   f o r a m   u n i f i c a d a s   p a r a   " M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . R e l a t i o n a l ,   V e r s i o n = 1 0 . 0 . 1 1 . 0 ,   C u l t u r e = n e u t r a l ,   P u b l i c K e y T o k e n = a d b 9 7 9 3 8 2 9 d d a e 6 0 "   [ ] .   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :                   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n f r a s t r u c t u r e \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n f r a s t r u c t u r e . d l l   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :                       I n c l u s %Á e s   d e   i t e n s   d o   a r q u i v o   d e   p r o j e t o   q u e   g e r a r a m   a   r e f e r %¬ n c i a " C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n f r a s t r u c t u r e \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n f r a s t r u c t u r e . d l l " .   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ P r o g r a m   F i l e s \ d o t n e t \ s d k \ 1 0 . 0 . 3 0 0 \ M i c r o s o f t . C o m m o n . C u r r e n t V e r s i o n . t a r g e t s ( 2 4 5 3 , 5 ) :   w a r n i n g   M S B 3 2 7 7 :                           C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n f r a s t r u c t u r e \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n f r a s t r u c t u r e . d l l   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ D a i l y C y c l e P e r s i s t e n c e T e s t s . c s ( 1 6 , 5 7 ) :   w a r n i n g   C S 0 6 1 8 :   " P o s t g r e S q l B u i l d e r . P o s t g r e S q l B u i l d e r ( ) "   %®   o b s o l e t o :   " T h i s   p a r a m e t e r l e s s   c o n s t r u c t o r   i s   o b s o l e t e   a n d   w i l l   b e   r e m o v e d .   U s e   t h e   c o n s t r u c t o r   w i t h   t h e   i m a g e   p a r a m e t e r   i n s t e a d :   h t t p s : / / g i t h u b . c o m / t e s t c o n t a i n e r s / t e s t c o n t a i n e r s - d o t n e t / d i s c u s s i o n s / 1 4 7 0 # d i s c u s s i o n c o m m e n t - 1 5 1 8 5 7 2 1 . "   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ A p p l i c a t i o n \ D a i l y C y c l e U s e C a s e s T e s t s . c s ( 1 9 , 5 7 ) :   w a r n i n g   C S 0 6 1 8 :   " P o s t g r e S q l B u i l d e r . P o s t g r e S q l B u i l d e r ( ) "   %®   o b s o l e t o :   " T h i s   p a r a m e t e r l e s s   c o n s t r u c t o r   i s   o b s o l e t e   a n d   w i l l   b e   r e m o v e d .   U s e   t h e   c o n s t r u c t o r   w i t h   t h e   i m a g e   p a r a m e t e r   i n s t e a d :   h t t p s : / / g i t h u b . c o m / t e s t c o n t a i n e r s / t e s t c o n t a i n e r s - d o t n e t / d i s c u s s i o n s / 1 4 7 0 # d i s c u s s i o n c o m m e n t - 1 5 1 8 5 7 2 1 . "   [ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . c s p r o j ]  
+     C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s   - >   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . d l l  
+ E x e c u %º %ú o   d e   t e s t e   p a r a   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . d l l   ( . N E T C o r e A p p , V e r s i o n = v 1 0 . 0 )  
+ 1   a r q u i v o s   d e   t e s t e   n o   t o t a l   c o r r e s p o n d e r a m   a o   p a d r %ú o   e s p e c i f i c a d o .  
+ C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ b i n \ D e b u g \ n e t 1 0 . 0 \ C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . d l l  
+ [ x U n i t . n e t   0 0 : 0 0 : 0 0 . 0 1 ]   x U n i t . n e t   V S T e s t   A d a p t e r   v 3 . 1 . 4 + 5 0 e 6 8 b b b 8 b   ( 6 4 - b i t   . N E T   1 0 . 0 . 8 )  
+ [ x U n i t . n e t   0 0 : 0 0 : 0 0 . 3 1 ]       D i s c o v e r i n g :   C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s  
+ [ x U n i t . n e t   0 0 : 0 0 : 0 0 . 4 3 ]       D i s c o v e r e d :     C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s  
+ [ x U n i t . n e t   0 0 : 0 0 : 0 0 . 5 0 ]       S t a r t i n g :         C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 1 . 1 2 ]   C o n n e c t e d   t o   D o c k e r :  
+     H o s t :   n p i p e : / / . / p i p e / d o c k e r _ e n g i n e  
+     S e r v e r   V e r s i o n :   5 . 8 . 6  
+     K e r n e l   V e r s i o n :   6 . 6 . 8 7 . 2 - m i c r o s o f t - s t a n d a r d - W S L 2  
+     A P I   V e r s i o n :   1 . 4 4  
+     O p e r a t i n g   S y s t e m :   f e d o r a  
+     T o t a l   M e m o r y :   3 . 7 7   G B  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 1 . 7 8 ]   D o c k e r   c o n t a i n e r   4 b 8 6 2 c 7 5 f 6 6 9   c r e a t e d  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 1 . 9 4 ]   S t a r t   D o c k e r   c o n t a i n e r   4 b 8 6 2 c 7 5 f 6 6 9  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 2 . 5 8 ]   W a i t   f o r   D o c k e r   c o n t a i n e r   4 b 8 6 2 c 7 5 f 6 6 9   t o   c o m p l e t e   r e a d i n e s s   c h e c k s  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 3 . 9 0 ]   D o c k e r   c o n t a i n e r   4 b 8 6 2 c 7 5 f 6 6 9   r e a d y  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 4 . 0 9 ]   D o c k e r   c o n t a i n e r   e e 1 2 8 0 3 b e 8 5 e   c r e a t e d  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 4 . 1 4 ]   S t a r t   D o c k e r   c o n t a i n e r   e e 1 2 8 0 3 b e 8 5 e  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 4 . 4 0 ]   W a i t   f o r   D o c k e r   c o n t a i n e r   e e 1 2 8 0 3 b e 8 5 e   t o   c o m p l e t e   r e a d i n e s s   c h e c k s  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 4 . 5 1 ]   E x e c u t e   " p g _ i s r e a d y   - - h o s t   l o c a l h o s t   - - d b n a m e   c o m p a s s _ e x e c u t i o n _ a p p _ t e s t   - - u s e r n a m e   p o s t g r e s "   a t   D o c k e r   c o n t a i n e r   e e 1 2 8 0 3 b e 8 5 e  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 5 . 9 3 ]   E x e c u t e   " p g _ i s r e a d y   - - h o s t   l o c a l h o s t   - - d b n a m e   c o m p a s s _ e x e c u t i o n _ a p p _ t e s t   - - u s e r n a m e   p o s t g r e s "   a t   D o c k e r   c o n t a i n e r   e e 1 2 8 0 3 b e 8 5 e  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 7 . 1 5 ]   E x e c u t e   " p g _ i s r e a d y   - - h o s t   l o c a l h o s t   - - d b n a m e   c o m p a s s _ e x e c u t i o n _ a p p _ t e s t   - - u s e r n a m e   p o s t g r e s "   a t   D o c k e r   c o n t a i n e r   e e 1 2 8 0 3 b e 8 5 e  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 7 . 2 8 ]   D o c k e r   c o n t a i n e r   e e 1 2 8 0 3 b e 8 5 e   r e a d y  
+ [ D I A G N O S T I C O   E F   C O R E   -   A N T E S   D O   S A V E C H A N G E S ]  
+ D a i l y C y c l e   S t a t e :   U n c h a n g e d  
+ T o k e n   [ V e r s i o n ] :   O r i g i n a l = ' 7 2 8 ' ,   C u r r e n t = ' 7 2 8 '  
+ L o g s   C o l l e c t i o n   I s M o d i f i e d :   T r u e  
+     -   L o g   S t a t e :   M o d i f i e d  
+ [ F I M   D I A G N O S T I C O ]  
+ [ t e s t c o n t a i n e r s . o r g   0 0 : 0 0 : 0 9 . 8 3 ]   S t o p   D o c k e r   c o n t a i n e r   e e 1 2 8 0 3 b e 8 5 e  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 6 ]               M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . D b U p d a t e C o n c u r r e n c y E x c e p t i o n   :   T h e   d a t a b a s e   o p e r a t i o n   w a s   e x p e c t e d   t o   a f f e c t   1   r o w ( s ) ,   b u t   a c t u a l l y   a f f e c t e d   0   r o w ( s ) ;   d a t a   m a y   h a v e   b e e n   m o d i f i e d   o r   d e l e t e d   s i n c e   e n t i t i e s   w e r e   l o a d e d .   S e e   h t t p s : / / g o . m i c r o s o f t . c o m / f w l i n k / ? L i n k I d = 5 2 7 9 6 2   f o r   i n f o r m a t i o n   o n   u n d e r s t a n d i n g   a n d   h a n d l i n g   o p t i m i s t i c   c o n c u r r e n c y   e x c e p t i o n s .  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]               S t a c k   T r a c e :  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   N p g s q l . E n t i t y F r a m e w o r k C o r e . P o s t g r e S Q L . U p d a t e . I n t e r n a l . N p g s q l M o d i f i c a t i o n C o m m a n d B a t c h . T h r o w A g g r e g a t e U p d a t e C o n c u r r e n c y E x c e p t i o n A s y n c ( R e l a t i o n a l D a t a R e a d e r   r e a d e r ,   I n t 3 2   c o m m a n d I n d e x ,   I n t 3 2   e x p e c t e d R o w s A f f e c t e d ,   I n t 3 2   r o w s A f f e c t e d ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   N p g s q l . E n t i t y F r a m e w o r k C o r e . P o s t g r e S Q L . U p d a t e . I n t e r n a l . N p g s q l M o d i f i c a t i o n C o m m a n d B a t c h . C o n s u m e ( R e l a t i o n a l D a t a R e a d e r   r e a d e r ,   B o o l e a n   a s y n c ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . R e a d e r M o d i f i c a t i o n C o m m a n d B a t c h . E x e c u t e A s y n c ( I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . R e a d e r M o d i f i c a t i o n C o m m a n d B a t c h . E x e c u t e A s y n c ( I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . I n t e r n a l . B a t c h E x e c u t o r . E x e c u t e A s y n c ( I E n u m e r a b l e ` 1   c o m m a n d B a t c h e s ,   I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . I n t e r n a l . B a t c h E x e c u t o r . E x e c u t e A s y n c ( I E n u m e r a b l e ` 1   c o m m a n d B a t c h e s ,   I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . I n t e r n a l . B a t c h E x e c u t o r . E x e c u t e A s y n c ( I E n u m e r a b l e ` 1   c o m m a n d B a t c h e s ,   I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . S t o r a g e . R e l a t i o n a l D a t a b a s e . S a v e C h a n g e s A s y n c ( I L i s t ` 1   e n t r i e s ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . C h a n g e T r a c k i n g . I n t e r n a l . S t a t e M a n a g e r . S a v e C h a n g e s A s y n c ( I L i s t ` 1   e n t r i e s T o S a v e ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . C h a n g e T r a c k i n g . I n t e r n a l . S t a t e M a n a g e r . S a v e C h a n g e s A s y n c ( S t a t e M a n a g e r   s t a t e M a n a g e r ,   B o o l e a n   a c c e p t A l l C h a n g e s O n S u c c e s s ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   N p g s q l . E n t i t y F r a m e w o r k C o r e . P o s t g r e S Q L . S t o r a g e . I n t e r n a l . N p g s q l E x e c u t i o n S t r a t e g y . E x e c u t e A s y n c [ T S t a t e , T R e s u l t ] ( T S t a t e   s t a t e ,   F u n c ` 4   o p e r a t i o n ,   F u n c ` 4   v e r i f y S u c c e e d e d ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                         a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . D b C o n t e x t . S a v e C h a n g e s A s y n c ( B o o l e a n   a c c e p t A l l C h a n g e s O n S u c c e s s ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n f r a s t r u c t u r e \ R e p o s i t o r i e s \ E f D a i l y C y c l e R e p o s i t o r y . c s ( 5 6 , 0 ) :   a t   C o m p a s s . M o d u l e s . E x e c u t i o n . I n f r a s t r u c t u r e . R e p o s i t o r i e s . E f D a i l y C y c l e R e p o s i t o r y . U p d a t e A s y n c ( D a i l y C y c l e   c y c l e ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n \ A p p l i c a t i o n \ D a i l y C y c l e s \ R e c o r d E x e c u t i o n \ R e c o r d E x e c u t i o n C o m m a n d H a n d l e r . c s ( 2 9 , 0 ) :   a t   C o m p a s s . M o d u l e s . E x e c u t i o n . A p p l i c a t i o n . D a i l y C y c l e s . R e c o r d E x e c u t i o n . R e c o r d E x e c u t i o n C o m m a n d H a n d l e r . H a n d l e A s y n c ( R e c o r d E x e c u t i o n C o m m a n d   c o m m a n d ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ A p p l i c a t i o n \ D a i l y C y c l e U s e C a s e s T e s t s . c s ( 5 8 , 0 ) :   a t   C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . A p p l i c a t i o n . D a i l y C y c l e U s e C a s e s T e s t s . D e v e _ E x e c u t a r _ O _ C i c l o _ D e _ V i d a _ C o m p l e t o _ D e _ U m _ D i a ( )  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 6 7 ]                   - - -   E n d   o f   s t a c k   t r a c e   f r o m   p r e v i o u s   l o c a t i o n   - - -  
+ [ x U n i t . n e t   0 0 : 0 0 : 1 1 . 7 0 ]       F i n i s h e d :         C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s  
+     C o m   f a l h a   C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . A p p l i c a t i o n . D a i l y C y c l e U s e C a s e s T e s t s . D e v e _ E x e c u t a r _ O _ C i c l o _ D e _ V i d a _ C o m p l e t o _ D e _ U m _ D i a   [ 1   s ]  
+     M e n s a g e m   d e   e r r o :  
+       M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . D b U p d a t e C o n c u r r e n c y E x c e p t i o n   :   T h e   d a t a b a s e   o p e r a t i o n   w a s   e x p e c t e d   t o   a f f e c t   1   r o w ( s ) ,   b u t   a c t u a l l y   a f f e c t e d   0   r o w ( s ) ;   d a t a   m a y   h a v e   b e e n   m o d i f i e d   o r   d e l e t e d   s i n c e   e n t i t i e s   w e r e   l o a d e d .   S e e   h t t p s : / / g o . m i c r o s o f t . c o m / f w l i n k / ? L i n k I d = 5 2 7 9 6 2   f o r   i n f o r m a t i o n   o n   u n d e r s t a n d i n g   a n d   h a n d l i n g   o p t i m i s t i c   c o n c u r r e n c y   e x c e p t i o n s .  
+     R a s t r e a m e n t o   d e   p i l h a :  
+           a t   N p g s q l . E n t i t y F r a m e w o r k C o r e . P o s t g r e S Q L . U p d a t e . I n t e r n a l . N p g s q l M o d i f i c a t i o n C o m m a n d B a t c h . T h r o w A g g r e g a t e U p d a t e C o n c u r r e n c y E x c e p t i o n A s y n c ( R e l a t i o n a l D a t a R e a d e r   r e a d e r ,   I n t 3 2   c o m m a n d I n d e x ,   I n t 3 2   e x p e c t e d R o w s A f f e c t e d ,   I n t 3 2   r o w s A f f e c t e d ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   N p g s q l . E n t i t y F r a m e w o r k C o r e . P o s t g r e S Q L . U p d a t e . I n t e r n a l . N p g s q l M o d i f i c a t i o n C o m m a n d B a t c h . C o n s u m e ( R e l a t i o n a l D a t a R e a d e r   r e a d e r ,   B o o l e a n   a s y n c ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . R e a d e r M o d i f i c a t i o n C o m m a n d B a t c h . E x e c u t e A s y n c ( I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . R e a d e r M o d i f i c a t i o n C o m m a n d B a t c h . E x e c u t e A s y n c ( I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . I n t e r n a l . B a t c h E x e c u t o r . E x e c u t e A s y n c ( I E n u m e r a b l e ` 1   c o m m a n d B a t c h e s ,   I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . I n t e r n a l . B a t c h E x e c u t o r . E x e c u t e A s y n c ( I E n u m e r a b l e ` 1   c o m m a n d B a t c h e s ,   I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . U p d a t e . I n t e r n a l . B a t c h E x e c u t o r . E x e c u t e A s y n c ( I E n u m e r a b l e ` 1   c o m m a n d B a t c h e s ,   I R e l a t i o n a l C o n n e c t i o n   c o n n e c t i o n ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . S t o r a g e . R e l a t i o n a l D a t a b a s e . S a v e C h a n g e s A s y n c ( I L i s t ` 1   e n t r i e s ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . C h a n g e T r a c k i n g . I n t e r n a l . S t a t e M a n a g e r . S a v e C h a n g e s A s y n c ( I L i s t ` 1   e n t r i e s T o S a v e ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . C h a n g e T r a c k i n g . I n t e r n a l . S t a t e M a n a g e r . S a v e C h a n g e s A s y n c ( S t a t e M a n a g e r   s t a t e M a n a g e r ,   B o o l e a n   a c c e p t A l l C h a n g e s O n S u c c e s s ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   N p g s q l . E n t i t y F r a m e w o r k C o r e . P o s t g r e S Q L . S t o r a g e . I n t e r n a l . N p g s q l E x e c u t i o n S t r a t e g y . E x e c u t e A s y n c [ T S t a t e , T R e s u l t ] ( T S t a t e   s t a t e ,   F u n c ` 4   o p e r a t i o n ,   F u n c ` 4   v e r i f y S u c c e e d e d ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   M i c r o s o f t . E n t i t y F r a m e w o r k C o r e . D b C o n t e x t . S a v e C h a n g e s A s y n c ( B o o l e a n   a c c e p t A l l C h a n g e s O n S u c c e s s ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )  
+       a t   C o m p a s s . M o d u l e s . E x e c u t i o n . I n f r a s t r u c t u r e . R e p o s i t o r i e s . E f D a i l y C y c l e R e p o s i t o r y . U p d a t e A s y n c ( D a i l y C y c l e   c y c l e ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )   i n   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n f r a s t r u c t u r e \ R e p o s i t o r i e s \ E f D a i l y C y c l e R e p o s i t o r y . c s : l i n e   5 6  
+       a t   C o m p a s s . M o d u l e s . E x e c u t i o n . A p p l i c a t i o n . D a i l y C y c l e s . R e c o r d E x e c u t i o n . R e c o r d E x e c u t i o n C o m m a n d H a n d l e r . H a n d l e A s y n c ( R e c o r d E x e c u t i o n C o m m a n d   c o m m a n d ,   C a n c e l l a t i o n T o k e n   c a n c e l l a t i o n T o k e n )   i n   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n \ A p p l i c a t i o n \ D a i l y C y c l e s \ R e c o r d E x e c u t i o n \ R e c o r d E x e c u t i o n C o m m a n d H a n d l e r . c s : l i n e   2 9  
+       a t   C o m p a s s . M o d u l e s . E x e c u t i o n . I n t e g r a t i o n T e s t s . A p p l i c a t i o n . D a i l y C y c l e U s e C a s e s T e s t s . D e v e _ E x e c u t a r _ O _ C i c l o _ D e _ V i d a _ C o m p l e t o _ D e _ U m _ D i a ( )   i n   C : \ U s e r s \ U s e r \ c o m p a s s \ s r c \ M o d u l e s \ E x e c u t i o n \ E x e c u t i o n . I n t e g r a t i o n T e s t s \ A p p l i c a t i o n \ D a i l y C y c l e U s e C a s e s T e s t s . c s : l i n e   5 8  
+ - - -   E n d   o f   s t a c k   t r a c e   f r o m   p r e v i o u s   l o c a t i o n   - - -  
+  
+ T o t a l   d e   t e s t e s :   1  
+           C o m   f a l h a :   1  
+ T e m p o   t o t a l :   1 3 , 4 7 2 3   S e g u n d o s  
+ 

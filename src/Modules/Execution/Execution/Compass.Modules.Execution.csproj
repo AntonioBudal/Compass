@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\Compass.SharedKernel\Compass.SharedKernel.csproj" />
+    <ProjectReference Include="..\Execution.Contracts\Compass.Modules.Execution.Contracts.csproj" />
+    <ProjectReference Include="..\..\Planning\Planning.Contracts\Compass.Modules.Planning.Contracts.csproj" />
+    <ProjectReference Include="..\..\Calendar\Calendar.Contracts\Compass.Modules.Calendar.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="14.2.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+</Project>
+
+

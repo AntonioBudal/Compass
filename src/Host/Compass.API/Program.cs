@@ -1,41 +1,69 @@
-﻿using Compass.API.Middleware;
+﻿using Compass.Modules.Execution.Application.DailyCycles.RecordExecution;
+using Compass.Modules.Execution.Presentation;
+using Compass.Modules.Execution;
+using Compass.API.Middleware;
+using Compass.Modules.Execution.Infrastructure;
 using Compass.Modules.Planning;
 using Compass.Modules.Planning.Infrastructure;
 using Compass.Modules.Planning.Presentation;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// Exception Handling
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-// Configura a Connection String. 
-// OBS: Em desenvolvimento local apontaremos para o compass_dev criado.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+var connectionString =
+    builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=compass_dev;Username=postgres;Password=postgres";
 
-// Registrar os Módulos (Nossa "Costura")
 builder.Services.AddPlanningApplication();
+builder.Services.AddExecutionApplication();
+
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssemblies(
+        typeof(RecordExecutionCommandHandler).Assembly,
+        typeof(PlanningEndpoints).Assembly,
+        typeof(Compass.Modules.Planning.Infrastructure.DependencyInjection).Assembly
+    );
+});
 builder.Services.AddPlanningInfrastructure(connectionString);
+
+builder.Services.AddExecutionInfrastructure(connectionString);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseExceptionHandler(); // Ativa o GlobalExceptionHandler
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 
-// Mapear Endpoints dos Módulos
 app.MapPlanningEndpoints();
+app.MapExecutionEndpoints();
+
+// Migrations
+using (var scope = app.Services.CreateScope())
+{
+    var planningDb = scope.ServiceProvider.GetService<
+        Compass.Modules.Planning.Infrastructure.Database.PlanningDbContext>();
+
+    if (planningDb != null)
+    {
+        await Microsoft.EntityFrameworkCore
+            .RelationalDatabaseFacadeExtensions
+            .MigrateAsync(planningDb.Database);
+    }
+}
+
+await app.Services.MigrateExecutionDatabaseAsync();
 
 app.Run();
 
 public partial class Program { }
+
+
