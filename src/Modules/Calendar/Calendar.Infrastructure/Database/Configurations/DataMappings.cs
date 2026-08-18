@@ -1,34 +1,49 @@
-﻿using Compass.Modules.Calendar.Infrastructure.Database.Models;
+using Compass.Modules.Calendar.Infrastructure.Database.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Compass.Modules.Calendar.Infrastructure.Database.Configurations;
 
-internal class ScheduleProfileDataConfiguration : IEntityTypeConfiguration<ScheduleProfileData>
+internal sealed class ScheduleProfileDataConfiguration
+    : IEntityTypeConfiguration<ScheduleProfileData>
 {
-    public void Configure(EntityTypeBuilder<ScheduleProfileData> builder)
+    public void Configure(
+        EntityTypeBuilder<ScheduleProfileData> builder)
     {
         builder.ToTable("ScheduleProfiles");
-        builder.HasKey(p => p.Id);
-        
-        builder.Property(p => p.Timezone).IsRequired().HasMaxLength(100);
+        builder.HasKey(profile => profile.Id);
 
-        builder.HasMany(p => p.Windows)
-               .WithOne(w => w.Profile)
-               .HasForeignKey(w => w.ScheduleProfileId)
-               .OnDelete(DeleteBehavior.Cascade);
+        builder.Property(profile => profile.Timezone)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.HasMany(profile => profile.Windows)
+            .WithOne(window => window.Profile)
+            .HasForeignKey(window => window.ScheduleProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
-internal class ScheduleWindowDataConfiguration : IEntityTypeConfiguration<ScheduleWindowData>
+internal sealed class ScheduleWindowDataConfiguration
+    : IEntityTypeConfiguration<ScheduleWindowData>
 {
-    public void Configure(EntityTypeBuilder<ScheduleWindowData> builder)
+    public void Configure(
+        EntityTypeBuilder<ScheduleWindowData> builder)
     {
         builder.ToTable("ScheduleWindows");
-        builder.HasKey(w => w.Id);
-        
-        builder.Property(w => w.DayOfWeek).HasConversion<string>().IsRequired();
-        builder.Property(w => w.StartTime).HasColumnType("time without time zone").IsRequired();
-        builder.Property(w => w.EndTime).HasColumnType("time without time zone").IsRequired();
+        builder.HasKey(window => window.Id);
+
+        builder.Property(window => window.DayOfWeek)
+            .HasConversion<string>()
+            .IsRequired();
+
+        builder.Property(window => window.StartTime)
+            .HasColumnType("time without time zone")
+            .IsRequired();
+
+        builder.Property(window => window.EndTime)
+            .HasColumnType("time without time zone")
+            .IsRequired();
     }
 }
+

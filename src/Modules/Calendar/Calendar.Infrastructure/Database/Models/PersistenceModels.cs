@@ -1,16 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-
 namespace Compass.Modules.Calendar.Infrastructure.Database.Models;
 
-internal class ScheduleProfileData
+internal sealed class ScheduleProfileData
 {
     public Guid Id { get; set; }
     public string Timezone { get; set; } = null!;
     public List<ScheduleWindowData> Windows { get; set; } = new();
 }
 
-internal class ScheduleWindowData
+internal sealed class ScheduleWindowData
 {
     public Guid Id { get; set; }
     public Guid ScheduleProfileId { get; set; }

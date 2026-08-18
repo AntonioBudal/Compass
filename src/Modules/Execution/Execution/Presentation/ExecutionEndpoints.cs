@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using System;
+using System.Threading;
 
 namespace Compass.Modules.Execution.Presentation;
 
@@ -22,7 +24,6 @@ public static class ExecutionEndpoints
         // ----------------------------------------------------
         // START DAILY CYCLE
         // ----------------------------------------------------
-
         group.MapPost(
             "/daily-cycles",
             async (
@@ -38,11 +39,9 @@ public static class ExecutionEndpoints
                     new StartDailyCycleResponse(id));
             });
 
-
         // ----------------------------------------------------
         // RECORD EXECUTION
         // ----------------------------------------------------
-
         group.MapPost(
             "/daily-cycles/{id:guid}/executions",
             async (
@@ -75,11 +74,9 @@ public static class ExecutionEndpoints
                 return Results.NoContent();
             });
 
-
         // ----------------------------------------------------
         // CLOSE DAILY CYCLE
         // ----------------------------------------------------
-
         group.MapPut(
             "/daily-cycles/{id:guid}/close",
             async (
@@ -94,11 +91,9 @@ public static class ExecutionEndpoints
                 return Results.NoContent();
             });
 
-
         // ----------------------------------------------------
         // GET DAILY CYCLE BY ID
         // ----------------------------------------------------
-
         group.MapGet(
             "/daily-cycles/{id:guid}",
             async (
@@ -115,11 +110,9 @@ public static class ExecutionEndpoints
                     : Results.Ok(cycle);
             });
 
-
         // ----------------------------------------------------
         // GET DAILY CYCLE BY DATE
         // ----------------------------------------------------
-
         group.MapGet(
             "/daily-cycles/by-date/{date}",
             async (
@@ -136,22 +129,64 @@ public static class ExecutionEndpoints
                     : Results.Ok(cycle);
             });
 
+        // ----------------------------------------------------
+        // GET DAILY PLAN (DECISION ENGINE PREVIEW)
+        // ----------------------------------------------------
+        group.MapGet(
+            "/daily-plan",
+            async (
+                [Microsoft.AspNetCore.Mvc.FromQuery] Guid profileId,
+                [Microsoft.AspNetCore.Mvc.FromQuery] DateOnly date,
+                [Microsoft.AspNetCore.Mvc.FromServices] MediatR.IMediator mediator) =>
+            {
+                var query = new Compass.Modules.Execution.Application.DailyPlanning.BuildDailyPlanQuery(profileId, date);
+                var result = await mediator.Send(query);
+                return Microsoft.AspNetCore.Http.Results.Ok(result);
+            })
+            .WithName("GetDailyPlan");
+
+        // ----------------------------------------------------
+        // ACCEPT DAILY PLAN (MATERIALIZAÇÃO)
+        // ----------------------------------------------------
+        group.MapPost(
+            "/daily-plans",
+            async (
+                [Microsoft.AspNetCore.Mvc.FromBody] Compass.Modules.Execution.Application.DailyPlanning.AcceptDailyPlanCommand command,
+                [Microsoft.AspNetCore.Mvc.FromServices] MediatR.IMediator mediator) =>
+            {
+                try
+                {
+                    var planId = await mediator.Send(command);
+                    return Microsoft.AspNetCore.Http.Results.Ok(new { DailyPlanId = planId });
+                }
+                catch (Exception ex) when (ex.Message.Contains("already been accepted"))
+                {
+                    return Microsoft.AspNetCore.Http.Results.Conflict(new { error = ex.Message });
+                }
+            })
+            .WithName("AcceptDailyPlan");
+
+            group.MapGet(
+            "/daily-adherence",
+            async (
+                [Microsoft.AspNetCore.Mvc.FromQuery] Guid profileId,
+                [Microsoft.AspNetCore.Mvc.FromQuery] DateOnly date,
+                [Microsoft.AspNetCore.Mvc.FromServices] MediatR.IMediator mediator,
+                CancellationToken cancellationToken) =>
+            {
+                var query = new Compass.Modules.Execution.Application.Analytics.Queries.GetDailyAdherenceQuery(profileId, date);
+                var result = await mediator.Send(query, cancellationToken);
+
+                return result is null
+                    ? Microsoft.AspNetCore.Http.Results.NotFound(new { error = "No daily plan found for this profile and date." })
+                    : Microsoft.AspNetCore.Http.Results.Ok(result);
+            })
+            .WithName("GetDailyAdherence");
+
         return app;
     }
 }
 
-
-public sealed record StartDailyCycleRequest(
-    DateOnly Date);
-
-
-public sealed record StartDailyCycleResponse(
-    Guid DailyCycleId);
-
-
-public sealed record RecordExecutionRequest(
-    Guid ReferenceId,
-    DateTimeOffset Start,
-    DateTimeOffset End,
-    string Type);
-
+public sealed record StartDailyCycleRequest(DateOnly Date);
+public sealed record StartDailyCycleResponse(Guid DailyCycleId);
+public sealed record RecordExecutionRequest(Guid ReferenceId, DateTimeOffset Start, DateTimeOffset End, string Type);

@@ -19,10 +19,12 @@ public static class DependencyInjection
 
         services.AddScoped<ITaskRepository, TaskRepository>();
         services.AddScoped<ITaskQueryService, TaskQueryService>();
+        services.AddScoped<Compass.Modules.Planning.Contracts.Queries.IExecutableWorkQuery, ExecutableWorkCrossQuery>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IHabitRepository, HabitRepository>();
 
         return services;
     }
 }
+
 

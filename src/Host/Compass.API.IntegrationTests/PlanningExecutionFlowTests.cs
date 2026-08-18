@@ -1,68 +1,68 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
-using Testcontainers.PostgreSql;
+using Xunit;
 
 namespace Compass.API.IntegrationTests;
 
-public sealed class PlanningExecutionFlowTests
+public class PlanningExecutionFlowTests : IClassFixture<CompassApiFactory>
 {
-    [Fact]
-    public async Task Recording_execution_for_ready_task_should_move_task_to_in_progress()
+    private readonly CompassApiFactory _factory;
+
+    public PlanningExecutionFlowTests(CompassApiFactory factory)
     {
-        // ----------------------------------------------------
-        // DATABASE
-        // ----------------------------------------------------
+        _factory = factory;
+    }
 
-        await using var postgres =
-            new PostgreSqlBuilder("postgres:16-alpine")
-                .WithDatabase("compass_api_e2e_test")
-                .WithUsername("postgres")
-                .WithPassword("postgres")
-                .Build();
+    private sealed record CreateTaskResponse(Guid TaskId);
 
-        await postgres.StartAsync();
+    private sealed record StartDailyCycleResponse(Guid DailyCycleId);
 
+    private sealed record TaskDto(
+        Guid Id,
+        string Title,
+        string Status,
+        int? EstimatedDurationMinutes,
+        DateTimeOffset? HardDeadline,
+        Guid? ProjectId);
 
-        // ----------------------------------------------------
-        // API
-        // ----------------------------------------------------
+    private sealed record ExecutionLogDto(
+        Guid Id,
+        Guid ReferenceId,
+        string Type,
+        DateTimeOffset Start,
+        DateTimeOffset End);
 
-        using var factory =
-            new CompassApiFactory(
-                postgres.GetConnectionString());
+    private sealed record DailyCycleDto(
+        Guid Id,
+        DateOnly Date,
+        string Status,
+        IReadOnlyList<ExecutionLogDto> Logs);
 
-        using var client =
-            factory.CreateClient(
-                new Microsoft.AspNetCore.Mvc.Testing
-                    .WebApplicationFactoryClientOptions
-                {
-                    AllowAutoRedirect = false,
-                    BaseAddress = new Uri("http://localhost")
-                });
-
+    [Fact]
+    public async Task Complete_Flow_Creates_Task_Records_Execution_And_Updates_Status()
+    {
+        var client = _factory.CreateClient();
 
         // ====================================================
         // 1. CREATE TASK
         // ====================================================
 
-        using var createTaskResponse =
-            await client.PostAsJsonAsync(
-                "/api/planning/tasks",
-                new
-                {
-                    title = "Fluxo E2E Monólito Modular"
-                });
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/planning/tasks",
+            new
+            {
+                title = "Implement Decision Engine"
+            });
 
-        await AssertSuccessAsync(createTaskResponse);
+        createResponse.EnsureSuccessStatusCode();
 
-        using var createdTaskJson =
-            await ReadJsonAsync(createTaskResponse);
+        var createdTask =
+            await createResponse.Content
+                .ReadFromJsonAsync<CreateTaskResponse>();
 
-        var taskId =
-            createdTaskJson.RootElement
-                .GetProperty("taskId")
-                .GetGuid();
+        Assert.NotNull(createdTask);
+
+        var taskId = createdTask.TaskId;
 
 
         // ====================================================
@@ -70,248 +70,146 @@ public sealed class PlanningExecutionFlowTests
         // Draft -> Ready
         // ====================================================
 
-        using var estimateResponse =
-            await client.PutAsJsonAsync(
-                $"/api/planning/tasks/{taskId}/estimate",
-                new
-                {
-                    estimatedDurationMinutes = 120
-                });
+        var estimateResponse = await client.PutAsJsonAsync(
+            $"/api/planning/tasks/{taskId}/estimate",
+            new
+            {
+                estimatedDurationMinutes = 120
+            });
 
         Assert.Equal(
             HttpStatusCode.NoContent,
             estimateResponse.StatusCode);
 
 
-        // ----------------------------------------------------
-        // Confirmar precondição do evento
-        // ----------------------------------------------------
+        // Confirmar a precondição do Integration Event
+        var readyResponse = await client.GetAsync(
+            $"/api/planning/tasks/{taskId}");
 
-        using var readyTaskResponse =
-            await client.GetAsync(
-                $"/api/planning/tasks/{taskId}");
+        readyResponse.EnsureSuccessStatusCode();
 
-        await AssertSuccessAsync(readyTaskResponse);
+        var readyTask =
+            await readyResponse.Content
+                .ReadFromJsonAsync<TaskDto>();
 
-        using var readyTaskJson =
-            await ReadJsonAsync(readyTaskResponse);
-
-        Assert.Equal(
-            "Ready",
-            readyTaskJson.RootElement
-                .GetProperty("status")
-                .GetString());
+        Assert.NotNull(readyTask);
+        Assert.Equal("Ready", readyTask.Status);
 
 
         // ====================================================
         // 3. START DAILY CYCLE
         // ====================================================
 
-        const string cycleDate = "2026-08-16";
+        var date = new DateOnly(2026, 8, 17);
 
-        using var cycleResponse =
-            await client.PostAsJsonAsync(
-                "/api/execution/daily-cycles",
-                new
-                {
-                    date = cycleDate
-                });
+        var cycleResponse = await client.PostAsJsonAsync(
+            "/api/execution/daily-cycles",
+            new
+            {
+                date
+            });
 
-        await AssertSuccessAsync(cycleResponse);
+        cycleResponse.EnsureSuccessStatusCode();
 
-        using var cycleJson =
-            await ReadJsonAsync(cycleResponse);
+        var cycle =
+            await cycleResponse.Content
+                .ReadFromJsonAsync<StartDailyCycleResponse>();
 
-        var cycleId =
-            cycleJson.RootElement
-                .GetProperty("dailyCycleId")
-                .GetGuid();
+        Assert.NotNull(cycle);
+
+        var cycleId = cycle.DailyCycleId;
 
 
         // ====================================================
         // 4. RECORD EXECUTION
         //
-        // Importante:
-        // enviamos -03:00 deliberadamente.
-        //
-        // A fronteira HTTP deve normalizar:
-        //
-        // 10:00 -03:00 -> 13:00 UTC
-        // 11:00 -03:00 -> 14:00 UTC
+        // Deliberadamente enviamos -03:00 para também
+        // proteger a normalização UTC.
         // ====================================================
 
-        using var recordResponse =
-            await client.PostAsJsonAsync(
-                $"/api/execution/daily-cycles/{cycleId}/executions",
-                new
-                {
-                    referenceId = taskId,
-                    start = "2026-08-16T10:00:00-03:00",
-                    end = "2026-08-16T11:00:00-03:00",
-                    type = "DeepWork"
-                });
+        var recordResponse = await client.PostAsJsonAsync(
+            $"/api/execution/daily-cycles/{cycleId}/executions",
+            new
+            {
+                referenceId = taskId,
+                start = "2026-08-17T08:00:00-03:00",
+                end = "2026-08-17T09:00:00-03:00",
+                type = "DeepWork"
+            });
 
         Assert.Equal(
             HttpStatusCode.NoContent,
             recordResponse.StatusCode);
 
 
+        // NÃO usar Task.Delay.
+        // MediatR Publish é aguardado pela request.
+
+
         // ====================================================
-        // 5. PLANNING DEVE TER REAGIDO AO EVENTO
-        //
-        // ExecutionRecordedIntegrationEvent
-        //          ↓
-        // MediatR
-        //          ↓
-        // Planning
-        //          ↓
-        // Ready -> InProgress
+        // 5. PLANNING DEVE ESTAR IN PROGRESS
         // ====================================================
 
-        using var taskResponse =
-            await client.GetAsync(
-                $"/api/planning/tasks/{taskId}");
+        var taskResponse = await client.GetAsync(
+            $"/api/planning/tasks/{taskId}");
 
-        await AssertSuccessAsync(taskResponse);
-
-        using var taskJson =
-            await ReadJsonAsync(taskResponse);
+        taskResponse.EnsureSuccessStatusCode();
 
         var task =
-            taskJson.RootElement;
+            await taskResponse.Content
+                .ReadFromJsonAsync<TaskDto>();
 
-        Assert.Equal(
-            taskId,
-            task.GetProperty("id").GetGuid());
+        Assert.NotNull(task);
 
-        Assert.Equal(
-            "InProgress",
-            task.GetProperty("status").GetString());
-
-        Assert.Equal(
-            120,
-            task.GetProperty(
-                "estimatedDurationMinutes")
-                .GetInt32());
+        Assert.Equal(taskId, task.Id);
+        Assert.Equal("InProgress", task.Status);
+        Assert.Equal(120, task.EstimatedDurationMinutes);
 
 
         // ====================================================
-        // 6. EXECUTION LOG DEVE EXISTIR
+        // 6. EXECUTION LOG DEVE TER SIDO PERSISTIDO
         // ====================================================
 
-        using var persistedCycleResponse =
-            await client.GetAsync(
-                $"/api/execution/daily-cycles/{cycleId}");
+        var persistedCycleResponse = await client.GetAsync(
+            $"/api/execution/daily-cycles/{cycleId}");
 
-        await AssertSuccessAsync(
-            persistedCycleResponse);
-
-        using var persistedCycleJson =
-            await ReadJsonAsync(
-                persistedCycleResponse);
+        persistedCycleResponse.EnsureSuccessStatusCode();
 
         var persistedCycle =
-            persistedCycleJson.RootElement;
+            await persistedCycleResponse.Content
+                .ReadFromJsonAsync<DailyCycleDto>();
 
-        Assert.Equal(
-            "Active",
-            persistedCycle
-                .GetProperty("status")
-                .GetString());
+        Assert.NotNull(persistedCycle);
+        Assert.Equal("Active", persistedCycle.Status);
 
-        var logs =
-            persistedCycle.GetProperty("logs");
+        var log = Assert.Single(persistedCycle.Logs);
 
-        Assert.Equal(
-            1,
-            logs.GetArrayLength());
-
-        var log =
-            logs[0];
-
-        Assert.Equal(
-            taskId,
-            log.GetProperty(
-                "referenceId")
-                .GetGuid());
-
-        Assert.Equal(
-            "DeepWork",
-            log.GetProperty(
-                "type")
-                .GetString());
+        Assert.Equal(taskId, log.ReferenceId);
+        Assert.Equal("DeepWork", log.Type);
 
 
         // ====================================================
-        // 7. REGRESSÃO UTC
+        // 7. UTC REGRESSION
+        //
+        // 08:00 -03 -> 11:00 UTC
+        // 09:00 -03 -> 12:00 UTC
         // ====================================================
 
-        var persistedStart =
-            log.GetProperty("start")
-                .GetDateTimeOffset();
-
-        var persistedEnd =
-            log.GetProperty("end")
-                .GetDateTimeOffset();
+        Assert.Equal(
+            new DateTimeOffset(
+                2026, 8, 17,
+                11, 0, 0,
+                TimeSpan.Zero),
+            log.Start);
 
         Assert.Equal(
             new DateTimeOffset(
-                2026,
-                8,
-                16,
-                13,
-                0,
-                0,
+                2026, 8, 17,
+                12, 0, 0,
                 TimeSpan.Zero),
-            persistedStart);
+            log.End);
 
-        Assert.Equal(
-            new DateTimeOffset(
-                2026,
-                8,
-                16,
-                14,
-                0,
-                0,
-                TimeSpan.Zero),
-            persistedEnd);
-
-        Assert.Equal(
-            TimeSpan.Zero,
-            persistedStart.Offset);
-
-        Assert.Equal(
-            TimeSpan.Zero,
-            persistedEnd.Offset);
-    }
-
-
-    private static async Task AssertSuccessAsync(
-        HttpResponseMessage response)
-    {
-        if (response.IsSuccessStatusCode)
-        {
-            return;
-        }
-
-        var body =
-            await response.Content
-                .ReadAsStringAsync();
-
-        Assert.True(
-            response.IsSuccessStatusCode,
-            $"HTTP {(int)response.StatusCode} " +
-            $"{response.StatusCode}. Body: {body}");
-    }
-
-
-    private static async Task<JsonDocument> ReadJsonAsync(
-        HttpResponseMessage response)
-    {
-        var body =
-            await response.Content
-                .ReadAsStringAsync();
-
-        return JsonDocument.Parse(body);
+        Assert.Equal(TimeSpan.Zero, log.Start.Offset);
+        Assert.Equal(TimeSpan.Zero, log.End.Offset);
     }
 }

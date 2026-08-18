@@ -83,6 +83,66 @@ namespace Compass.Modules.Execution.Infrastructure.Migrations
                     b.ToTable("execution_logs", "execution");
                 });
 
+            modelBuilder.Entity("Compass.Modules.Execution.Domain.DecisionEngine.DailyPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("DailyPlans", "execution");
+                });
+
+            modelBuilder.Entity("Compass.Modules.Execution.Domain.DecisionEngine.SuggestedExecution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DailyPlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("End")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("ReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Start")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DailyPlanId");
+
+                    b.ToTable("DailyPlanItems", "execution");
+                });
+
             modelBuilder.Entity("Compass.Modules.Execution.Domain.DailyCycles.ExecutionLog", b =>
                 {
                     b.HasOne("Compass.Modules.Execution.Domain.DailyCycles.DailyCycle", null)
@@ -91,9 +151,23 @@ namespace Compass.Modules.Execution.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
+            modelBuilder.Entity("Compass.Modules.Execution.Domain.DecisionEngine.SuggestedExecution", b =>
+                {
+                    b.HasOne("Compass.Modules.Execution.Domain.DecisionEngine.DailyPlan", null)
+                        .WithMany("Suggestions")
+                        .HasForeignKey("DailyPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Compass.Modules.Execution.Domain.DailyCycles.DailyCycle", b =>
                 {
                     b.Navigation("Logs");
+                });
+
+            modelBuilder.Entity("Compass.Modules.Execution.Domain.DecisionEngine.DailyPlan", b =>
+                {
+                    b.Navigation("Suggestions");
                 });
 #pragma warning restore 612, 618
         }

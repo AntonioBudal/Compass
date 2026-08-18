@@ -19,6 +19,7 @@ public static class DependencyInjection
 
         services.AddScoped<IDailyCycleRepository, EfDailyCycleRepository>();
         services.AddScoped<IDailyCycleQueryService, DailyCycleQueryService>();
+        services.AddScoped<Compass.Modules.Execution.Application.DailyPlanning.IDailyPlanRepository, Compass.Modules.Execution.Infrastructure.Repositories.EfDailyPlanRepository>();
 
         return services;
     }
@@ -35,3 +36,4 @@ public static class DependencyInjection
         await dbContext.Database.MigrateAsync(cancellationToken);
     }
 }
+

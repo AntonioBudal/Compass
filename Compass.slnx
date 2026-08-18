@@ -12,10 +12,16 @@
     <Project Path="src/Modules/Calendar/Calendar.Tests/Compass.Modules.Calendar.Tests.csproj" />
     <Project Path="src/Modules/Calendar/Calendar/Compass.Modules.Calendar.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Calendar/Calendar.Domain.Tests/">
+    <Project Path="src/Modules/Calendar/Calendar.Domain.Tests/Compass.Modules.Calendar.Domain.Tests.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Execution/">
     <Project Path="src/Modules/Execution/Execution.Contracts/Compass.Modules.Execution.Contracts.csproj" />
     <Project Path="src/Modules/Execution/Execution.Tests/Compass.Modules.Execution.Tests.csproj" />
     <Project Path="src/Modules/Execution/Execution/Compass.Modules.Execution.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Execution/Execution.Domain.Tests/">
+    <Project Path="src/Modules/Execution/Execution.Domain.Tests/Compass.Modules.Execution.Domain.Tests.csproj" />
   </Folder>
   <Folder Name="/src/Modules/Execution/Execution.Infrastructure/">
     <Project Path="src/Modules/Execution/Execution.Infrastructure/Compass.Modules.Execution.Infrastructure.csproj" />

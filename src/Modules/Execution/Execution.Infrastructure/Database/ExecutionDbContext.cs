@@ -6,6 +6,7 @@ namespace Compass.Modules.Execution.Infrastructure.Database;
 internal class ExecutionDbContext : DbContext
 {
     public DbSet<DailyCycle> DailyCycles { get; set; } = null!;
+    public DbSet<Compass.Modules.Execution.Domain.DecisionEngine.DailyPlan> DailyPlans { get; set; } = null!;
 
     public ExecutionDbContext(
         DbContextOptions<ExecutionDbContext> options)
@@ -23,3 +24,4 @@ internal class ExecutionDbContext : DbContext
         base.OnModelCreating(modelBuilder);
     }
 }
+

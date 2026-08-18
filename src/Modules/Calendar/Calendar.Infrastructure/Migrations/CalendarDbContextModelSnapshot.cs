@@ -23,6 +23,72 @@ namespace Compass.Modules.Calendar.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Compass.Modules.Calendar.Infrastructure.Database.Models.CommitmentData", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ScheduleProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScheduleProfileId");
+
+                    b.ToTable("Commitments", "calendar");
+                });
+
+            modelBuilder.Entity("Compass.Modules.Calendar.Infrastructure.Database.Models.ScheduleExceptionData", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ScheduleProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScheduleProfileId");
+
+                    b.ToTable("ScheduleExceptions", "calendar");
+                });
+
             modelBuilder.Entity("Compass.Modules.Calendar.Infrastructure.Database.Models.ScheduleProfileData", b =>
                 {
                     b.Property<Guid>("Id")
@@ -63,6 +129,28 @@ namespace Compass.Modules.Calendar.Infrastructure.Migrations
                     b.HasIndex("ScheduleProfileId");
 
                     b.ToTable("ScheduleWindows", "calendar");
+                });
+
+            modelBuilder.Entity("Compass.Modules.Calendar.Infrastructure.Database.Models.CommitmentData", b =>
+                {
+                    b.HasOne("Compass.Modules.Calendar.Infrastructure.Database.Models.ScheduleProfileData", "Profile")
+                        .WithMany()
+                        .HasForeignKey("ScheduleProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
+                });
+
+            modelBuilder.Entity("Compass.Modules.Calendar.Infrastructure.Database.Models.ScheduleExceptionData", b =>
+                {
+                    b.HasOne("Compass.Modules.Calendar.Infrastructure.Database.Models.ScheduleProfileData", "Profile")
+                        .WithMany()
+                        .HasForeignKey("ScheduleProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Compass.Modules.Calendar.Infrastructure.Database.Models.ScheduleWindowData", b =>
