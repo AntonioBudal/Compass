@@ -1,5 +1,6 @@
 ﻿using Compass.Modules.Planning.Application.Tasks.Queries;
 using System;
+using System.Threading;
 using Compass.Modules.Planning.Application.Habits.ArchiveHabit;
 using Compass.Modules.Planning.Application.Habits.ChangeHabitFrequency;
 using Compass.Modules.Planning.Application.Habits.CreateHabit;
@@ -51,7 +52,16 @@ public static class PlanningEndpoints
             return Results.NoContent();
         });
 
-
+        // ----------------------------------------------------
+        // GET TASKS INBOX (Drafts & Ready)
+        // ----------------------------------------------------
+        group.MapGet("/tasks/inbox", async (
+            [FromServices] ITaskQueryService queryService,
+            CancellationToken cancellationToken) => 
+        {
+            var tasks = await queryService.GetInboxAsync(cancellationToken);
+            return Results.Ok(tasks);
+        });
 
         group.MapGet(
             "/tasks/{id:guid}",
@@ -133,4 +143,3 @@ public static class PlanningEndpoints
 // DTOs auxiliares para rotas que não recebem o objeto completo do Command (o ID vem da URL)
 public record EstimateTaskRequest(int EstimatedDurationMinutes);
 public record ChangeHabitFrequencyRequest(int? IntervalDays, IEnumerable<DayOfWeek>? DaysOfWeek);
-

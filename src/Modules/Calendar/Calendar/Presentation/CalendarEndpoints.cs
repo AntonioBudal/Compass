@@ -17,6 +17,27 @@ public static class CalendarEndpoints
             .MapGroup("/api/calendar")
             .WithTags("Calendar");
 
+        // -----------------------------------------------------------------
+        // PROFILES (Read & Write Base)
+        // -----------------------------------------------------------------
+        
+        group.MapGet(
+            "/profiles/{profileId:guid}",
+            async (
+                Guid profileId,
+                [FromServices] IScheduleProfileQueryService queryService,
+                CancellationToken cancellationToken) =>
+            {
+                var profile = await queryService.GetProfileAsync(
+                    profileId,
+                    cancellationToken);
+
+                return profile is null
+                    ? Results.NotFound("Profile not found.")
+                    : Results.Ok(profile);
+            })
+            .WithName("GetScheduleProfile");
+
         group.MapPost(
             "/profiles/{profileId:guid}",
             async (
@@ -34,6 +55,57 @@ public static class CalendarEndpoints
             })
             .WithName("CreateScheduleProfile");
 
+        // -----------------------------------------------------------------
+        // SCHEDULE WINDOWS (Configuração da Semana Padrão)
+        // -----------------------------------------------------------------
+        
+        group.MapPost(
+            "/profiles/{profileId:guid}/windows",
+            async (
+                Guid profileId,
+                [FromBody] AddWindowRequest request,
+                [FromServices] IScheduleProfileCommandService commandService,
+                CancellationToken cancellationToken) =>
+            {
+                await commandService.AddWindowAsync(profileId, request, cancellationToken);
+                return Results.NoContent();
+            })
+            .WithName("AddScheduleWindow");
+
+        group.MapDelete(
+            "/profiles/{profileId:guid}/windows/{windowId:guid}",
+            async (
+                Guid profileId,
+                Guid windowId,
+                [FromServices] IScheduleProfileCommandService commandService,
+                CancellationToken cancellationToken) =>
+            {
+                await commandService.RemoveWindowAsync(profileId, windowId, cancellationToken);
+                return Results.NoContent();
+            })
+            .WithName("RemoveScheduleWindow");
+
+        // -----------------------------------------------------------------
+        // EXCEPTIONS
+        // -----------------------------------------------------------------
+
+        group.MapPost(
+            "/profiles/{profileId:guid}/exceptions",
+            async (
+                Guid profileId,
+                [FromBody] CreateExceptionRequest request,
+                [FromServices] IAddScheduleExceptionCommandService commandService,
+                CancellationToken cancellationToken) =>
+            {
+                await commandService.AddExceptionAsync(profileId, request, cancellationToken);
+                return Results.NoContent();
+            })
+            .WithName("AddScheduleException");
+
+        // -----------------------------------------------------------------
+        // AVAILABILITY (Temporal Projection for Engine)
+        // -----------------------------------------------------------------
+        
         group.MapGet(
             "/availability",
             async (
@@ -57,19 +129,5 @@ public static class CalendarEndpoints
                     : Results.Ok(availability);
             })
             .WithName("GetDailyAvailability");
-
-        group.MapPost(
-            "/profiles/{profileId:guid}/exceptions",
-            async (
-                Guid profileId,
-                [FromBody] CreateExceptionRequest request,
-                [FromServices] IAddScheduleExceptionCommandService commandService,
-                CancellationToken cancellationToken) =>
-            {
-                await commandService.AddExceptionAsync(profileId, request, cancellationToken);
-                return Results.NoContent();
-            })
-            .WithName("AddScheduleException");
     }
 }
-

@@ -88,7 +88,7 @@ public class DailyCycleTests
         var interval = new TimeInterval(wrongDateStart, wrongDateEnd);
 
         var exception = Assert.Throws<DomainException>(() => 
-            cycle.RecordExecution(Guid.NewGuid(), interval, ExecutionType.Break));
+            cycle.RecordExecution(Guid.NewGuid(), interval, ExecutionType.Routine));
             
         Assert.Contains("inside a cycle meant for", exception.Message);
     }

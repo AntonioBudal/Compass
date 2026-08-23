@@ -165,7 +165,24 @@ public static class ExecutionEndpoints
                 }
             })
             .WithName("AcceptDailyPlan");
+            group.MapGet(
+            "/daily-plans/by-date/{date}",
+            async (
+                [Microsoft.AspNetCore.Mvc.FromQuery] Guid profileId, // Passado na querystring
+                DateOnly date,                                       // Passado no path
+                [Microsoft.AspNetCore.Mvc.FromServices] Compass.Modules.Execution.Application.DailyPlanning.Queries.IDailyPlanQueryService queryService,
+                CancellationToken cancellationToken) =>
+            {
+                var plan = await queryService.GetByDateAsync(
+                    profileId,
+                    date,
+                    cancellationToken);
 
+                return plan is null
+                    ? Microsoft.AspNetCore.Http.Results.NotFound()
+                    : Microsoft.AspNetCore.Http.Results.Ok(plan);
+            })
+            .WithName("GetAcceptedDailyPlan");
             group.MapGet(
             "/daily-adherence",
             async (
@@ -189,4 +206,5 @@ public static class ExecutionEndpoints
 
 public sealed record StartDailyCycleRequest(DateOnly Date);
 public sealed record StartDailyCycleResponse(Guid DailyCycleId);
-public sealed record RecordExecutionRequest(Guid ReferenceId, DateTimeOffset Start, DateTimeOffset End, string Type);
+
+public sealed record RecordExecutionRequest(Guid? ReferenceId, DateTimeOffset Start, DateTimeOffset End, string Type);

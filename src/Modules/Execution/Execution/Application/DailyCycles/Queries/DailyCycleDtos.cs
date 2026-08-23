@@ -5,7 +5,7 @@ namespace Compass.Modules.Execution.Application.DailyCycles.Queries;
 
 public sealed record ExecutionLogDto(
     Guid Id,
-    Guid ReferenceId,
+    Guid? ReferenceId, 
     string Type,
     DateTimeOffset Start,
     DateTimeOffset End);
