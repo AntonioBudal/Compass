@@ -3,6 +3,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Modules\Calendar\Compass.Modules.Calendar.Infrastructure\Compass.Modules.Calendar.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Calendar\Compass.Modules.Calendar.Presentation\Compass.Modules.Calendar.Presentation.csproj" />
+    <ProjectReference Include="..\..\Modules\Planning\Compass.Modules.Planning.Infrastructure\Compass.Modules.Planning.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Planning\Compass.Modules.Planning.Presentation\Compass.Modules.Planning.Presentation.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

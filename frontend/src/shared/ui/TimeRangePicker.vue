@@ -34,7 +34,21 @@
         title="Remover intervalo"
         @click="$emit('remove')"
       >
-        ✕
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
       </button>
     </div>
     <p v-if="error" class="time-range-error" role="alert">
@@ -90,22 +104,29 @@ function handleEndChange(e: Event) {
 }
 
 .time-input {
-  padding: var(--space-1) var(--space-2);
+  padding: 4px var(--space-2);
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: inherit;
+  line-height: 1.4;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.time-input:hover {
+  border-color: var(--color-text-secondary);
 }
 
 .time-input:focus {
-  border-color: var(--color-accent-primary);
+  border-color: var(--color-accent);
   outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .time-input--error {
-  border-color: var(--color-danger-border);
+  border-color: var(--color-danger);
 }
 
 .range-separator {
@@ -117,25 +138,25 @@ function handleEndChange(e: Event) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: var(--font-size-xs);
-  transition: color 0.15s ease, background-color 0.15s ease;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
 .btn-remove:hover {
-  background-color: var(--color-danger-bg);
+  background-color: var(--color-danger-subtle);
   color: var(--color-danger-text);
 }
 
 .time-range-error {
   font-size: var(--font-size-xs);
   color: var(--color-danger-text);
+  font-weight: var(--font-weight-medium);
 }
 
 .sr-only {

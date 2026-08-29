@@ -4,6 +4,19 @@ import TodayPage from '../TodayPage.vue'
 import * as queryHook from '@/entities/schedule-profile/model/useScheduleProfileQuery'
 import { ref } from 'vue'
 
+vi.mock('vue-router', async (importOriginal) => {
+  const actual = (await importOriginal()) as any
+  return {
+    ...actual,
+    useRouter: () => ({
+      push: vi.fn()
+    }),
+    useRoute: () => ({
+      path: '/today'
+    })
+  }
+})
+
 describe('TodayPage.vue', () => {
   it('renders loading state when isLoading is true', () => {
     vi.spyOn(queryHook, 'useScheduleProfileQuery').mockReturnValue({
@@ -11,7 +24,13 @@ describe('TodayPage.vue', () => {
       isLoading: ref(true)
     } as any)
 
-    const wrapper = mount(TodayPage)
+    const wrapper = mount(TodayPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
     expect(wrapper.find('.loading-state').exists()).toBe(true)
     expect(wrapper.text()).toContain('Carregando perfil')
   })
@@ -33,7 +52,13 @@ describe('TodayPage.vue', () => {
       isLoading: ref(false)
     } as any)
 
-    const wrapper = mount(TodayPage)
+    const wrapper = mount(TodayPage, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
     expect(wrapper.find('.dashboard-content').exists()).toBe(true)
     expect(wrapper.text()).toContain('America/Sao_Paulo')
     expect(wrapper.text()).toContain('Grade de Disponibilidade Semanal')

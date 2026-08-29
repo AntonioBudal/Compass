@@ -1,44 +1,41 @@
 <template>
-  <div class="today-layout">
-    <header class="today-header">
-      <div class="header-brand">
-        <span class="brand-icon" aria-hidden="true">🧭</span>
-        <h1 class="brand-title">Compass</h1>
-      </div>
-      <div v-if="profile" class="header-actions">
-        <span class="tz-badge" :title="`Fuso ativo: ${profile.timeZoneId}`">
-          🌐 {{ profile.timeZoneId }}
-        </span>
+  <AppShell>
+    <template #header-actions>
+      <div v-if="profile" class="header-tz-info">
+        <AppBadge variant="default" size="sm">
+          {{ profile.timeZoneId }}
+        </AppBadge>
         <button
           type="button"
           class="btn-reconfigure"
           @click="handleReconfigure"
         >
-          Reconfigurar Perfil
+          Reconfigurar
         </button>
       </div>
-    </header>
+    </template>
 
-    <main class="today-main">
+    <div class="today-page">
       <div v-if="isLoading" class="loading-state">
-        <div class="spinner" aria-hidden="true"></div>
+        <div class="spinner" aria-hidden="true" />
         <p>Carregando perfil de calendário...</p>
       </div>
 
       <div v-else-if="profile" class="dashboard-content">
+        <!-- Hero Section: Notion-style Date & Daily Availability -->
         <section class="today-hero">
-          <div class="today-date-box">
-            <span class="day-of-week">{{ currentDayName }}</span>
-            <span class="full-date">{{ formattedDate }}</span>
+          <div class="date-header">
+            <h1 class="day-of-week">{{ currentDayName }}</h1>
+            <p class="full-date">{{ formattedDate }}</p>
           </div>
 
-          <div class="availability-status-box">
-            <span class="status-label">Disponibilidade Hoje:</span>
+          <div class="availability-section">
+            <h2 class="section-subtitle">Disponibilidade Hoje</h2>
             <div v-if="todayWindows.length > 0" class="today-windows">
               <span
                 v-for="(w, idx) in todayWindows"
                 :key="idx"
-                class="today-window-tag"
+                class="window-badge-primary"
               >
                 {{ formatWindowTime(w.startTime) }} - {{ formatWindowTime(w.endTime) }}
               </span>
@@ -49,16 +46,29 @@
           </div>
         </section>
 
-        <section class="weekly-overview">
-          <h2 class="section-title">Grade de Disponibilidade Semanal</h2>
+        <hr class="section-divider" />
+
+        <!-- Weekly Availability Grid -->
+        <section class="weekly-section">
+          <div class="section-header">
+            <h2 class="section-title">Grade de Disponibilidade Semanal</h2>
+            <p class="section-description">Horários de trabalho baseados no fuso {{ profile.timeZoneId }}.</p>
+          </div>
+
           <div class="weekly-grid">
             <div
               v-for="day in sortedWeeklyRules"
               :key="day.dayOfWeek"
-              class="weekly-day-card"
-              :class="{ 'weekly-day-card--today': day.dayOfWeek === currentDayOfWeek }"
+              class="weekly-day-box"
+              :class="{ 'weekly-day-box--today': day.dayOfWeek === currentDayOfWeek }"
             >
-              <span class="weekly-day-name">{{ getDayName(day.dayOfWeek) }}</span>
+              <div class="weekly-day-header">
+                <span class="weekly-day-name">{{ getDayName(day.dayOfWeek) }}</span>
+                <AppBadge v-if="day.dayOfWeek === currentDayOfWeek" variant="accent" size="sm">
+                  Hoje
+                </AppBadge>
+              </div>
+
               <div v-if="day.windows.length > 0" class="weekly-day-windows">
                 <span
                   v-for="(w, idx) in day.windows"
@@ -73,13 +83,15 @@
           </div>
         </section>
       </div>
-    </main>
-  </div>
+    </div>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import AppShell from '@/shared/ui/AppShell.vue'
+import AppBadge from '@/shared/ui/AppBadge.vue'
 import { useScheduleProfileQuery } from '@/entities/schedule-profile/model/useScheduleProfileQuery'
 import { profileStorage } from '@/entities/schedule-profile/model/profileStorage'
 import type { TimeWindow } from '@/entities/schedule-profile/api/types'
@@ -145,67 +157,36 @@ function handleReconfigure() {
 </script>
 
 <style scoped>
-.today-layout {
-  min-height: 100vh;
+.today-page {
   display: flex;
   flex-direction: column;
-  background-color: var(--color-bg-primary);
+  gap: var(--space-6);
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.today-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-4) var(--space-8);
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.header-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.brand-icon {
-  font-size: 1.5rem;
-}
-
-.brand-title {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-
-.header-actions {
+.header-tz-info {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-
-.tz-badge {
-  font-size: var(--font-size-xs);
-  padding: var(--space-1) var(--space-3);
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-full);
-  color: var(--color-text-secondary);
 }
 
 .btn-reconfigure {
   background: transparent;
   border: none;
   font-size: var(--font-size-xs);
-  color: var(--color-accent-primary);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
   cursor: pointer;
-  text-decoration: underline;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.today-main {
-  flex: 1;
-  padding: var(--space-8);
-  max-width: 960px;
-  margin: 0 auto;
-  width: 100%;
+.btn-reconfigure:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-hover);
 }
 
 .loading-state {
@@ -213,16 +194,16 @@ function handleReconfigure() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-4);
-  min-height: 300px;
+  gap: var(--space-3);
+  min-height: 240px;
   color: var(--color-text-secondary);
 }
 
 .spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 3px solid var(--color-border-subtle);
-  border-top-color: var(--color-accent-primary);
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -234,28 +215,26 @@ function handleReconfigure() {
 .dashboard-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  gap: var(--space-6);
 }
 
 .today-hero {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
+  gap: var(--space-5);
 }
 
-.today-date-box {
+.date-header {
   display: flex;
   flex-direction: column;
+  gap: var(--space-1);
 }
 
 .day-of-week {
   font-size: var(--font-size-2xl);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
+  letter-spacing: -0.02em;
 }
 
 .full-date {
@@ -263,51 +242,75 @@ function handleReconfigure() {
   color: var(--color-text-secondary);
 }
 
-.availability-status-box {
+.availability-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
 }
 
-.status-label {
+.section-subtitle {
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
 }
 
 .today-windows {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
+  margin-top: var(--space-1);
 }
 
-.today-window-tag {
-  padding: var(--space-2) var(--space-3);
-  background-color: var(--color-accent-primary);
-  color: var(--color-accent-text);
-  border-radius: var(--radius-md);
+.window-badge-primary {
+  padding: 4px var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
 }
 
 .no-availability-text {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  line-height: 1.4;
 }
 
-.weekly-overview {
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 0;
+}
+
+.weekly-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .section-title {
   font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
+}
+
+.section-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 
 .weekly-grid {
@@ -316,24 +319,31 @@ function handleReconfigure() {
   gap: var(--space-3);
 }
 
-.weekly-day-card {
+.weekly-day-box {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-3);
+  transition: border-color var(--transition-fast);
 }
 
-.weekly-day-card--today {
-  border-color: var(--color-accent-primary);
-  background-color: #1e2e4a;
+.weekly-day-box--today {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface-subtle);
+}
+
+.weekly-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .weekly-day-name {
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
@@ -346,6 +356,7 @@ function handleReconfigure() {
 .window-chip {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .weekly-day-empty {

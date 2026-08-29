@@ -1,44 +1,47 @@
 <template>
   <div class="onboarding-layout">
     <header class="onboarding-header">
-      <div class="header-brand">
-        <span class="brand-icon" aria-hidden="true">🧭</span>
-        <span class="brand-title">Compass</span>
-      </div>
-      <div v-if="state.currentStep > 1" class="step-progress" aria-label="Progresso do Onboarding">
-        <span class="step-indicator">Passo {{ state.currentStep - 1 }} de 3</span>
+      <div class="header-container">
+        <div class="header-brand">
+          <span class="brand-title">Compass</span>
+        </div>
+        <div v-if="state.currentStep > 1" class="step-progress" aria-label="Progresso do Onboarding">
+          <span class="step-indicator">Passo {{ state.currentStep - 1 }} de 3</span>
+        </div>
       </div>
     </header>
 
     <main class="onboarding-main">
-      <StepPresentation
-        v-if="state.currentStep === 1"
-        @next="state.currentStep = 2"
-      />
+      <div class="onboarding-content">
+        <StepPresentation
+          v-if="state.currentStep === 1"
+          @next="state.currentStep = 2"
+        />
 
-      <StepTimeZone
-        v-else-if="state.currentStep === 2"
-        v-model="state.timeZoneId"
-        @back="state.currentStep = 1"
-        @next="state.currentStep = 3"
-      />
+        <StepTimeZone
+          v-else-if="state.currentStep === 2"
+          v-model="state.timeZoneId"
+          @back="state.currentStep = 1"
+          @next="state.currentStep = 3"
+        />
 
-      <StepAvailability
-        v-else-if="state.currentStep === 3"
-        :days="state.days"
-        @back="state.currentStep = 2"
-        @next="state.currentStep = 4"
-      />
+        <StepAvailability
+          v-else-if="state.currentStep === 3"
+          :days="state.days"
+          @back="state.currentStep = 2"
+          @next="state.currentStep = 4"
+        />
 
-      <StepConfirmation
-        v-else-if="state.currentStep === 4"
-        :time-zone-id="state.timeZoneId"
-        :days="state.days"
-        :loading="createProfileMutation.isPending.value"
-        :error="errorMessage"
-        @back="state.currentStep = 3"
-        @confirm="handleConfirm"
-      />
+        <StepConfirmation
+          v-else-if="state.currentStep === 4"
+          :time-zone-id="state.timeZoneId"
+          :days="state.days"
+          :loading="createProfileMutation.isPending.value"
+          :error="errorMessage"
+          @back="state.currentStep = 3"
+          @confirm="handleConfirm"
+        />
+      </div>
     </main>
   </div>
 </template>
@@ -90,38 +93,47 @@ async function handleConfirm() {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-bg-primary);
+  background-color: var(--color-bg-app);
 }
 
 .onboarding-header {
+  height: 56px;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+}
+
+.header-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-4) var(--space-8);
-  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .header-brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-}
-
-.brand-icon {
-  font-size: 1.5rem;
 }
 
 .brand-title {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .step-indicator {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  font-weight: 500;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-subtle);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
 }
 
 .onboarding-main {
@@ -130,5 +142,21 @@ async function handleConfirm() {
   flex-direction: column;
   justify-content: center;
   padding: var(--space-8) var(--space-4);
+}
+
+.onboarding-content {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .header-container {
+    padding: 0 var(--space-3);
+  }
+
+  .onboarding-main {
+    padding: var(--space-4) var(--space-3);
+  }
 }
 </style>

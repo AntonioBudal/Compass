@@ -1,9 +1,10 @@
 <!--
 Sync Impact Report:
-- Version change: none -> 1.0.0 (Initial Ratification)
-- Added principles: 25 mandatory principles established covering Modular Monolith architecture, Host boundaries, Cross-module contracts, CQRS Application patterns, Calendar/Temporal authority, Domain semantics, Backend truth, Vue Query & Vue 3 FSD frontend, Database migrations, Data integrity, Vertical features, and Strict Quality/Acceptance gates.
-- Added sections: Core Principles (1-25), Architectural & Technical Constraints, Quality Gates & Delivery Lifecycle, Governance.
-- Removed sections: Placeholder template slots.
+- Version change: 1.0.0 -> 1.1.0 (Design & UI Principles Ratification)
+- Added principles: 20 mandatory Design & UI principles (26-45) establishing visual sobriety, GitHub and Notion reference paradigms, strict emoji prohibition, unified icon/text standard, prohibition of AI/neon/glassmorphism aesthetics, controlled neutral palette (white + 4-5 neutral shades), purely functional semantic colors, structural layout priority over cards, semantic CSS tokens for Light/Dark/System preparedness, interactive states consistency, WCAG AA accessibility/focus-visible, component reuse, and mandatory desktop/mobile visual validation.
+- Modified principles: None. Principles 1 to 25 preserved with full original authority.
+- Added sections: Principles 26-45 under Core Principles, Design System Governance under Governance.
+- Removed sections: None.
 - Follow-up TODOs: None.
 -->
 
@@ -111,6 +112,88 @@ O frontend MUST utilizar Vue 3 com Composition API (`<script setup>`), TypeScrip
 A interface do usuário MUST ser construída com HTML semântico, suporte completo a navegação e atalhos por teclado (a11y), atributos ARIA adequados e estilização baseada em tokens CSS neutros e consistentes.
 - **Rationale**: Assegura padrões de acessibilidade universal, usabilidade intuitiva e um design system limpo e de fácil manutenção.
 
+### 26. Interface Sóbria, Funcional e Orientada à Informação
+A interface do Compass MUST ser sóbria, utilitária, altamente legível e focada na densidade e clareza da informação, priorizando a produtividade do usuário sobre ornamentação estética desnecessária.
+- **Rationale**: Reduz a carga cognitiva e mantém o foco nas tarefas, no calendário e na execução diária sem distrações visuais.
+
+### 27. GitHub como Referência Estrutural e de Controles
+O GitHub (Prime Web / GitHub Web) MUST ser adotado como referência visual e ergonômica para layout estrutural, densidade de dados, navegação, bordas sutis, listas, tabelas e controles interativos de formulário.
+- **Rationale**: O GitHub oferece padrões comprovados de alta densidade de informação, contraste e eficiência operacional para desenvolvedores e usuários técnicos.
+
+### 28. Notion como Referência Tipográfica e de Espaçamento
+O Notion MUST ser adotado como referência para respiro de espaçamento, legibilidade do fluxo de leitura, hierarquia tipográfica e redução sistemática de ruído visual.
+- **Rationale**: Garante elegância, ritmo vertical equilibrado e conforto visual em sessões prolongadas de trabalho e escrita.
+
+### 29. Referências como Direção Conceitual (Sem Cópia Literal)
+As referências de GitHub e Notion MUST servir exclusivamente como direção de design, tom visual e boas práticas ergonômicas, sendo proibida a cópia literal de layouts, marcas registradas ou idiossincrasias de terceiros.
+- **Rationale**: Assegura identidade própria, coerência funcional e adaptação precisa aos fluxos do Compass.
+
+### 30. Proibição Absoluta de Emojis na Interface
+Emojis MUST NOT ser utilizados em títulos, botões, mensagens do sistema, empty states, navegação, notificações ou qualquer outro conteúdo estrutural da interface.
+- **Rationale**: Mantém um tom profissional, sóbrio e atemporal, evitando poluição visual e inconsistências de renderização entre diferentes sistemas operacionais.
+
+### 31. Conjunto Único de Ícones ou Substituição por Texto
+Ícones na interface MUST pertencer a um único conjunto visual consistente (mesmo peso de traço, proporção e estilo) ou MUST ser substituídos por rótulos de texto claros.
+- **Rationale**: Elimina ruído estético causado pela mistura de estilos e garante comunicação direta e inequívoca.
+
+### 32. Proibição de Efeitos e Estética de IA Genérica
+A interface MUST NOT utilizar gradientes decorativos, efeitos de glow/neon, glassmorphism, sombras volumosas excessivas, cards flutuantes ou paletas hiper-saturadas típicas de templates de IA genéricos.
+- **Rationale**: Preserva a solidez, estabilidade visual e seriedade do produto, evitando modismos visuais passageiros.
+
+### 33. Proibição de Cores Saturadas como Destaque Decorativo Padrão
+Cores como esmeralda vibrante, roxo saturado ou azul elétrico MUST NOT ser empregadas como destaque decorativo padrão ou fundo genérico.
+- **Rationale**: Evita fadiga visual e preserva o impacto das cores apenas para sinalizações funcionais indispensáveis.
+
+### 34. Paleta Neutra Controlada (Branco e 4 a 5 Tons Neutros)
+A base visual da aplicação MUST ser construída exclusivamente em branco/preto e uma escala rigorosamente controlada de quatro a cinco tons neutros (cinzas neutros/ardósia) para fundo, superfícies, bordas e textos.
+- **Rationale**: Cria uma hierarquia visual limpa e previsível onde o conteúdo do usuário é o centro das atenções.
+
+### 35. Cores Adicionais Estritamente Funcionais (Semânticas)
+Cores adicionais (ex.: verde de sucesso, vermelho de erro, amarelo de alerta, azul de link) MUST ser utilizadas exclusivamente para expressar significado funcional e de estado explícito, e MUST NOT ser o único meio de transmitir informação (exigindo suporte por texto, ícone acessível ou atributo ARIA).
+- **Rationale**: Garante acessibilidade universal (incluindo usuários daltônicos) e clareza no reconhecimento imediato de estados do sistema.
+
+### 36. Estrutura Baseada em Divisores, Superfícies e Espaçamento
+A estruturação visual das páginas e seções MUST priorizar divisores sutis, alinhamento rigoroso, alternância de superfícies e ritmo de espaçamento antes da criação de containers em formato de card.
+- **Rationale**: Evita a fragmentação visual excessiva conhecida como "carditis" e mantém o fluxo de leitura coeso.
+
+### 37. Cards Restritos a Unidades de Informação Independentes
+Containers no formato de Card MUST existir apenas quando representarem uma unidade de informação ou entidade semanticamente independente, manipulável ou destacável (ex.: card de tarefa em grade/kanban).
+- **Rationale**: Preserva o significado arquitetural do card como componente atômico e evita encaixotamento artificial de seções inteiras da página.
+
+### 38. Proibição de Cores Hardcoded e Consumo Obrigatório de Tokens Semânticos
+Componentes de interface MUST NOT declarar cores literais (hex, rgb, hsl) em seu código CSS/HTML. Toda cor, espaçamento, raio de borda e tipografia MUST ser consumida a partir de tokens CSS semânticos padronizados.
+- **Rationale**: Permite manutenção centralizada, refatorações globais seguras e viabiliza a alternância instantânea de temas.
+
+### 39. Preparação de Tokens para Temas Claro, Escuro e Sistema
+O design token system MUST ser estruturado desde sua base com variáveis semânticas preparadas para suportar os modos Claro (Light), Escuro (Dark) e Preferência do Sistema (System).
+- **Rationale**: Estabelece uma fundação flexível que suporta expansão temática sem exigir refatoração de componentes legados.
+
+### 40. Não-Dependência de Seletor de Temas na Fundação Atual
+A implementação das features atuais MUST utilizar os tokens semânticos sem depender da existência ou implementação de um seletor visual de temas em tempo de execução.
+- **Rationale**: Evita bloqueios de entrega ou escopo inflado antecipadamente enquanto o seletor de temas não for uma feature formalmente priorizada.
+
+### 41. Legibilidade e Densidade Adaptativa em Desktop e Mobile
+Todos os componentes e layouts MUST permanecer plenamente legíveis, operáveis e confortáveis tanto em telas de alta resolução desktop quanto em viewports móveis estreitos (a partir de 320px).
+- **Rationale**: Assegura que o gerenciamento do dia e a consulta de tarefas sejam fluidos e confiáveis em qualquer dispositivo.
+
+### 42. Consistência Sistemática de Estados Interativos
+Todos os componentes interativos MUST implementar comportamentos visuais consistentes e previsíveis para todos os estados de ciclo de vida: normal, hover, focus-visible, active, disabled, loading, erro e empty.
+- **Rationale**: Fornece feedback tátil imediato e reduz atrito ou confusão sobre o estado operacional de botões, inputs e listas.
+
+### 43. Acessibilidade por Teclado, Foco Visível e Contraste Obrigatório
+A interface MUST garantir navegação completa por teclado, anéis de foco visíveis (`focus-visible`) e níveis mínimos de contraste exigidos pelas diretrizes WCAG AA para textos e controles essenciais.
+- **Rationale**: Assegura conformidade legal e ética de acessibilidade, além de acelerar o fluxo de trabalho de usuários avançados via atalhos de teclado.
+
+### 44. Reutilização Obrigatória de Componentes e Tokens Existentes
+Novas features e telas MUST reutilizar prioritariamente os componentes base (`shared/ui`) e tokens semânticos existentes antes de introduzir novos padrões ou variações de interface.
+- **Rationale**: Previne a proliferação desordenada de componentes duplicados, reduz o tamanho do bundle e mantém a integridade do design system.
+
+### 45. Validação Visual Obrigatória em Desktop e Mobile
+Toda feature que introduza ou modifique elementos de interface de usuário MUST ser visualmente inspecionada e validada em resoluções desktop (ex.: 1280px+) e mobile (320px a 480px) antes da sua conclusão e handoff.
+- **Rationale**: Garante que quebras de layout, estouros de texto ou alvos de toque inacessíveis sejam detectados e corrigidos antes da entrega.
+
+---
+
 ## Architectural & Technical Constraints
 
 ### Limites Modulares e Injeção de Dependência
@@ -123,9 +206,12 @@ A interface do usuário MUST ser construída com HTML semântico, suporte comple
 - Todo cálculo que envolva horário de trabalho, compromissos ou janelas de disponibilidade deve delegar a responsabilidade para o módulo `Calendar`.
 - O cliente/frontend sempre envia e recebe horários formatados com base nos contratos UTC (`DateTimeOffset`) e datas civis (`DateOnly`).
 
-### Frontend e Estado Remoto
+### Frontend e Design System
 - O frontend é organizado sob camadas FSD (`app`, `pages`, `widgets`, `features`, `entities`, `shared`). Camadas ou slices só são criadas quando contêm arquivos efetivos.
 - Queries e Mutations remotas devem ser encapsuladas em composables usando Vue Query.
+- Tokens semânticos definidos em CSS (`tokens.css`) governam cores de superfície, bordas, texto, estados e espaçamento. Cores literais são proibidas em componentes.
+
+---
 
 ## Quality Gates & Delivery Lifecycle
 
@@ -136,12 +222,15 @@ A interface do usuário MUST ser construída com HTML semântico, suporte comple
 4. **Análise de Consistência (`speckit-analyze`)**: Validação cruzada sem modificações entre spec, plan e tasks antes da execução.
 5. **Implementação (`speckit-implement`)**: Execução estrita das tarefas planejadas.
 6. **Convergência (`speckit-converge`)**: Auditoria final de cobertura para certificar que nenhum requisito da spec foi omitido.
+7. **Handoff e Documentação (`feature-handoff`)**: Validação de quality gates e registro formal em `docs/handoffs/` e `docs/PROJECT_STATE.md`.
+
+---
 
 ## Governance
 
 ### Processo de Emenda
-- A presente Constituição é a autoridade máxima sobre a arquitetura e governança do projeto Compass V2.
-- Qualquer alteração nos 25 Princípios Fundamentais ou nas seções de restrições exige proposta formal de emenda, justificativa técnica documentada e aprovação explícita.
+- A presente Constituição é a autoridade máxima sobre a arquitetura, governança e design do projeto Compass V2.
+- Qualquer alteração nos 45 Princípios Fundamentais ou nas seções de restrições exige proposta formal de emenda, justificativa técnica documentada e aprovação explícita.
 
 ### Política de Versionamento
 - **MAJOR**: Remoção, inversão ou redefinição incompatível de princípios constitucionais ou quebra de fronteiras arquiteturais.
@@ -149,7 +238,7 @@ A interface do usuário MUST ser construída com HTML semântico, suporte comple
 - **PATCH**: Correções tipográficas, ajustes redacionais e refinamentos não semânticos.
 
 ### Revisão de Conformidade
-- Todos os planos de implementação, PRs e revisões de código MUST verificar e certificar a conformidade com as regras desta Constituição.
-- Qualquer complexidade adicional introduzida no sistema MUST ser justificada tecnicamente contra os princípios de simplicidade e modularidade aqui ratificados.
+- Todos os planos de implementação, PRs, revisões de código e inspeções visuais MUST verificar e certificar a conformidade com as regras desta Constituição.
+- Qualquer complexidade adicional introduzida no sistema MUST ser justificada tecnicamente contra os princípios de sobriedade, simplicidade e modularidade aqui ratificados.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28
+**Version**: 1.1.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28

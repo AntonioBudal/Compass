@@ -64,16 +64,18 @@ function handleInput(event: Event) {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  width: 100%;
 }
 
 .app-input-label {
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
+  line-height: 1.4;
 }
 
 .required-indicator {
-  color: var(--color-danger-border);
+  color: var(--color-danger);
 }
 
 .app-input {
@@ -81,29 +83,40 @@ function handleInput(event: Event) {
   padding: var(--space-2) var(--space-3);
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-family: inherit;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  line-height: 1.4;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.app-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .app-input:hover:not(:disabled) {
-  border-color: var(--color-text-muted);
+  border-color: var(--color-text-secondary);
 }
 
 .app-input:focus {
-  border-color: var(--color-accent-primary);
+  border-color: var(--color-accent);
   outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .app-input:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
+  background-color: var(--color-surface-subtle);
   cursor: not-allowed;
 }
 
 .app-input--error {
-  border-color: var(--color-danger-border);
+  border-color: var(--color-danger);
+}
+
+.app-input--error:focus {
+  box-shadow: 0 0 0 2px var(--color-bg-app), 0 0 0 4px var(--color-danger);
 }
 
 .app-input-hint {
@@ -114,6 +127,6 @@ function handleInput(event: Event) {
 .app-input-error {
   font-size: var(--font-size-xs);
   color: var(--color-danger-text);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 </style>

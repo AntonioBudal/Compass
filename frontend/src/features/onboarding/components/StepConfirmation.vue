@@ -1,9 +1,11 @@
 <template>
   <div class="step-confirmation">
-    <h2 class="title">Confirme seu Perfil</h2>
-    <p class="subtitle">
-      Revise as configurações abaixo antes de finalizar o onboarding.
-    </p>
+    <div class="header-section">
+      <h2 class="title">Confirme seu Perfil</h2>
+      <p class="subtitle">
+        Revise as configurações abaixo antes de finalizar o onboarding.
+      </p>
+    </div>
 
     <div v-if="error" class="error-alert" role="alert">
       {{ error }}
@@ -13,7 +15,13 @@
       <div class="summary-section">
         <span class="section-label">Fuso Horário</span>
         <div class="section-value timezone-value">
-          <span aria-hidden="true">🌐</span>
+          <div class="timezone-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+          </div>
           <strong>{{ timeZoneId }}</strong>
         </div>
       </div>
@@ -42,7 +50,7 @@
     </div>
 
     <div class="actions">
-      <AppButton variant="ghost" :disabled="loading" @click="$emit('back')">
+      <AppButton variant="secondary" :disabled="loading" @click="$emit('back')">
         Voltar e Editar
       </AppButton>
       <AppButton
@@ -81,27 +89,34 @@ const enabledDays = computed(() => props.days.filter((d) => d.enabled))
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  max-width: 540px;
+  max-width: 520px;
   margin: 0 auto;
 }
 
-.title {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  color: var(--color-text-primary);
+.header-section {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  text-align: center;
+  line-height: 1.5;
 }
 
 .error-alert {
   padding: var(--space-3) var(--space-4);
-  background-color: var(--color-danger-bg);
-  border: 1px solid var(--color-danger-border);
+  background-color: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger);
   border-radius: var(--radius-md);
   color: var(--color-danger-text);
   font-size: var(--font-size-sm);
@@ -111,9 +126,9 @@ const enabledDays = computed(() => props.days.filter((d) => d.enabled))
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: var(--space-5);
 }
 
@@ -125,7 +140,7 @@ const enabledDays = computed(() => props.days.filter((d) => d.enabled))
 
 .section-label {
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
@@ -135,8 +150,14 @@ const enabledDays = computed(() => props.days.filter((d) => d.enabled))
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   color: var(--color-text-primary);
+}
+
+.timezone-icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-secondary);
 }
 
 .availability-list {
@@ -159,7 +180,7 @@ const enabledDays = computed(() => props.days.filter((d) => d.enabled))
 
 .day-label {
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
 
@@ -170,8 +191,8 @@ const enabledDays = computed(() => props.days.filter((d) => d.enabled))
 }
 
 .window-badge {
-  padding: var(--space-1) var(--space-2);
-  background-color: var(--color-bg-primary);
+  padding: 2px var(--space-2);
+  background-color: var(--color-surface-subtle);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);

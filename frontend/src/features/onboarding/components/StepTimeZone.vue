@@ -1,9 +1,11 @@
 <template>
   <div class="step-timezone">
-    <h2 class="title">Selecione seu Fuso Horário</h2>
-    <p class="subtitle">
-      O fuso horário é essencial para calcular sua data civil e horários locais com precisão.
-    </p>
+    <div class="header-section">
+      <h2 class="title">Selecione seu Fuso Horário</h2>
+      <p class="subtitle">
+        O fuso horário é essencial para calcular sua data civil e horários locais com precisão.
+      </p>
+    </div>
 
     <div class="form-container">
       <AppInput
@@ -15,30 +17,37 @@
 
       <div class="select-wrapper">
         <label for="timezone-select" class="select-label">Fuso Horário IANA</label>
-        <select
-          id="timezone-select"
-          v-model="selectedZone"
-          class="timezone-dropdown"
-          aria-required="true"
-        >
-          <option
-            v-for="zone in filteredZones"
-            :key="zone.id"
-            :value="zone.id"
+        <div class="dropdown-wrapper">
+          <select
+            id="timezone-select"
+            v-model="selectedZone"
+            class="timezone-dropdown"
+            aria-required="true"
           >
-            {{ zone.displayName }} ({{ zone.id }})
-          </option>
-        </select>
+            <option
+              v-for="zone in filteredZones"
+              :key="zone.id"
+              :value="zone.id"
+            >
+              {{ zone.displayName }} ({{ zone.id }})
+            </option>
+          </select>
+          <div class="dropdown-chevron" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       <div v-if="selectedZone" class="selected-badge">
-        <span>Fuso Selecionado:</span>
-        <strong>{{ selectedZone }}</strong>
+        <span class="badge-label">Fuso Selecionado:</span>
+        <strong class="badge-value">{{ selectedZone }}</strong>
       </div>
     </div>
 
     <div class="actions">
-      <AppButton variant="ghost" @click="$emit('back')">
+      <AppButton variant="secondary" @click="$emit('back')">
         Voltar
       </AppButton>
       <AppButton variant="primary" :disabled="!selectedZone" @click="handleNext">
@@ -113,30 +122,37 @@ function handleNext() {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  max-width: 540px;
+  max-width: 520px;
   margin: 0 auto;
 }
 
-.title {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  color: var(--color-text-primary);
+.header-section {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  text-align: center;
+  line-height: 1.5;
 }
 
 .form-container {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: var(--space-5);
 }
 
@@ -148,24 +164,51 @@ function handleNext() {
 
 .select-label {
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.dropdown-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .timezone-dropdown {
   width: 100%;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
-  background-color: var(--color-bg-primary);
-  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-family: inherit;
+  appearance: none;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.dropdown-chevron {
+  position: absolute;
+  right: var(--space-3);
+  pointer-events: none;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timezone-dropdown:hover {
+  border-color: var(--color-text-secondary);
 }
 
 .timezone-dropdown:focus {
-  border-color: var(--color-accent-primary);
+  border-color: var(--color-accent);
   outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .selected-badge {
@@ -173,14 +216,19 @@ function handleNext() {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  background-color: var(--color-bg-primary);
-  border-radius: var(--radius-md);
+  background-color: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
+}
+
+.badge-label {
   color: var(--color-text-secondary);
 }
 
-.selected-badge strong {
-  color: var(--color-accent-primary);
+.badge-value {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-medium);
 }
 
 .actions {

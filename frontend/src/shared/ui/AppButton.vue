@@ -2,10 +2,15 @@
   <button
     :type="type"
     :disabled="disabled || loading"
-    :class="['app-btn', `app-btn--${variant}`, { 'app-btn--loading': loading }]"
+    :class="[
+      'app-btn',
+      `app-btn--${variant}`,
+      `app-btn--${size}`,
+      { 'app-btn--loading': loading }
+    ]"
     @click="$emit('click', $event)"
   >
-    <span v-if="loading" class="spinner" aria-hidden="true"></span>
+    <span v-if="loading" class="spinner" aria-hidden="true" />
     <slot />
   </button>
 </template>
@@ -15,12 +20,14 @@ withDefaults(
   defineProps<{
     type?: 'button' | 'submit' | 'reset'
     variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+    size?: 'sm' | 'md'
     disabled?: boolean
     loading?: boolean
   }>(),
   {
     type: 'button',
     variant: 'primary',
+    size: 'md',
     disabled: false,
     loading: false
   }
@@ -37,73 +44,85 @@ defineEmits<{
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--font-weight-medium);
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
   font-family: inherit;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.app-btn--sm {
+  padding: 4px var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.app-btn--md {
+  padding: 6px var(--space-4);
+  font-size: var(--font-size-sm);
 }
 
 .app-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
+/* Primary */
 .app-btn--primary {
-  background-color: var(--color-accent-primary);
+  background-color: var(--color-accent);
   color: var(--color-accent-text);
+  border-color: var(--color-accent);
 }
 
 .app-btn--primary:hover:not(:disabled) {
   background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
 }
 
-.app-btn--secondary {
-  background-color: var(--color-bg-elevated);
-  color: var(--color-text-primary);
-}
-
-.app-btn--secondary:hover:not(:disabled) {
-  background-color: #475569;
-}
-
+/* Secondary & Outline */
+.app-btn--secondary,
 .app-btn--outline {
-  background-color: transparent;
-  border-color: var(--color-border-subtle);
+  background-color: var(--color-surface-subtle);
+  border-color: var(--color-border);
   color: var(--color-text-primary);
 }
 
+.app-btn--secondary:hover:not(:disabled),
 .app-btn--outline:hover:not(:disabled) {
-  background-color: var(--color-bg-surface);
-  border-color: var(--color-border-focus);
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border);
 }
 
+/* Ghost */
 .app-btn--ghost {
   background-color: transparent;
   color: var(--color-text-secondary);
 }
 
 .app-btn--ghost:hover:not(:disabled) {
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
 
+/* Danger */
 .app-btn--danger {
-  background-color: var(--color-danger-bg);
-  border-color: var(--color-danger-border);
+  background-color: var(--color-danger-subtle);
+  border-color: var(--color-danger-subtle);
   color: var(--color-danger-text);
 }
 
 .app-btn--danger:hover:not(:disabled) {
-  background-color: rgba(239, 68, 68, 0.2);
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-accent-text);
 }
 
+/* Spinner */
 .spinner {
-  width: 1rem;
-  height: 1rem;
+  width: 0.875rem;
+  height: 0.875rem;
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;

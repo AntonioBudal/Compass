@@ -1,7 +1,10 @@
 using Compass.Modules.Calendar.Infrastructure.Persistence;
+using Compass.Modules.Planning.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 using Xunit;
@@ -30,10 +33,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     {
         builder.ConfigureServices(services =>
         {
-            var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<CalendarDbContext>));
-            if (descriptor != null)
+            var calendarDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<CalendarDbContext>));
+            if (calendarDescriptor != null)
             {
-                services.Remove(descriptor);
+                services.Remove(calendarDescriptor);
             }
 
             services.AddDbContext<CalendarDbContext>(options =>
@@ -41,10 +44,45 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                 options.UseNpgsql(_dbContainer.GetConnectionString());
             });
 
+            var planningDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<PlanningDbContext>));
+            if (planningDescriptor != null)
+            {
+                services.Remove(planningDescriptor);
+            }
+
+            services.AddDbContext<PlanningDbContext>(options =>
+            {
+                options.UseNpgsql(_dbContainer.GetConnectionString());
+            });
+
             using var sp = services.BuildServiceProvider();
             using var scope = sp.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<CalendarDbContext>();
-            db.Database.EnsureCreated();
+            
+            var calendarDb = scope.ServiceProvider.GetRequiredService<CalendarDbContext>();
+            var calendarCreator = calendarDb.GetService<IRelationalDatabaseCreator>();
+            if (!calendarCreator.Exists())
+            {
+                calendarCreator.Create();
+            }
+            try
+            {
+                calendarCreator.CreateTables();
+            }
+            catch
+            {
+                // Tables already created
+            }
+
+            var planningDb = scope.ServiceProvider.GetRequiredService<PlanningDbContext>();
+            var planningCreator = planningDb.GetService<IRelationalDatabaseCreator>();
+            try
+            {
+                planningCreator.CreateTables();
+            }
+            catch
+            {
+                // Tables already created
+            }
         });
     }
 }

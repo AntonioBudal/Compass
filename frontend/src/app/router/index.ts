@@ -19,13 +19,23 @@ export const router = createRouter({
       path: '/today',
       name: 'today',
       component: () => import('@/pages/today/TodayPage.vue')
+    },
+    {
+      path: '/planning',
+      name: 'planning',
+      component: () => import('@/pages/planning/PlanningPage.vue')
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/pages/not-found/NotFoundPage.vue')
     }
   ]
 })
 
 router.beforeEach((to, _from, next) => {
   const hasProfile = profileStorage.hasActiveProfile()
-  if (to.name !== 'onboarding' && !hasProfile) {
+  if (to.name !== 'onboarding' && to.name !== 'not-found' && !hasProfile) {
     next({ name: 'onboarding' })
   } else {
     next()

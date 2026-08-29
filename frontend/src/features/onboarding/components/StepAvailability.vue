@@ -1,9 +1,11 @@
 <template>
   <div class="step-availability">
-    <h2 class="title">Sua Disponibilidade Semanal Padrão</h2>
-    <p class="subtitle">
-      Defina os dias da semana e os blocos de horário em que você costuma estar disponível.
-    </p>
+    <div class="header-section">
+      <h2 class="title">Disponibilidade Semanal Padrão</h2>
+      <p class="subtitle">
+        Defina os dias da semana e os blocos de horário em que você costuma estar disponível.
+      </p>
+    </div>
 
     <div v-if="validationError" class="validation-alert" role="alert">
       {{ validationError }}
@@ -54,14 +56,14 @@
             class="btn-add-window"
             @click="addWindow(day)"
           >
-            + Adicionar Intervalo
+            Adicionar Intervalo
           </button>
         </div>
       </div>
     </div>
 
     <div class="actions">
-      <AppButton variant="ghost" @click="$emit('back')">
+      <AppButton variant="secondary" @click="$emit('back')">
         Voltar
       </AppButton>
       <AppButton variant="primary" @click="handleNext">
@@ -130,27 +132,34 @@ function handleNext() {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  max-width: 640px;
+  max-width: 600px;
   margin: 0 auto;
 }
 
-.title {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  color: var(--color-text-primary);
+.header-section {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  text-align: center;
+  line-height: 1.5;
 }
 
 .validation-alert {
   padding: var(--space-3) var(--space-4);
-  background-color: var(--color-danger-bg);
-  border: 1px solid var(--color-danger-border);
+  background-color: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger);
   border-radius: var(--radius-md);
   color: var(--color-danger-text);
   font-size: var(--font-size-sm);
@@ -163,15 +172,16 @@ function handleNext() {
 }
 
 .day-card {
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
-  transition: border-color 0.15s ease;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
 .day-card--enabled {
-  border-color: var(--color-border-focus);
+  border-color: var(--color-border);
+  background-color: var(--color-surface);
 }
 
 .day-header {
@@ -188,22 +198,22 @@ function handleNext() {
 }
 
 .day-checkbox {
-  width: 1.125rem;
-  height: 1.125rem;
-  accent-color: var(--color-accent-primary);
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-accent);
   cursor: pointer;
 }
 
 .day-name {
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
 
 .window-count {
   font-size: var(--font-size-xs);
-  color: var(--color-accent-primary);
-  font-weight: 500;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
 }
 
 .day-disabled-text {
@@ -228,19 +238,21 @@ function handleNext() {
 
 .btn-add-window {
   align-self: flex-start;
-  background: transparent;
-  border: 1px dashed var(--color-border-subtle);
-  color: var(--color-accent-primary);
-  padding: var(--space-1) var(--space-3);
+  background: var(--color-surface-subtle);
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-secondary);
+  padding: 4px var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .btn-add-window:hover {
-  background-color: var(--color-bg-primary);
-  border-color: var(--color-accent-primary);
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 .actions {
