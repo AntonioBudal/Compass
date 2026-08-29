@@ -1,0 +1,15 @@
+schema_version: "1.0"
+workflow:
+  id: "feature-handoff"
+  name: "Feature Handoff and Documentation"
+  version: "1.0.0"
+  author: "Compass SDD"
+  description: "Validates quality gates, generates docs/handoffs/<id>-<feature>.md, and updates docs/PROJECT_STATE.md"
+
+requires:
+  speckit_version: ">=0.8.5"
+
+steps:
+  - id: handoff
+    command: feature-handoff
+    description: "Executes convergence validation, quality gates, and documentation generation"

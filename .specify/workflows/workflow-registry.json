@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "workflows": {
+    "speckit": {
+      "name": "Full SDD Cycle",
+      "version": "1.0.0",
+      "description": "Runs specify \u2192 plan \u2192 tasks \u2192 implement with review gates",
+      "source": "bundled",
+      "installed_at": "2026-08-29T01:20:48.210886+00:00",
+      "updated_at": "2026-08-29T01:20:48.210898+00:00"
+    },
+    "feature-handoff": {
+      "name": "Feature Handoff and Documentation",
+      "version": "1.0.0",
+      "description": "Validates quality gates, generates docs/handoffs/<id>-<feature>.md, and updates docs/PROJECT_STATE.md",
+      "source": "workspace",
+      "installed_at": "2026-08-29T02:02:00.000000+00:00",
+      "updated_at": "2026-08-29T02:02:00.000000+00:00"
+    }
+  }
+}

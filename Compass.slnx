@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Host/">
+    <Project Path="src/Host/Compass.Host/Compass.Host.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Calendar/">
+    <Project Path="src/Modules/Calendar/Compass.Modules.Calendar.Application/Compass.Modules.Calendar.Application.csproj" />
+    <Project Path="src/Modules/Calendar/Compass.Modules.Calendar.Contracts/Compass.Modules.Calendar.Contracts.csproj" />
+    <Project Path="src/Modules/Calendar/Compass.Modules.Calendar.Domain/Compass.Modules.Calendar.Domain.csproj" />
+    <Project Path="src/Modules/Calendar/Compass.Modules.Calendar.Infrastructure/Compass.Modules.Calendar.Infrastructure.csproj" />
+    <Project Path="src/Modules/Calendar/Compass.Modules.Calendar.Presentation/Compass.Modules.Calendar.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Compass.Host.IntegrationTests/Compass.Host.IntegrationTests.csproj" />
+    <Project Path="tests/Compass.Modules.Calendar.Application.UnitTests/Compass.Modules.Calendar.Application.UnitTests.csproj" />
+    <Project Path="tests/Compass.Modules.Calendar.Domain.UnitTests/Compass.Modules.Calendar.Domain.UnitTests.csproj" />
+    <Project Path="tests/Compass.Modules.Calendar.IntegrationTests/Compass.Modules.Calendar.IntegrationTests.csproj" />
+  </Folder>
+</Solution>
